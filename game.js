@@ -8,51 +8,94 @@ const COLOR_MAP = {
   U: 0x64748b,
 };
 
-const BUILTIN_LEVELS = [
-  {
-    level: 1,
-    description: '3x3 базовый уровень',
-    complications: [],
-    grid: [
-      ['R', 'G', 'B'],
-      ['G', 'R', 'B'],
-      ['B', 'G', 'R'],
-    ],
-    boosters: {},
-  },
-  {
-    level: 2,
-    description: 'Ограничение по выстрелам',
-    complications: ['limited_shots'],
-    maxShots: 18,
-    grid: [
-      ['R', 'G', 'B', 'R', 'G', 'B', 'R', 'G'],
-      ['G', 'R', 'B', 'G', 'R', 'B', 'G', 'R'],
-      ['B', 'B', 'R', 'G', 'R', 'G', 'B', 'R'],
-      ['R', 'G', 'U', 'U', 'B', 'G', 'R', 'B'],
-      ['G', 'R', 'B', 'Y', 'P', 'O', 'G', 'R'],
-      ['B', 'G', 'R', 'B', 'G', 'R', 'B', 'G'],
-    ],
-    boosters: {},
-  },
-  {
-    level: 3,
-    description: 'Дополнительные цвета',
-    complications: ['additional_colors'],
-    timerSeconds: 90,
-    grid: [
-      ['R', 'G', 'B', 'Y', 'P', 'O', 'R', 'G'],
-      ['G', 'R', 'B', 'Y', 'P', 'O', 'G', 'R'],
-      ['B', 'G', 'R', 'O', 'Y', 'P', 'B', 'G'],
-      ['Y', 'P', 'O', 'R', 'G', 'B', 'Y', 'P'],
-      ['P', 'O', 'Y', 'G', 'B', 'R', 'P', 'O'],
-      ['O', 'Y', 'P', 'B', 'R', 'G', 'O', 'Y'],
-      ['R', 'G', 'B', 'Y', 'P', 'O', 'R', 'G'],
-      ['G', 'R', 'B', 'O', 'Y', 'P', 'G', 'R'],
-    ],
-    boosters: {},
-  },
+const BASE_GRID = [
+  ['R', 'G', 'B', 'R', 'G', 'B', 'R', 'G'],
+  ['G', 'R', 'B', 'G', 'R', 'B', 'G', 'R'],
+  ['B', 'B', 'R', 'G', 'R', 'G', 'B', 'R'],
+  ['R', 'G', 'U', 'U', 'B', 'G', 'R', 'B'],
+  ['G', 'R', 'B', 'R', 'G', 'B', 'G', 'R'],
+  ['B', 'G', 'R', 'B', 'G', 'R', 'B', 'G'],
 ];
+
+const COMPLICATIONS = [
+  'additional_colors',
+  'timer',
+  'limited_shots',
+  'unbreakable_blocks',
+  'two_colors_blocks',
+  'flashing_blocks',
+  'several_layers',
+];
+
+const TWO_COLOR_GRID = BASE_GRID.map((row, r) =>
+  row.map((cell, c) => ((r + c) % 7 === 0 && cell !== 'U' ? `2${cell}` : cell))
+);
+
+function withAdditionalColors(grid) {
+  return grid.map((row, r) =>
+    row.map((cell, c) => {
+      if (cell === 'U' || cell.startsWith('2')) return cell;
+      if ((r + c) % 5 === 0) return 'Y';
+      if ((r + c) % 5 === 1) return 'P';
+      if ((r + c) % 5 === 2) return 'O';
+      return cell;
+    })
+  );
+}
+
+function makeLevel(levelNumber, activeComplications) {
+  let grid = cloneGrid(BASE_GRID);
+
+  if (activeComplications.includes('additional_colors')) grid = withAdditionalColors(grid);
+  if (activeComplications.includes('two_colors_blocks')) grid = cloneGrid(TWO_COLOR_GRID);
+
+  const level = {
+    level: levelNumber,
+    description: `Встроенный уровень ${levelNumber}`,
+    complications: activeComplications,
+    grid,
+    boosters: {},
+  };
+
+  if (activeComplications.includes('timer')) level.timerSeconds = Math.max(45, 110 - levelNumber * 2);
+  if (activeComplications.includes('limited_shots')) level.maxShots = Math.max(8, 24 - levelNumber);
+
+  return level;
+}
+
+function combinations(arr, size) {
+  const result = [];
+  const path = [];
+  function dfs(start) {
+    if (path.length === size) {
+      result.push([...path]);
+      return;
+    }
+    for (let i = start; i < arr.length; i += 1) {
+      path.push(arr[i]);
+      dfs(i + 1);
+      path.pop();
+    }
+  }
+  dfs(0);
+  return result;
+}
+
+function buildBuiltinLevels() {
+  const levels = [];
+  let levelNumber = 1;
+  const oneComplication = COMPLICATIONS.map((c) => [c]).slice(0, 7);
+  const twoComplications = combinations(COMPLICATIONS, 2).slice(0, 7);
+  const threeComplications = combinations(COMPLICATIONS, 3).slice(0, 7);
+
+  [...oneComplication, ...twoComplications, ...threeComplications].forEach((compSet) => {
+    levels.push(makeLevel(levelNumber, compSet));
+    levelNumber += 1;
+  });
+  return levels;
+}
+
+const BUILTIN_LEVELS = buildBuiltinLevels();
 
 const model = {
   level: null,
