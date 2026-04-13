@@ -1,20 +1,17 @@
 const COLOR_MAP = {
-  R: 0xef4444,
-  G: 0x22c55e,
-  B: 0x3b82f6,
-  Y: 0xeab308,
-  P: 0xa855f7,
-  O: 0xf97316,
-  U: 0x64748b,
+  R: 0xe74c3c,
+  G: 0x27ae60,
+  B: 0x3498db,
+  Y: 0xf1c40f,
+  U: 0x7f8c8d,
 };
 
 const BASE_GRID = [
-  ['R', 'G', 'B', 'R', 'G', 'B', 'R', 'G'],
-  ['G', 'R', 'B', 'G', 'R', 'B', 'G', 'R'],
-  ['B', 'B', 'R', 'G', 'R', 'G', 'B', 'R'],
-  ['R', 'G', 'U', 'U', 'B', 'G', 'R', 'B'],
-  ['G', 'R', 'B', 'R', 'G', 'B', 'G', 'R'],
-  ['B', 'G', 'R', 'B', 'G', 'R', 'B', 'G'],
+  ['G', 'R', 'B', 'R', 'Y', 'R', 'B', 'G'],
+  ['B', 'B', 'B', 'B', 'B', 'B', 'Y', 'G'],
+  ['G', 'G', 'R', 'Y', 'Y', 'Y', 'R', 'R'],
+  ['G', 'G', 'R', 'G', 'Y', 'Y', 'Y', 'R'],
+  ['Y', 'Y', 'R', 'G', 'R', 'G', 'B', 'B'],
 ];
 
 const COMPLICATIONS = [
@@ -27,40 +24,31 @@ const COMPLICATIONS = [
   'several_layers',
 ];
 
-const TWO_COLOR_GRID = BASE_GRID.map((row, r) =>
-  row.map((cell, c) => ((r + c) % 7 === 0 && cell !== 'U' ? `2${cell}` : cell))
-);
+const model = {
+  grid: [],
+  score: 0,
+  selectedShotColor: 'R',
+  shotsLeft: Infinity,
+  timerLeft: Infinity,
+  gameOver: false,
+  levels: [],
+};
 
-function withAdditionalColors(grid) {
-  return grid.map((row, r) =>
-    row.map((cell, c) => {
-      if (cell === 'U' || cell.startsWith('2')) return cell;
-      if ((r + c) % 5 === 0) return 'Y';
-      if ((r + c) % 5 === 1) return 'P';
-      if ((r + c) % 5 === 2) return 'O';
-      return cell;
-    })
-  );
-}
+const ui = {
+  levelSelect: document.getElementById('levelSelect'),
+  startBtn: document.getElementById('startBtn'),
+  shotPalette: document.getElementById('shotPalette'),
+  scoreLabel: document.getElementById('scoreLabel'),
+  shotsLabel: document.getElementById('shotsLabel'),
+  timerLabel: document.getElementById('timerLabel'),
+  stateLabel: document.getElementById('stateLabel'),
+};
 
-function makeLevel(levelNumber, activeComplications) {
-  let grid = cloneGrid(BASE_GRID);
+let phaserGame;
+let boardScene;
 
-  if (activeComplications.includes('additional_colors')) grid = withAdditionalColors(grid);
-  if (activeComplications.includes('two_colors_blocks')) grid = cloneGrid(TWO_COLOR_GRID);
-
-  const level = {
-    level: levelNumber,
-    description: `Встроенный уровень ${levelNumber}`,
-    complications: activeComplications,
-    grid,
-    boosters: {},
-  };
-
-  if (activeComplications.includes('timer')) level.timerSeconds = Math.max(45, 110 - levelNumber * 2);
-  if (activeComplications.includes('limited_shots')) level.maxShots = Math.max(8, 24 - levelNumber);
-
-  return level;
+function cloneGrid(grid) {
+  return grid.map((row) => row.slice());
 }
 
 function combinations(arr, size) {
@@ -82,50 +70,24 @@ function combinations(arr, size) {
 }
 
 function buildBuiltinLevels() {
-  const levels = [];
-  let levelNumber = 1;
   const oneComplication = COMPLICATIONS.map((c) => [c]).slice(0, 7);
   const twoComplications = combinations(COMPLICATIONS, 2).slice(0, 7);
   const threeComplications = combinations(COMPLICATIONS, 3).slice(0, 7);
+  const packs = [...oneComplication, ...twoComplications, ...threeComplications];
 
-  [...oneComplication, ...twoComplications, ...threeComplications].forEach((compSet) => {
-    levels.push(makeLevel(levelNumber, compSet));
-    levelNumber += 1;
-  });
-  return levels;
-}
-
-const BUILTIN_LEVELS = buildBuiltinLevels();
-
-const model = {
-  level: null,
-  grid: [],
-  score: 0,
-  selectedShotColor: 'R',
-  shotsLeft: Infinity,
-  timerLeft: Infinity,
-  gameOver: false,
-};
-
-const ui = {
-  levelSelect: document.getElementById('levelSelect'),
-  startBtn: document.getElementById('startBtn'),
-  shotPalette: document.getElementById('shotPalette'),
-  scoreLabel: document.getElementById('scoreLabel'),
-  shotsLabel: document.getElementById('shotsLabel'),
-  timerLabel: document.getElementById('timerLabel'),
-  stateLabel: document.getElementById('stateLabel'),
-};
-
-let phaserGame;
-let boardScene;
-
-function cloneGrid(grid) {
-  return grid.map((row) => row.slice());
+  return packs.map((complications, idx) => ({
+    level: idx + 1,
+    description: `Встроенный уровень ${idx + 1}`,
+    complications,
+    maxShots: complications.includes('limited_shots') ? Math.max(10, 22 - idx) : undefined,
+    timerSeconds: complications.includes('timer') ? Math.max(50, 100 - idx) : undefined,
+    grid: cloneGrid(BASE_GRID),
+  }));
 }
 
 function populateLevelSelect() {
-  BUILTIN_LEVELS.forEach((lvl, idx) => {
+  ui.levelSelect.innerHTML = '';
+  model.levels.forEach((lvl, idx) => {
     const option = document.createElement('option');
     option.value = String(idx);
     option.textContent = `${lvl.level}. ${lvl.description}`;
@@ -136,56 +98,36 @@ function populateLevelSelect() {
 function getBreakableColors(grid) {
   const set = new Set();
   for (const row of grid) {
-    for (const rawCode of row) {
-      const code = String(rawCode || '');
-      if (!code || code === 'U') continue;
-      const color = code.startsWith('2') ? code[1] : code;
-      if (COLOR_MAP[color]) set.add(color);
+    for (const cell of row) {
+      if (cell && cell !== 'U') set.add(cell);
     }
   }
   return [...set];
 }
 
-function randomDifferentColor(current, available) {
-  const variants = available.filter((c) => c !== current);
-  return variants[Math.floor(Math.random() * variants.length)] || current;
-}
-
-function isInBounds(r, c) {
+function isInsideGrid(r, c) {
   return r >= 0 && r < model.grid.length && c >= 0 && c < model.grid[0].length;
 }
 
-function isDestructible(code) {
-  return code && code !== 'U';
-}
-
-function baseColor(code) {
-  if (!code) return '';
-  if (code.startsWith('2')) return code[1];
-  return code;
-}
-
-function findConnectedOrdinary(startR, startC, targetColor) {
-  const q = [[startR, startC]];
+function findConnected(startR, startC, targetColor) {
+  const queue = [[startR, startC]];
   const seen = new Set([`${startR},${startC}`]);
   const group = [];
 
-  while (q.length) {
-    const [r, c] = q.shift();
-    const code = model.grid[r][c];
-    if (!isDestructible(code) || code.startsWith('2') || baseColor(code) !== targetColor) {
-      continue;
-    }
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    const cell = model.grid[r][c];
+    if (!cell || cell !== targetColor) continue;
 
     group.push([r, c]);
-    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     for (const [dr, dc] of dirs) {
       const nr = r + dr;
       const nc = c + dc;
-      const k = `${nr},${nc}`;
-      if (isInBounds(nr, nc) && !seen.has(k)) {
-        seen.add(k);
-        q.push([nr, nc]);
+      const key = `${nr},${nc}`;
+      if (isInsideGrid(nr, nc) && !seen.has(key)) {
+        seen.add(key);
+        queue.push([nr, nc]);
       }
     }
   }
@@ -193,31 +135,35 @@ function findConnectedOrdinary(startR, startC, targetColor) {
   return group;
 }
 
-function repaint2ColorsTouchedByGroup(group, targetColor) {
-  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-  const toRepaint = new Set();
+function buildGravityMoves(oldGrid, newGrid) {
+  const cols = oldGrid[0].length;
+  const rows = oldGrid.length;
+  const moves = [];
 
-  for (const [r, c] of group) {
-    for (const [dr, dc] of dirs) {
-      const nr = r + dr;
-      const nc = c + dc;
-      if (!isInBounds(nr, nc)) continue;
-      const code = model.grid[nr][nc];
-      if (code && code.startsWith('2') && baseColor(code) === targetColor) {
-        toRepaint.add(`${nr},${nc}`);
+  for (let c = 0; c < cols; c += 1) {
+    const oldRows = [];
+    const newRows = [];
+
+    for (let r = 0; r < rows; r += 1) {
+      if (oldGrid[r][c]) oldRows.push(r);
+      if (newGrid[r][c]) newRows.push(r);
+    }
+
+    const count = Math.min(oldRows.length, newRows.length);
+    for (let i = 0; i < count; i += 1) {
+      const fromR = oldRows[oldRows.length - 1 - i];
+      const toR = newRows[newRows.length - 1 - i];
+      if (fromR !== toR) {
+        moves.push({ from: [fromR, c], to: [toR, c], code: oldGrid[fromR][c] });
       }
     }
   }
 
-  const available = getBreakableColors(model.grid);
-  for (const key of toRepaint) {
-    const [r, c] = key.split(',').map(Number);
-    const newColor = randomDifferentColor(targetColor, available.length ? available : ['R','G','B']);
-    model.grid[r][c] = newColor; // становится обычным блоком
-  }
+  return moves;
 }
 
-function applyGravity() {
+function applyGravityAndGetMoves() {
+  const oldGrid = cloneGrid(model.grid);
   const rows = model.grid.length;
   const cols = model.grid[0].length;
 
@@ -230,128 +176,286 @@ function applyGravity() {
       model.grid[r][c] = stack[rows - 1 - r] || null;
     }
   }
+
+  return buildGravityMoves(oldGrid, model.grid);
 }
 
-function checkWin() {
+function isWin() {
   return model.grid.every((row) => row.every((cell) => !cell || cell === 'U'));
-}
-
-function spendShot() {
-  if (Number.isFinite(model.shotsLeft)) {
-    model.shotsLeft -= 1;
-    if (model.shotsLeft <= 0) {
-      model.gameOver = true;
-      ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
-    }
-  }
-}
-
-function onCellClicked(r, c) {
-  if (model.gameOver) return;
-  const code = model.grid[r][c];
-  if (!isDestructible(code)) return;
-
-  spendShot();
-  if (model.gameOver) return;
-
-  if (baseColor(code) !== model.selectedShotColor) {
-    refreshUI();
-    boardScene.renderGrid();
-    return;
-  }
-
-  const group = findConnectedOrdinary(r, c, model.selectedShotColor);
-  if (group.length > 0) {
-    repaint2ColorsTouchedByGroup(group, model.selectedShotColor);
-    for (const [gr, gc] of group) model.grid[gr][gc] = null;
-    model.score += group.length * 10;
-    applyGravity();
-  } else if (code.startsWith('2')) {
-    model.grid[r][c] = randomDifferentColor(model.selectedShotColor, getBreakableColors(model.grid));
-  }
-
-  if (checkWin()) {
-    model.gameOver = true;
-    ui.stateLabel.textContent = 'Статус: победа';
-  }
-
-  refreshUI();
-  boardScene.renderGrid();
-}
-
-function buildShotPalette() {
-  ui.shotPalette.innerHTML = '';
-  const colors = getBreakableColors(model.grid);
-  colors.forEach((colorCode) => {
-    const btn = document.createElement('button');
-    btn.className = 'color-btn';
-    btn.textContent = colorCode;
-    btn.style.background = `#${COLOR_MAP[colorCode].toString(16).padStart(6, '0')}`;
-    btn.style.color = '#0f172a';
-    btn.onclick = () => {
-      model.selectedShotColor = colorCode;
-      [...ui.shotPalette.children].forEach((el) => (el.style.outline = 'none'));
-      btn.style.outline = '3px solid #fff';
-    };
-    if (colorCode === model.selectedShotColor) btn.style.outline = '3px solid #fff';
-    ui.shotPalette.appendChild(btn);
-  });
-  if (!colors.includes(model.selectedShotColor) && colors.length) {
-    model.selectedShotColor = colors[0];
-    buildShotPalette();
-  }
 }
 
 function refreshUI() {
   ui.scoreLabel.textContent = `Очки: ${model.score}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
-  if (!model.gameOver) ui.stateLabel.textContent = `Статус: игра идёт (цвет выстрела: ${model.selectedShotColor})`;
+  if (!model.gameOver) {
+    ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
+  }
+}
+
+function buildShotPalette() {
+  ui.shotPalette.innerHTML = '';
+  const colors = getBreakableColors(model.grid);
+
+  colors.forEach((code) => {
+    const btn = document.createElement('button');
+    btn.className = 'color-btn';
+    btn.textContent = code;
+    btn.style.background = `#${COLOR_MAP[code].toString(16).padStart(6, '0')}`;
+    btn.style.color = '#111827';
+    btn.onclick = () => {
+      model.selectedShotColor = code;
+      [...ui.shotPalette.children].forEach((el) => (el.style.outline = 'none'));
+      btn.style.outline = '3px solid #fff';
+      refreshUI();
+    };
+    if (code === model.selectedShotColor) btn.style.outline = '3px solid #fff';
+    ui.shotPalette.appendChild(btn);
+  });
+
+  if (!colors.includes(model.selectedShotColor) && colors.length) {
+    model.selectedShotColor = colors[0];
+    buildShotPalette();
+  }
 }
 
 class BoardScene extends Phaser.Scene {
   constructor() {
     super('board');
-    this.cellSize = 52;
-    this.padding = 10;
-    this.graphics = null;
+    this.cell = 78;
+    this.gridX = 12;
+    this.gridY = 12;
+    this.playAreaHeight = 620;
+    this.blocks = new Map();
+    this.animating = false;
+    this.shooterX = 0;
+    this.shooterY = 0;
+    this.shooter = null;
+  }
+
+  key(r, c) {
+    return `${r},${c}`;
+  }
+
+  gridToPixel(r, c) {
+    return {
+      x: this.gridX + c * this.cell + this.cell / 2,
+      y: this.gridY + r * this.cell + this.cell / 2,
+    };
   }
 
   create() {
-    this.graphics = this.add.graphics();
-    this.renderGrid();
+    this.cameras.main.setBackgroundColor('#1f1f1f');
+    this.drawBoardFrame();
+
+    this.shooterX = this.scale.width / 2;
+    this.shooterY = this.playAreaHeight - 36;
+    this.shooter = this.add.circle(this.shooterX, this.shooterY, 18, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(3, 0xffffff);
+
+    this.renderGridStatic();
+
+    this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
   }
 
-  renderGrid() {
-    this.graphics.clear();
-    this.children.removeAll(false);
-
+  drawBoardFrame() {
+    const g = this.add.graphics();
     const rows = model.grid.length;
     const cols = model.grid[0].length;
+    const w = cols * this.cell;
+    const h = rows * this.cell;
 
-    this.cameras.main.setBackgroundColor('#020617');
+    g.fillStyle(0x242424, 1);
+    g.fillRect(this.gridX, this.gridY, w, h);
 
-    for (let r = 0; r < rows; r += 1) {
-      for (let c = 0; c < cols; c += 1) {
+    g.lineStyle(2, 0x000000, 1);
+    for (let c = 0; c <= cols; c += 1) {
+      const x = this.gridX + c * this.cell;
+      g.lineBetween(x, this.gridY, x, this.gridY + h);
+    }
+    for (let r = 0; r <= rows; r += 1) {
+      const y = this.gridY + r * this.cell;
+      g.lineBetween(this.gridX, y, this.gridX + w, y);
+    }
+  }
+
+  renderGridStatic() {
+    for (const b of this.blocks.values()) b.destroy();
+    this.blocks.clear();
+
+    for (let r = 0; r < model.grid.length; r += 1) {
+      for (let c = 0; c < model.grid[0].length; c += 1) {
         const code = model.grid[r][c];
         if (!code) continue;
-
-        const x = this.padding + c * this.cellSize;
-        const y = this.padding + r * this.cellSize;
-        const color = COLOR_MAP[baseColor(code)] || 0xffffff;
-
-        this.graphics.fillStyle(color, 1);
-        this.graphics.fillRoundedRect(x, y, this.cellSize - 4, this.cellSize - 4, 8);
-        this.graphics.lineStyle(1, 0x0f172a, 1);
-        this.graphics.strokeRoundedRect(x, y, this.cellSize - 4, this.cellSize - 4, 8);
-
-        this.add.text(x + 8, y + 14, code, { fontSize: '18px', color: '#0f172a', fontStyle: 'bold' });
-
-        const hit = this.add.zone(x, y, this.cellSize - 4, this.cellSize - 4).setOrigin(0);
-        hit.setInteractive({ useHandCursor: true });
-        hit.on('pointerdown', () => onCellClicked(r, c));
+        const block = this.createBlock(r, c, code);
+        this.blocks.set(this.key(r, c), block);
       }
     }
+
+    this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+  }
+
+  createBlock(r, c, code) {
+    const { x, y } = this.gridToPixel(r, c);
+    return this.add.rectangle(x, y, this.cell - 2, this.cell - 2, COLOR_MAP[code] || 0xffffff).setOrigin(0.5);
+  }
+
+  handlePointer(pointer) {
+    if (this.animating || model.gameOver) return;
+
+    const cols = model.grid[0].length;
+    const rows = model.grid.length;
+    const col = Math.floor((pointer.x - this.gridX) / this.cell);
+    const row = Math.floor((pointer.y - this.gridY) / this.cell);
+
+    if (col < 0 || row < 0 || col >= cols || row >= rows) return;
+
+    this.shootToCell(row, col);
+  }
+
+  shootToCell(row, col) {
+    const targetCode = model.grid[row][col];
+    if (!targetCode || targetCode === 'U') return;
+
+    if (Number.isFinite(model.shotsLeft)) {
+      model.shotsLeft -= 1;
+      if (model.shotsLeft < 0) model.shotsLeft = 0;
+    }
+
+    const projectile = this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(2, 0xffffff);
+    const target = this.gridToPixel(row, col);
+
+    this.animating = true;
+    this.tweens.add({
+      targets: projectile,
+      x: target.x,
+      y: target.y,
+      duration: 260,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        projectile.destroy();
+        this.playImpact(target.x, target.y, () => this.resolveHit(row, col));
+      },
+    });
+
+    refreshUI();
+  }
+
+  playImpact(x, y, done) {
+    const flash = this.add.circle(x, y, 10, 0xffffff, 0.9);
+    this.tweens.add({
+      targets: flash,
+      scaleX: 3,
+      scaleY: 3,
+      alpha: 0,
+      duration: 180,
+      onComplete: () => {
+        flash.destroy();
+        done();
+      },
+    });
+  }
+
+  resolveHit(row, col) {
+    const targetCode = model.grid[row][col];
+    if (targetCode !== model.selectedShotColor) {
+      this.animating = false;
+      if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+        model.gameOver = true;
+        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+      }
+      return;
+    }
+
+    const group = findConnected(row, col, model.selectedShotColor);
+    if (group.length === 0) {
+      this.animating = false;
+      return;
+    }
+
+    const removedKeys = group.map(([r, c]) => this.key(r, c));
+    group.forEach(([r, c]) => {
+      model.grid[r][c] = null;
+    });
+    model.score += group.length * 10;
+
+    const gravityMoves = applyGravityAndGetMoves();
+    this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
+      if (isWin()) {
+        model.gameOver = true;
+        ui.stateLabel.textContent = 'Статус: победа';
+      } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+        model.gameOver = true;
+        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+      }
+
+      buildShotPalette();
+      refreshUI();
+      this.animating = false;
+    });
+  }
+
+  animateRemovalAndFall(removedKeys, moves, done) {
+    const removals = [];
+    removedKeys.forEach((k) => {
+      const block = this.blocks.get(k);
+      if (block) {
+        this.blocks.delete(k);
+        removals.push(block);
+      }
+    });
+
+    removals.forEach((b) => {
+      this.tweens.add({
+        targets: b,
+        alpha: 0,
+        scaleX: 0.6,
+        scaleY: 0.6,
+        duration: 140,
+        onComplete: () => b.destroy(),
+      });
+    });
+
+    const pending = moves.length;
+    if (pending === 0) {
+      setTimeout(() => {
+        this.renderGridStatic();
+        done();
+      }, 160);
+      return;
+    }
+
+    let finished = 0;
+    moves.forEach((move) => {
+      const fromKey = this.key(move.from[0], move.from[1]);
+      const toKey = this.key(move.to[0], move.to[1]);
+      const block = this.blocks.get(fromKey);
+      if (!block) {
+        finished += 1;
+        if (finished === pending) {
+          this.renderGridStatic();
+          done();
+        }
+        return;
+      }
+
+      this.blocks.delete(fromKey);
+      this.blocks.set(toKey, block);
+      const target = this.gridToPixel(move.to[0], move.to[1]);
+
+      this.tweens.add({
+        targets: block,
+        y: target.y,
+        duration: 220,
+        ease: 'Cubic.easeIn',
+        onComplete: () => {
+          finished += 1;
+          if (finished === pending) {
+            this.renderGridStatic();
+            done();
+          }
+        },
+      });
+    });
   }
 
   update(_time, delta) {
@@ -375,20 +479,19 @@ function initPhaser(rows, cols) {
   phaserGame = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: cols * 52 + 20,
-    height: rows * 52 + 20,
+    width: cols * 78 + 24,
+    height: 620,
     scene: [boardScene],
   });
 }
 
 function startLevelByIndex(index) {
-  const lvl = BUILTIN_LEVELS[index];
-  model.level = lvl;
-  model.grid = cloneGrid(lvl.grid);
+  const level = model.levels[index];
+  model.grid = cloneGrid(level.grid);
   model.score = 0;
   model.gameOver = false;
-  model.shotsLeft = Number.isFinite(lvl.maxShots) ? lvl.maxShots : Infinity;
-  model.timerLeft = Number.isFinite(lvl.timerSeconds) ? lvl.timerSeconds : Infinity;
+  model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
+  model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
   model.selectedShotColor = getBreakableColors(model.grid)[0] || 'R';
 
   initPhaser(model.grid.length, model.grid[0].length);
@@ -396,6 +499,7 @@ function startLevelByIndex(index) {
   refreshUI();
 }
 
+model.levels = buildBuiltinLevels();
 populateLevelSelect();
 ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
 startLevelByIndex(0);
