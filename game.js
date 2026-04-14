@@ -37,6 +37,7 @@ const model = {
 const ui = {
   levelSelect: document.getElementById('levelSelect'),
   startBtn: document.getElementById('startBtn'),
+  shotPalette: document.getElementById('shotPalette'),
   scoreLabel: document.getElementById('scoreLabel'),
   shotsLabel: document.getElementById('shotsLabel'),
   timerLabel: document.getElementById('timerLabel'),
@@ -69,9 +70,9 @@ function combinations(arr, size) {
 }
 
 function buildBuiltinLevels() {
-  const oneComplication = COMPLICATIONS.map((c) => [c]); // 7 уровней
-  const twoComplications = combinations(COMPLICATIONS, 2).slice(0, 8); // уровни 8..15
-  const threeComplications = combinations(COMPLICATIONS, 3).slice(0, 8); // уровни 16..23
+  const oneComplication = COMPLICATIONS.map((c) => [c]).slice(0, 7);
+  const twoComplications = combinations(COMPLICATIONS, 2).slice(0, 7);
+  const threeComplications = combinations(COMPLICATIONS, 3).slice(0, 7);
   const packs = [...oneComplication, ...twoComplications, ...threeComplications];
 
   return packs.map((complications, idx) => ({
@@ -89,7 +90,7 @@ function populateLevelSelect() {
   model.levels.forEach((lvl, idx) => {
     const option = document.createElement('option');
     option.value = String(idx);
-    option.textContent = `${lvl.level}. ${lvl.description} [${lvl.complications.join(', ')}]`;
+    option.textContent = `${lvl.level}. ${lvl.description}`;
     ui.levelSelect.appendChild(option);
   });
 }
@@ -192,15 +193,30 @@ function refreshUI() {
   }
 }
 
-function pickNextShotColor() {
+function buildShotPalette() {
+  ui.shotPalette.innerHTML = '';
   const colors = getBreakableColors(model.grid);
-  if (!colors.length) {
-    model.selectedShotColor = 'R';
-    return;
+
+  colors.forEach((code) => {
+    const btn = document.createElement('button');
+    btn.className = 'color-btn';
+    btn.textContent = code;
+    btn.style.background = `#${COLOR_MAP[code].toString(16).padStart(6, '0')}`;
+    btn.style.color = '#111827';
+    btn.onclick = () => {
+      model.selectedShotColor = code;
+      [...ui.shotPalette.children].forEach((el) => (el.style.outline = 'none'));
+      btn.style.outline = '3px solid #fff';
+      refreshUI();
+    };
+    if (code === model.selectedShotColor) btn.style.outline = '3px solid #fff';
+    ui.shotPalette.appendChild(btn);
+  });
+
+  if (!colors.includes(model.selectedShotColor) && colors.length) {
+    model.selectedShotColor = colors[0];
+    buildShotPalette();
   }
-  const candidates = colors.filter((c) => c !== model.selectedShotColor);
-  if (!candidates.length) return;
-  model.selectedShotColor = candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 class BoardScene extends Phaser.Scene {
@@ -342,9 +358,6 @@ class BoardScene extends Phaser.Scene {
   resolveHit(row, col) {
     const targetCode = model.grid[row][col];
     if (targetCode !== model.selectedShotColor) {
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      refreshUI();
       this.animating = false;
       if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
         model.gameOver = true;
@@ -355,9 +368,6 @@ class BoardScene extends Phaser.Scene {
 
     const group = findConnected(row, col, model.selectedShotColor);
     if (group.length === 0) {
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      refreshUI();
       this.animating = false;
       return;
     }
@@ -378,8 +388,7 @@ class BoardScene extends Phaser.Scene {
         ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
       }
 
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      buildShotPalette();
       refreshUI();
       this.animating = false;
     });
@@ -484,9 +493,9 @@ function startLevelByIndex(index) {
   model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
   model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
   model.selectedShotColor = getBreakableColors(model.grid)[0] || 'R';
-  pickNextShotColor();
 
   initPhaser(model.grid.length, model.grid[0].length);
+  buildShotPalette();
   refreshUI();
 }
 
