@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Color Block Breaker</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+      .app { max-width: 980px; margin: 0 auto; padding: 16px; }
+      .controls { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-bottom: 12px; }
+      select, button { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
+      #game { border: 1px solid #334155; border-radius: 10px; overflow: hidden; }
+      .status { display:flex; gap: 12px; flex-wrap: wrap; }
+      .badge { background:#1e293b; border:1px solid #334155; padding: 6px 10px; border-radius: 999px; }
+      .sub { color: #94a3b8; margin: 0 0 12px; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <h1>Color Block Breaker (Phaser)</h1>
+      <p class="sub">Режим: автослучайный цвет шара (без ручного выбора)</p>
+      <div class="controls">
+        <label>Уровень:
+          <select id="levelSelect"></select>
+        </label>
+        <button id="startBtn">Запустить уровень</button>
+      </div>
+      <div class="status">
+        <div class="badge" id="scoreLabel">Очки: 0</div>
+        <div class="badge" id="shotsLabel">Выстрелы: ∞</div>
+        <div class="badge" id="timerLabel">Таймер: ∞</div>
+        <div class="badge" id="stateLabel">Статус: игра идёт</div>
+      </div>
+      <div id="game"></div>
+    </div>
+    <script type="module" src="game.js?v=2"></script>
+  </body>
+</html>

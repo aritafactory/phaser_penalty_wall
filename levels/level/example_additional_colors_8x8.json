@@ -1,0 +1,23 @@
+{
+  "level": 3,
+  "description": "8x8 уровень с дополнительными цветами",
+  "complications": ["additional_colors"],
+  "grid": [
+    ["R", "G", "B", "Y", "P", "O", "R", "G"],
+    ["G", "R", "B", "Y", "P", "O", "G", "R"],
+    ["B", "G", "R", "O", "Y", "P", "B", "G"],
+    ["Y", "P", "O", "R", "G", "B", "Y", "P"],
+    ["P", "O", "Y", "G", "B", "R", "P", "O"],
+    ["O", "Y", "P", "B", "R", "G", "O", "Y"],
+    ["R", "G", "B", "Y", "P", "O", "R", "G"],
+    ["G", "R", "B", "O", "Y", "P", "G", "R"]
+  ],
+  "boosters": {
+    "bomb": 0,
+    "mix": 1,
+    "fractions": 0,
+    "minusOneColor": 0,
+    "plusFiveShots": 0,
+    "rainbow": 0
+  }
+}
