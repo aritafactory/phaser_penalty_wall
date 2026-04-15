@@ -249,6 +249,23 @@ function findConnected(startR, startC, targetColor) {
   return group;
 }
 
+function findConnectedOrdinaryAroundCell(centerR, centerC, targetColor) {
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const merged = new Set();
+
+  dirs.forEach(([dr, dc]) => {
+    const nr = centerR + dr;
+    const nc = centerC + dc;
+    if (!isInsideGrid(nr, nc)) return;
+    const cell = model.grid[nr][nc];
+    if (!isRemovableCell(cell) || visibleColor(cell) !== targetColor) return;
+    const group = findConnected(nr, nc, targetColor);
+    group.forEach(([r, c]) => merged.add(`${r},${c}`));
+  });
+
+  return [...merged].map((k) => k.split(',').map(Number));
+}
+
 function repaintTwoColorNeighbors(group, shotColor) {
   const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const touched = new Set();
@@ -498,6 +515,39 @@ class BoardScene extends Phaser.Scene {
     const group = findConnected(row, col, model.selectedShotColor);
     if (group.length === 0) {
       if (isTwoColor(targetCode) && visibleColor(targetCode) === model.selectedShotColor) {
+        const aroundGroup = findConnectedOrdinaryAroundCell(row, col, model.selectedShotColor);
+        if (aroundGroup.length > 0) {
+          const removedKeys = aroundGroup.map(([r, c]) => this.key(r, c));
+          repaintTwoColorNeighbors(aroundGroup, model.selectedShotColor);
+          aroundGroup.forEach(([r, c]) => {
+            model.grid[r][c] = null;
+          });
+          const palette = getBreakableColors(model.grid);
+          model.grid[row][col] = randomColorDifferentFrom(visibleColor(targetCode), palette);
+          model.score += aroundGroup.length * 10;
+          const gravityMoves = applyGravityAndGetMoves();
+          this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
+            if (isWin()) {
+              if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
+                model.currentLayerIndex += 1;
+                model.grid = cloneGrid(model.currentLevel.layers[model.currentLayerIndex]);
+                this.renderGridStatic();
+                ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
+              } else {
+                model.gameOver = true;
+                ui.stateLabel.textContent = 'Статус: победа';
+              }
+            } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+              model.gameOver = true;
+              ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+            }
+            pickNextShotColor();
+            this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+            refreshUI();
+            this.animating = false;
+          });
+          return;
+        }
         const palette = getBreakableColors(model.grid);
         model.grid[row][col] = randomColorDifferentFrom(visibleColor(targetCode), palette);
         this.renderGridStatic();
