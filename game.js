@@ -3,6 +3,8 @@ const COLOR_MAP = {
   G: 0x27ae60,
   B: 0x3498db,
   Y: 0xf1c40f,
+  P: 0x9b59b6,
+  O: 0xe67e22,
   U: 0x7f8c8d,
 };
 
@@ -32,6 +34,8 @@ const model = {
   timerLeft: Infinity,
   gameOver: false,
   levels: [],
+  currentLevel: null,
+  currentLayerIndex: 0,
 };
 
 const ui = {
@@ -48,6 +52,45 @@ let boardScene;
 
 function cloneGrid(grid) {
   return grid.map((row) => row.slice());
+}
+
+function isTwoColor(cell) {
+  return typeof cell === 'string' && cell.startsWith('2') && cell.length >= 2;
+}
+
+function isFlashing(cell) {
+  return typeof cell === 'string' && cell.startsWith('F:');
+}
+
+function parseFlashing(cell) {
+  // формат: F:C1:C2:S, где S = 0|1
+  const [_f, c1, c2, s] = String(cell).split(':');
+  return { c1, c2, state: Number(s || 0) };
+}
+
+function makeFlashing(c1, c2, state = 0) {
+  return `F:${c1}:${c2}:${state}`;
+}
+
+function visibleColor(cell) {
+  if (!cell) return null;
+  if (cell === 'U') return 'U';
+  if (isTwoColor(cell)) return cell[1];
+  if (isFlashing(cell)) {
+    const { c1, c2, state } = parseFlashing(cell);
+    return state === 0 ? c1 : c2;
+  }
+  return cell;
+}
+
+function isRemovableCell(cell) {
+  return Boolean(cell) && cell !== 'U' && !isTwoColor(cell);
+}
+
+function randomColorDifferentFrom(prev, pool) {
+  const candidates = pool.filter((c) => c !== prev);
+  if (!candidates.length) return prev;
+  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 function combinations(arr, size) {
@@ -68,20 +111,91 @@ function combinations(arr, size) {
   return result;
 }
 
+function withAdditionalColors(grid) {
+  const extra = ['P', 'O'];
+  return grid.map((row, r) =>
+    row.map((cell, c) => {
+      if (cell === 'U') return cell;
+      if ((r + c) % 4 === 0) return extra[(r + c) % extra.length];
+      return cell;
+    })
+  );
+}
+
+function withUnbreakableBlocks(grid) {
+  const next = cloneGrid(grid);
+  const points = [[1, 1], [1, 6], [3, 3]];
+  points.forEach(([r, c]) => {
+    if (next[r] && next[r][c]) next[r][c] = 'U';
+  });
+  return next;
+}
+
+function withTwoColorBlocks(grid) {
+  const next = cloneGrid(grid);
+  const points = [[0, 2], [2, 4], [4, 6]];
+  points.forEach(([r, c]) => {
+    if (next[r] && next[r][c] && next[r][c] !== 'U') next[r][c] = `2${next[r][c]}`;
+  });
+  return next;
+}
+
+function withFlashingBlocks(grid) {
+  const next = cloneGrid(grid);
+  const points = [[0, 0], [2, 2], [4, 4]];
+  const pairs = [['R', 'G'], ['B', 'Y'], ['P', 'O']];
+  points.forEach(([r, c], idx) => {
+    const [c1, c2] = pairs[idx];
+    if (next[r] && next[r][c] && next[r][c] !== 'U') next[r][c] = makeFlashing(c1, c2, 0);
+  });
+  return next;
+}
+
+function applyComplicationsToGrid(baseGrid, complications) {
+  let grid = cloneGrid(baseGrid);
+  if (complications.includes('additional_colors')) grid = withAdditionalColors(grid);
+  if (complications.includes('unbreakable_blocks')) grid = withUnbreakableBlocks(grid);
+  if (complications.includes('two_colors_blocks')) grid = withTwoColorBlocks(grid);
+  if (complications.includes('flashing_blocks')) grid = withFlashingBlocks(grid);
+  return grid;
+}
+
 function buildBuiltinLevels() {
   const oneComplication = COMPLICATIONS.map((c) => [c]); // 7 уровней
   const twoComplications = combinations(COMPLICATIONS, 2).slice(0, 8); // уровни 8..15
   const threeComplications = combinations(COMPLICATIONS, 3).slice(0, 8); // уровни 16..23
   const packs = [...oneComplication, ...twoComplications, ...threeComplications];
 
-  return packs.map((complications, idx) => ({
-    level: idx + 1,
-    description: `Встроенный уровень ${idx + 1}`,
-    complications,
-    maxShots: complications.includes('limited_shots') ? Math.max(10, 22 - idx) : undefined,
-    timerSeconds: complications.includes('timer') ? Math.max(50, 100 - idx) : undefined,
-    grid: cloneGrid(BASE_GRID),
-  }));
+  return packs.map((complications, idx) => {
+    const primaryGrid = applyComplicationsToGrid(BASE_GRID, complications);
+    const level = {
+      level: idx + 1,
+      description: `Встроенный уровень ${idx + 1}`,
+      complications,
+      maxShots: complications.includes('limited_shots') ? Math.max(10, 22 - idx) : undefined,
+      timerSeconds: complications.includes('timer') ? Math.max(50, 100 - idx) : undefined,
+      grid: primaryGrid,
+    };
+
+    if (complications.includes('several_layers')) {
+      level.layers = [
+        primaryGrid,
+        applyComplicationsToGrid(
+          [
+            ['R', 'B', 'Y', 'G', 'R', 'B', 'Y', 'G'],
+            ['G', 'Y', 'R', 'B', 'G', 'Y', 'R', 'B'],
+            ['B', 'R', 'G', 'Y', 'B', 'R', 'G', 'Y'],
+            ['Y', 'G', 'B', 'R', 'Y', 'G', 'B', 'R'],
+            ['R', 'Y', 'G', 'B', 'R', 'Y', 'G', 'B'],
+          ],
+          complications.filter((c) => c !== 'several_layers')
+        ),
+      ];
+      level.grid = level.layers[0];
+    }
+
+    return level;
+  });
 }
 
 function populateLevelSelect() {
@@ -98,7 +212,8 @@ function getBreakableColors(grid) {
   const set = new Set();
   for (const row of grid) {
     for (const cell of row) {
-      if (cell && cell !== 'U') set.add(cell);
+      const color = visibleColor(cell);
+      if (color && color !== 'U') set.add(color);
     }
   }
   return [...set];
@@ -116,7 +231,7 @@ function findConnected(startR, startC, targetColor) {
   while (queue.length) {
     const [r, c] = queue.shift();
     const cell = model.grid[r][c];
-    if (!cell || cell !== targetColor) continue;
+    if (!isRemovableCell(cell) || visibleColor(cell) !== targetColor) continue;
 
     group.push([r, c]);
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -132,6 +247,29 @@ function findConnected(startR, startC, targetColor) {
   }
 
   return group;
+}
+
+function repaintTwoColorNeighbors(group, shotColor) {
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const touched = new Set();
+  const palette = getBreakableColors(model.grid);
+
+  group.forEach(([r, c]) => {
+    dirs.forEach(([dr, dc]) => {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (!isInsideGrid(nr, nc)) return;
+      const cell = model.grid[nr][nc];
+      if (isTwoColor(cell) && visibleColor(cell) === shotColor) touched.add(`${nr},${nc}`);
+    });
+  });
+
+  touched.forEach((key) => {
+    const [r, c] = key.split(',').map(Number);
+    const oldColor = visibleColor(model.grid[r][c]);
+    const newColor = randomColorDifferentFrom(oldColor, palette);
+    model.grid[r][c] = newColor;
+  });
 }
 
 function buildGravityMoves(oldGrid, newGrid) {
@@ -215,6 +353,7 @@ class BoardScene extends Phaser.Scene {
     this.shooterX = 0;
     this.shooterY = 0;
     this.shooter = null;
+    this.flashAccumulator = 0;
   }
 
   key(r, c) {
@@ -280,7 +419,10 @@ class BoardScene extends Phaser.Scene {
 
   createBlock(r, c, code) {
     const { x, y } = this.gridToPixel(r, c);
-    return this.add.rectangle(x, y, this.cell - 2, this.cell - 2, COLOR_MAP[code] || 0xffffff).setOrigin(0.5);
+    const rect = this.add.rectangle(x, y, this.cell - 2, this.cell - 2, COLOR_MAP[visibleColor(code)] || 0xffffff).setOrigin(0.5);
+    if (isTwoColor(code)) rect.setStrokeStyle(3, 0xffffff);
+    if (isFlashing(code)) rect.setStrokeStyle(3, 0x111111);
+    return rect;
   }
 
   handlePointer(pointer) {
@@ -341,7 +483,7 @@ class BoardScene extends Phaser.Scene {
 
   resolveHit(row, col) {
     const targetCode = model.grid[row][col];
-    if (targetCode !== model.selectedShotColor) {
+    if (visibleColor(targetCode) !== model.selectedShotColor) {
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       refreshUI();
@@ -355,6 +497,11 @@ class BoardScene extends Phaser.Scene {
 
     const group = findConnected(row, col, model.selectedShotColor);
     if (group.length === 0) {
+      if (isTwoColor(targetCode) && visibleColor(targetCode) === model.selectedShotColor) {
+        const palette = getBreakableColors(model.grid);
+        model.grid[row][col] = randomColorDifferentFrom(visibleColor(targetCode), palette);
+        this.renderGridStatic();
+      }
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       refreshUI();
@@ -363,6 +510,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     const removedKeys = group.map(([r, c]) => this.key(r, c));
+    repaintTwoColorNeighbors(group, model.selectedShotColor);
     group.forEach(([r, c]) => {
       model.grid[r][c] = null;
     });
@@ -371,8 +519,15 @@ class BoardScene extends Phaser.Scene {
     const gravityMoves = applyGravityAndGetMoves();
     this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
       if (isWin()) {
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: победа';
+        if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
+          model.currentLayerIndex += 1;
+          model.grid = cloneGrid(model.currentLevel.layers[model.currentLayerIndex]);
+          this.renderGridStatic();
+          ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
+        } else {
+          model.gameOver = true;
+          ui.stateLabel.textContent = 'Статус: победа';
+        }
       } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
         model.gameOver = true;
         ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
@@ -451,6 +606,22 @@ class BoardScene extends Phaser.Scene {
 
   update(_time, delta) {
     if (model.gameOver) return;
+
+    this.flashAccumulator += delta;
+    if (this.flashAccumulator >= 800) {
+      this.flashAccumulator = 0;
+      for (let r = 0; r < model.grid.length; r += 1) {
+        for (let c = 0; c < model.grid[0].length; c += 1) {
+          const cell = model.grid[r][c];
+          if (isFlashing(cell)) {
+            const { c1, c2, state } = parseFlashing(cell);
+            model.grid[r][c] = makeFlashing(c1, c2, state === 0 ? 1 : 0);
+          }
+        }
+      }
+      this.renderGridStatic();
+    }
+
     if (Number.isFinite(model.timerLeft)) {
       model.timerLeft -= delta / 1000;
       if (model.timerLeft <= 0) {
@@ -478,7 +649,9 @@ function initPhaser(rows, cols) {
 
 function startLevelByIndex(index) {
   const level = model.levels[index];
-  model.grid = cloneGrid(level.grid);
+  model.currentLevel = level;
+  model.currentLayerIndex = 0;
+  model.grid = cloneGrid(level.layers ? level.layers[0] : level.grid);
   model.score = 0;
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
