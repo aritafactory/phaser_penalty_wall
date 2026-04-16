@@ -143,9 +143,13 @@ function withTwoColorBlocks(grid) {
 function withFlashingBlocks(grid) {
   const next = cloneGrid(grid);
   const points = [[0, 0], [2, 2], [4, 4]];
-  const pairs = [['R', 'G'], ['B', 'Y'], ['P', 'O']];
+  const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
+  const fallback = ['R', 'G', 'B', 'Y'];
+  const palette = levelPalette.length ? levelPalette : fallback;
+
   points.forEach(([r, c], idx) => {
-    const [c1, c2] = pairs[idx];
+    const c1 = palette[idx % palette.length];
+    const c2 = palette[(idx + 1) % palette.length];
     if (next[r] && next[r][c] && next[r][c] !== 'U') next[r][c] = makeFlashing(c1, c2, 0);
   });
   return next;
