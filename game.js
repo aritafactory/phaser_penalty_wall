@@ -264,7 +264,7 @@ function repaintTwoColorCells(twoCells, shotColor) {
   twoCells.forEach(([r, c]) => {
     const oldColor = visibleColor(model.grid[r][c]);
     const newColor = randomColorDifferentFrom(oldColor, palette);
-    model.grid[r][c] = `2${newColor}`;
+    model.grid[r][c] = newColor;
   });
 }
 
