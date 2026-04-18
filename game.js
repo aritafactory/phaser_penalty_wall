@@ -227,19 +227,22 @@ function isInsideGrid(r, c) {
   return r >= 0 && r < model.grid.length && c >= 0 && c < model.grid[0].length;
 }
 
-function findConnected(startR, startC, targetColor) {
+function findShotRegion(startR, startC, targetColor) {
   const queue = [[startR, startC]];
   const seen = new Set([`${startR},${startC}`]);
-  const group = [];
+  const ordinary = new Set();
+  const twos = new Set();
 
   while (queue.length) {
     const [r, c] = queue.shift();
     const cell = model.grid[r][c];
-    if (!isRemovableCell(cell) || visibleColor(cell) !== targetColor) continue;
+    if (!cell || cell === 'U' || visibleColor(cell) !== targetColor) continue;
 
-    group.push([r, c]);
+    if (isTwoColor(cell)) twos.add(`${r},${c}`);
+    else if (isRemovableCell(cell)) ordinary.add(`${r},${c}`);
+
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    for (const [dr, dc] of dirs) {
+    dirs.forEach(([dr, dc]) => {
       const nr = r + dr;
       const nc = c + dc;
       const key = `${nr},${nc}`;
@@ -247,49 +250,21 @@ function findConnected(startR, startC, targetColor) {
         seen.add(key);
         queue.push([nr, nc]);
       }
-    }
+    });
   }
 
-  return group;
+  return {
+    ordinary: [...ordinary].map((k) => k.split(',').map(Number)),
+    twos: [...twos].map((k) => k.split(',').map(Number)),
+  };
 }
 
-function findConnectedOrdinaryAroundCell(centerR, centerC, targetColor) {
-  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const merged = new Set();
-
-  dirs.forEach(([dr, dc]) => {
-    const nr = centerR + dr;
-    const nc = centerC + dc;
-    if (!isInsideGrid(nr, nc)) return;
-    const cell = model.grid[nr][nc];
-    if (!isRemovableCell(cell) || visibleColor(cell) !== targetColor) return;
-    const group = findConnected(nr, nc, targetColor);
-    group.forEach(([r, c]) => merged.add(`${r},${c}`));
-  });
-
-  return [...merged].map((k) => k.split(',').map(Number));
-}
-
-function repaintTwoColorNeighbors(group, shotColor) {
-  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const touched = new Set();
+function repaintTwoColorCells(twoCells, shotColor) {
   const palette = getBreakableColors(model.grid);
-
-  group.forEach(([r, c]) => {
-    dirs.forEach(([dr, dc]) => {
-      const nr = r + dr;
-      const nc = c + dc;
-      if (!isInsideGrid(nr, nc)) return;
-      const cell = model.grid[nr][nc];
-      if (isTwoColor(cell) && visibleColor(cell) === shotColor) touched.add(`${nr},${nc}`);
-    });
-  });
-
-  touched.forEach((key) => {
-    const [r, c] = key.split(',').map(Number);
+  twoCells.forEach(([r, c]) => {
     const oldColor = visibleColor(model.grid[r][c]);
     const newColor = randomColorDifferentFrom(oldColor, palette);
-    model.grid[r][c] = newColor;
+    model.grid[r][c] = `2${newColor}`;
   });
 }
 
@@ -516,46 +491,15 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
-    const group = findConnected(row, col, model.selectedShotColor);
-    if (group.length === 0) {
-      if (isTwoColor(targetCode) && visibleColor(targetCode) === model.selectedShotColor) {
-        const aroundGroup = findConnectedOrdinaryAroundCell(row, col, model.selectedShotColor);
-        if (aroundGroup.length > 0) {
-          const removedKeys = aroundGroup.map(([r, c]) => this.key(r, c));
-          repaintTwoColorNeighbors(aroundGroup, model.selectedShotColor);
-          aroundGroup.forEach(([r, c]) => {
-            model.grid[r][c] = null;
-          });
-          const palette = getBreakableColors(model.grid);
-          model.grid[row][col] = randomColorDifferentFrom(visibleColor(targetCode), palette);
-          model.score += aroundGroup.length * 10;
-          const gravityMoves = applyGravityAndGetMoves();
-          this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
-            if (isWin()) {
-              if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
-                model.currentLayerIndex += 1;
-                model.grid = cloneGrid(model.currentLevel.layers[model.currentLayerIndex]);
-                this.renderGridStatic();
-                ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
-              } else {
-                model.gameOver = true;
-                ui.stateLabel.textContent = 'Статус: победа';
-              }
-            } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-              model.gameOver = true;
-              ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
-            }
-            pickNextShotColor();
-            this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-            refreshUI();
-            this.animating = false;
-          });
-          return;
-        }
-        const palette = getBreakableColors(model.grid);
-        model.grid[row][col] = randomColorDifferentFrom(visibleColor(targetCode), palette);
-        this.renderGridStatic();
-      }
+    const shotRegion = findShotRegion(row, col, model.selectedShotColor);
+    const ordinaryGroup = shotRegion.ordinary;
+    const twoColorGroup = shotRegion.twos;
+
+    // Простое правило:
+    // 1) Попали в кластер совпадающего цвета -> удаляем обычные блоки кластера.
+    // 2) 2Color внутри этого же кластера не удаляем, а перекрашиваем.
+    // 3) Если в кластере только 2Color (без обычных), просто перекрашиваем их.
+    if (ordinaryGroup.length === 0 && twoColorGroup.length === 0) {
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       refreshUI();
@@ -563,12 +507,23 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
-    const removedKeys = group.map(([r, c]) => this.key(r, c));
-    repaintTwoColorNeighbors(group, model.selectedShotColor);
-    group.forEach(([r, c]) => {
+    repaintTwoColorCells(twoColorGroup, model.selectedShotColor);
+
+    const removedKeys = ordinaryGroup.map(([r, c]) => this.key(r, c));
+    ordinaryGroup.forEach(([r, c]) => {
       model.grid[r][c] = null;
     });
-    model.score += group.length * 10;
+    model.score += ordinaryGroup.length * 10;
+
+    if (ordinaryGroup.length === 0) {
+      // Кластер состоял только из 2Color: поле не падает, просто перерисовываем.
+      this.renderGridStatic();
+      pickNextShotColor();
+      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      refreshUI();
+      this.animating = false;
+      return;
+    }
 
     const gravityMoves = applyGravityAndGetMoves();
     this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
