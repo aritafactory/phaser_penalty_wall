@@ -20,6 +20,11 @@
       .shop-table { width: 100%; border-collapse: collapse; }
       .shop-table th, .shop-table td { border: 1px solid #334155; padding: 8px; vertical-align: top; }
       .shop-table th { background: #1e293b; }
+      .play-layout { display: flex; gap: 12px; align-items: stretch; }
+      .inventory { width: 300px; min-width: 260px; border: 1px solid #334155; border-radius: 10px; padding: 10px; background: #07153b; }
+      .inventory h3 { margin-top: 0; margin-bottom: 10px; }
+      .inventory ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+      .inventory li { border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; background: #102044; display:flex; justify-content:space-between; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   </head>
@@ -41,7 +46,13 @@
         <div class="badge" id="timerLabel">Таймер: ∞</div>
         <div class="badge" id="stateLabel">Статус: игра идёт</div>
       </div>
-      <div id="game"></div>
+      <div class="play-layout">
+        <div id="game"></div>
+        <aside class="inventory">
+          <h3>Bought boosters</h3>
+          <ul id="boosterInventoryList"></ul>
+        </aside>
+      </div>
     </div>
 
     <div id="shopModal" class="modal-backdrop" aria-hidden="true">

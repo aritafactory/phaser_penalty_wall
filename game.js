@@ -53,6 +53,7 @@ const ui = {
   closeShopBtn: document.getElementById('closeShopBtn'),
   shopBalanceLabel: document.getElementById('shopBalanceLabel'),
   shopTableBody: document.getElementById('shopTableBody'),
+  boosterInventoryList: document.getElementById('boosterInventoryList'),
 };
 
 const STORAGE_KEYS = {
@@ -365,6 +366,17 @@ function refreshUI() {
     ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
   }
   ui.shopBalanceLabel.textContent = `Баланс: ${model.totalScore}`;
+  renderBoosterInventory();
+}
+
+function renderBoosterInventory() {
+  ui.boosterInventoryList.innerHTML = '';
+  BOOSTER_CATALOG.forEach((booster) => {
+    const owned = Number(model.boosters[booster.key] || 0);
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${booster.name}</span><strong>x${owned}</strong>`;
+    ui.boosterInventoryList.appendChild(li);
+  });
 }
 
 function renderShopTable() {
