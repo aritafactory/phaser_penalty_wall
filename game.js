@@ -38,12 +38,14 @@ const model = {
   currentLevel: null,
   currentLayerIndex: 0,
   boosters: {},
+  activeBooster: null,
 };
 
 const ui = {
   levelSelect: document.getElementById('levelSelect'),
   startBtn: document.getElementById('startBtn'),
   shopBtn: document.getElementById('shopBtn'),
+  bombUseBtn: document.getElementById('bombUseBtn'),
   scoreLabel: document.getElementById('scoreLabel'),
   totalScoreLabel: document.getElementById('totalScoreLabel'),
   shotsLabel: document.getElementById('shotsLabel'),
@@ -366,6 +368,9 @@ function refreshUI() {
     ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
   }
   ui.shopBalanceLabel.textContent = `Баланс: ${model.totalScore}`;
+  const bombs = Number(model.boosters.bomb || 0);
+  ui.bombUseBtn.textContent = `Bomb (x${bombs})${model.activeBooster === 'bomb' ? ' ✓' : ''}`;
+  ui.bombUseBtn.disabled = bombs <= 0;
   renderBoosterInventory();
 }
 
@@ -527,7 +532,74 @@ class BoardScene extends Phaser.Scene {
 
     if (col < 0 || row < 0 || col >= cols || row >= rows) return;
 
+    if (model.activeBooster === 'bomb') {
+      this.useBombAt(row, col);
+      return;
+    }
+
     this.shootToCell(row, col);
+  }
+
+  completeAction(removedKeys, gravityMoves) {
+    this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
+      if (isWin()) {
+        if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
+          model.currentLayerIndex += 1;
+          model.grid = cloneGrid(model.currentLevel.layers[model.currentLayerIndex]);
+          this.renderGridStatic();
+          ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
+        } else {
+          model.gameOver = true;
+          ui.stateLabel.textContent = 'Статус: победа';
+        }
+      } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+        model.gameOver = true;
+        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+      }
+
+      pickNextShotColor();
+      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      refreshUI();
+      this.animating = false;
+    });
+  }
+
+  useBombAt(row, col) {
+    const bombs = Number(model.boosters.bomb || 0);
+    if (bombs <= 0) return;
+
+    this.animating = true;
+    model.boosters.bomb = bombs - 1;
+    model.activeBooster = null;
+    savePersistentState();
+
+    const removed = [];
+    for (let r = row - 1; r <= row + 1; r += 1) {
+      for (let c = col - 1; c <= col + 1; c += 1) {
+        if (!isInsideGrid(r, c)) continue;
+        if (!model.grid[r][c]) continue;
+        removed.push([r, c]);
+      }
+    }
+
+    if (removed.length === 0) {
+      this.animating = false;
+      refreshUI();
+      return;
+    }
+
+    const removedKeys = removed.map(([r, c]) => this.key(r, c));
+    removed.forEach(([r, c]) => {
+      model.grid[r][c] = null;
+    });
+
+    const earned = removed.length * 10;
+    model.score += earned;
+    model.totalScore += earned;
+    savePersistentState();
+
+    const gravityMoves = applyGravityAndGetMoves();
+    this.completeAction(removedKeys, gravityMoves);
   }
 
   shootToCell(row, col) {
@@ -625,27 +697,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     const gravityMoves = applyGravityAndGetMoves();
-    this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
-      if (isWin()) {
-        if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
-          model.currentLayerIndex += 1;
-          model.grid = cloneGrid(model.currentLevel.layers[model.currentLayerIndex]);
-          this.renderGridStatic();
-          ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
-        } else {
-          model.gameOver = true;
-          ui.stateLabel.textContent = 'Статус: победа';
-        }
-      } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
-      }
-
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      refreshUI();
-      this.animating = false;
-    });
+    this.completeAction(removedKeys, gravityMoves);
   }
 
   animateRemovalAndFall(removedKeys, moves, done) {
@@ -761,6 +813,7 @@ function startLevelByIndex(index) {
   model.currentLayerIndex = 0;
   model.grid = cloneGrid(level.layers ? level.layers[0] : level.grid);
   model.score = 0;
+  model.activeBooster = null;
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
   model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
@@ -776,6 +829,12 @@ model.levels = buildBuiltinLevels();
 populateLevelSelect();
 ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
 ui.shopBtn.onclick = () => openShop();
+ui.bombUseBtn.onclick = () => {
+  const bombs = Number(model.boosters.bomb || 0);
+  if (bombs <= 0) return;
+  model.activeBooster = model.activeBooster === 'bomb' ? null : 'bomb';
+  refreshUI();
+};
 ui.closeShopBtn.onclick = () => closeShop();
 ui.shopModal.onclick = (event) => {
   if (event.target === ui.shopModal) closeShop();
