@@ -29,6 +29,7 @@ const COMPLICATIONS = [
 const model = {
   grid: [],
   score: 0,
+  totalScore: 0,
   selectedShotColor: 'R',
   shotsLeft: Infinity,
   timerLeft: Infinity,
@@ -36,16 +37,37 @@ const model = {
   levels: [],
   currentLevel: null,
   currentLayerIndex: 0,
+  boosters: {},
 };
 
 const ui = {
   levelSelect: document.getElementById('levelSelect'),
   startBtn: document.getElementById('startBtn'),
+  shopBtn: document.getElementById('shopBtn'),
   scoreLabel: document.getElementById('scoreLabel'),
+  totalScoreLabel: document.getElementById('totalScoreLabel'),
   shotsLabel: document.getElementById('shotsLabel'),
   timerLabel: document.getElementById('timerLabel'),
   stateLabel: document.getElementById('stateLabel'),
+  shopModal: document.getElementById('shopModal'),
+  closeShopBtn: document.getElementById('closeShopBtn'),
+  shopBalanceLabel: document.getElementById('shopBalanceLabel'),
+  shopTableBody: document.getElementById('shopTableBody'),
 };
+
+const STORAGE_KEYS = {
+  totalScore: 'cbb_total_score',
+  boosters: 'cbb_boosters',
+};
+
+const BOOSTER_CATALOG = [
+  { key: 'bomb', name: 'Bomb', price: 100, effect: 'Удаляет область 3×3 вокруг цели, включая special-блоки и U.' },
+  { key: 'mix', name: 'Mix', price: 50, effect: 'Перемешивает текущие цвета разрушаемых немигающих блоков.' },
+  { key: 'fractions', name: 'Fractions', price: 75, effect: 'Удаляет целевой кластер и до двух случайных кластеров того же цвета.' },
+  { key: 'minusOneColor', name: '-1 color', price: 100, effect: 'Удаляет все блоки наименее представленного цвета среди разрушаемых.' },
+  { key: 'plusFiveShots', name: '+5 shots', price: 50, effect: 'Добавляет пять выстрелов, если у уровня есть maxShots.' },
+  { key: 'rainbow', name: 'Rainbow', price: 75, effect: 'Следующий выстрел игнорирует проверку совпадения цвета шара и цели.' },
+];
 
 let phaserGame;
 let boardScene;
@@ -91,6 +113,23 @@ function randomColorDifferentFrom(prev, pool) {
   const candidates = pool.filter((c) => c !== prev);
   if (!candidates.length) return prev;
   return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function loadPersistentState() {
+  const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
+  model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
+
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.boosters) || '{}');
+    model.boosters = parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    model.boosters = {};
+  }
+}
+
+function savePersistentState() {
+  localStorage.setItem(STORAGE_KEYS.totalScore, String(model.totalScore));
+  localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
 }
 
 function combinations(arr, size) {
@@ -318,12 +357,57 @@ function isWin() {
 }
 
 function refreshUI() {
-  ui.scoreLabel.textContent = `Очки: ${model.score}`;
+  ui.scoreLabel.textContent = `Очки (уровень): ${model.score}`;
+  ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   if (!model.gameOver) {
     ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
   }
+  ui.shopBalanceLabel.textContent = `Баланс: ${model.totalScore}`;
+}
+
+function renderShopTable() {
+  ui.shopTableBody.innerHTML = '';
+  BOOSTER_CATALOG.forEach((booster) => {
+    const tr = document.createElement('tr');
+    const owned = Number(model.boosters[booster.key] || 0);
+    tr.innerHTML = `
+      <td>${booster.name}<br/><small>Куплено: ${owned}</small></td>
+      <td>${booster.price}</td>
+      <td>${booster.effect}</td>
+      <td><button data-booster="${booster.key}">Buy</button></td>
+    `;
+    const buyBtn = tr.querySelector('button');
+    buyBtn.onclick = () => buyBooster(booster.key);
+    ui.shopTableBody.appendChild(tr);
+  });
+}
+
+function buyBooster(boosterKey) {
+  const booster = BOOSTER_CATALOG.find((b) => b.key === boosterKey);
+  if (!booster) return;
+  if (model.totalScore < booster.price) {
+    ui.stateLabel.textContent = 'Статус: недостаточно очков для покупки';
+    return;
+  }
+  model.totalScore -= booster.price;
+  model.boosters[booster.key] = Number(model.boosters[booster.key] || 0) + 1;
+  savePersistentState();
+  refreshUI();
+  renderShopTable();
+}
+
+function openShop() {
+  renderShopTable();
+  refreshUI();
+  ui.shopModal.classList.add('open');
+  ui.shopModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeShop() {
+  ui.shopModal.classList.remove('open');
+  ui.shopModal.setAttribute('aria-hidden', 'true');
 }
 
 function pickNextShotColor() {
@@ -513,7 +597,10 @@ class BoardScene extends Phaser.Scene {
     ordinaryGroup.forEach(([r, c]) => {
       model.grid[r][c] = null;
     });
-    model.score += ordinaryGroup.length * 10;
+    const earned = ordinaryGroup.length * 10;
+    model.score += earned;
+    model.totalScore += earned;
+    savePersistentState();
 
     if (ordinaryGroup.length === 0) {
       // Кластер состоял только из 2Color: поле не падает, просто перерисовываем.
@@ -672,7 +759,13 @@ function startLevelByIndex(index) {
   refreshUI();
 }
 
+loadPersistentState();
 model.levels = buildBuiltinLevels();
 populateLevelSelect();
 ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
+ui.shopBtn.onclick = () => openShop();
+ui.closeShopBtn.onclick = () => closeShop();
+ui.shopModal.onclick = (event) => {
+  if (event.target === ui.shopModal) closeShop();
+};
 startLevelByIndex(0);

@@ -13,6 +13,13 @@
       .status { display:flex; gap: 12px; flex-wrap: wrap; }
       .badge { background:#1e293b; border:1px solid #334155; padding: 6px 10px; border-radius: 999px; }
       .sub { color: #94a3b8; margin: 0 0 12px; }
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.75); display: none; align-items: center; justify-content: center; z-index: 100; }
+      .modal-backdrop.open { display: flex; }
+      .modal { width: min(920px, 94vw); max-height: 86vh; overflow: auto; background: #0b122a; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+      .modal h2 { margin-top: 0; }
+      .shop-table { width: 100%; border-collapse: collapse; }
+      .shop-table th, .shop-table td { border: 1px solid #334155; padding: 8px; vertical-align: top; }
+      .shop-table th { background: #1e293b; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   </head>
@@ -25,14 +32,32 @@
           <select id="levelSelect"></select>
         </label>
         <button id="startBtn">Запустить уровень</button>
+        <button id="shopBtn">Shop</button>
       </div>
       <div class="status">
-        <div class="badge" id="scoreLabel">Очки: 0</div>
+        <div class="badge" id="scoreLabel">Очки (уровень): 0</div>
+        <div class="badge" id="totalScoreLabel">Очки (всего): 0</div>
         <div class="badge" id="shotsLabel">Выстрелы: ∞</div>
         <div class="badge" id="timerLabel">Таймер: ∞</div>
         <div class="badge" id="stateLabel">Статус: игра идёт</div>
       </div>
       <div id="game"></div>
+    </div>
+
+    <div id="shopModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal">
+        <div class="controls" style="justify-content:space-between">
+          <h2>Shop / Бустеры</h2>
+          <button id="closeShopBtn">Закрыть</button>
+        </div>
+        <div class="badge" id="shopBalanceLabel">Баланс: 0</div>
+        <table class="shop-table">
+          <thead>
+            <tr><th>Бустер</th><th>Цена</th><th>Эффект</th><th>Купить</th></tr>
+          </thead>
+          <tbody id="shopTableBody"></tbody>
+        </table>
+      </div>
     </div>
     <script type="module" src="game.js?v=2"></script>
   </body>
