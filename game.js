@@ -45,7 +45,6 @@ const ui = {
   levelSelect: document.getElementById('levelSelect'),
   startBtn: document.getElementById('startBtn'),
   shopBtn: document.getElementById('shopBtn'),
-  bombUseBtn: document.getElementById('bombUseBtn'),
   scoreLabel: document.getElementById('scoreLabel'),
   totalScoreLabel: document.getElementById('totalScoreLabel'),
   shotsLabel: document.getElementById('shotsLabel'),
@@ -368,9 +367,6 @@ function refreshUI() {
     ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
   }
   ui.shopBalanceLabel.textContent = `Баланс: ${model.totalScore}`;
-  const bombs = Number(model.boosters.bomb || 0);
-  ui.bombUseBtn.textContent = `Bomb (x${bombs})${model.activeBooster === 'bomb' ? ' ✓' : ''}`;
-  ui.bombUseBtn.disabled = bombs <= 0;
   renderBoosterInventory();
 }
 
@@ -379,7 +375,20 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    li.innerHTML = `<span>${booster.name}</span><strong>x${owned}</strong>`;
+    if (booster.key === 'bomb') {
+      const label = model.activeBooster === 'bomb' ? 'Armed' : 'Use';
+      const disabled = owned <= 0 ? 'disabled' : '';
+      const armedStyle = model.activeBooster === 'bomb' ? 'style="border:1px solid #22c55e;"' : '';
+      li.innerHTML = `<span>Bomb</span><span><button data-use-bomb ${disabled} ${armedStyle}>${label}</button> <strong>x${owned}</strong></span>`;
+      const btn = li.querySelector('button');
+      btn.onclick = () => {
+        if (owned <= 0) return;
+        model.activeBooster = model.activeBooster === 'bomb' ? null : 'bomb';
+        refreshUI();
+      };
+    } else {
+      li.innerHTML = `<span>${booster.name}</span><strong>x${owned}</strong>`;
+    }
     ui.boosterInventoryList.appendChild(li);
   });
 }
@@ -829,12 +838,6 @@ model.levels = buildBuiltinLevels();
 populateLevelSelect();
 ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
 ui.shopBtn.onclick = () => openShop();
-ui.bombUseBtn.onclick = () => {
-  const bombs = Number(model.boosters.bomb || 0);
-  if (bombs <= 0) return;
-  model.activeBooster = model.activeBooster === 'bomb' ? null : 'bomb';
-  refreshUI();
-};
 ui.closeShopBtn.onclick = () => closeShop();
 ui.shopModal.onclick = (event) => {
   if (event.target === ui.shopModal) closeShop();
