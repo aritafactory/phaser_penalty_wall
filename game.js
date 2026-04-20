@@ -379,7 +379,7 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor') {
+    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor' || booster.key === 'plusFiveShots') {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
@@ -561,6 +561,10 @@ class BoardScene extends Phaser.Scene {
     }
     if (model.activeBooster === 'minusOneColor') {
       this.useMinusOneColor();
+      return;
+    }
+    if (model.activeBooster === 'plusFiveShots') {
+      this.usePlusFiveShots();
       return;
     }
 
@@ -799,6 +803,29 @@ class BoardScene extends Phaser.Scene {
 
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
+  }
+
+  usePlusFiveShots() {
+    const count = Number(model.boosters.plusFiveShots || 0);
+    if (count <= 0) return;
+
+    // Бустер работает только на уровнях с ограничением выстрелов.
+    if (!Number.isFinite(model.shotsLeft)) {
+      model.activeBooster = null;
+      ui.stateLabel.textContent = 'Статус: +5 shots работает только при limited shots';
+      renderBoosterInventory();
+      refreshUI();
+      return;
+    }
+
+    this.animating = true;
+    model.boosters.plusFiveShots = count - 1;
+    model.activeBooster = null;
+    model.shotsLeft += 5;
+    savePersistentState();
+    renderBoosterInventory();
+    refreshUI();
+    this.animating = false;
   }
 
   collectColorRegions(color) {
