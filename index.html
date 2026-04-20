@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Color Block Breaker</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+      .app { max-width: 980px; margin: 0 auto; padding: 16px; }
+      .controls { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-bottom: 12px; }
+      select, button { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
+      #game { border: 1px solid #334155; border-radius: 10px; overflow: hidden; }
+      .status { display:flex; gap: 12px; flex-wrap: wrap; }
+      .badge { background:#1e293b; border:1px solid #334155; padding: 6px 10px; border-radius: 999px; }
+      .sub { color: #94a3b8; margin: 0 0 12px; }
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.75); display: none; align-items: center; justify-content: center; z-index: 100; }
+      .modal-backdrop.open { display: flex; }
+      .modal { width: min(920px, 94vw); max-height: 86vh; overflow: auto; background: #0b122a; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+      .modal h2 { margin-top: 0; }
+      .shop-table { width: 100%; border-collapse: collapse; }
+      .shop-table th, .shop-table td { border: 1px solid #334155; padding: 8px; vertical-align: top; }
+      .shop-table th { background: #1e293b; }
+      .play-layout { display: flex; gap: 12px; align-items: stretch; }
+      .inventory { width: 300px; min-width: 260px; border: 1px solid #334155; border-radius: 10px; padding: 10px; background: #07153b; }
+      .inventory h3 { margin-top: 0; margin-bottom: 10px; }
+      .inventory ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+      .inventory li { border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; background: #102044; display:flex; justify-content:space-between; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <h1>Color Block Breaker (Phaser)</h1>
+      <p class="sub">Режим: автослучайный цвет шара (без ручного выбора)</p>
+      <div class="controls">
+        <label>Уровень:
+          <select id="levelSelect"></select>
+        </label>
+        <button id="startBtn">Запустить уровень</button>
+        <button id="shopBtn">Shop</button>
+      </div>
+      <div class="status">
+        <div class="badge" id="scoreLabel">Очки (уровень): 0</div>
+        <div class="badge" id="totalScoreLabel">Очки (всего): 0</div>
+        <div class="badge" id="shotsLabel">Выстрелы: ∞</div>
+        <div class="badge" id="timerLabel">Таймер: ∞</div>
+        <div class="badge" id="stateLabel">Статус: игра идёт</div>
+      </div>
+      <div class="play-layout">
+        <div id="game"></div>
+        <aside class="inventory">
+          <h3>Bought boosters</h3>
+          <ul id="boosterInventoryList"></ul>
+        </aside>
+      </div>
+    </div>
+
+    <div id="shopModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal">
+        <div class="controls" style="justify-content:space-between">
+          <h2>Shop / Бустеры</h2>
+          <button id="closeShopBtn">Закрыть</button>
+        </div>
+        <div class="badge" id="shopBalanceLabel">Баланс: 0</div>
+        <table class="shop-table">
+          <thead>
+            <tr><th>Бустер</th><th>Цена</th><th>Эффект</th><th>Купить</th></tr>
+          </thead>
+          <tbody id="shopTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <script type="module" src="game.js?v=2"></script>
+  </body>
+</html>

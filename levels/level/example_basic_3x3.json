@@ -1,0 +1,18 @@
+{
+  "level": 1,
+  "description": "3x3 базовый уровень без усложнений",
+  "complications": [],
+  "grid": [
+    ["R", "G", "B"],
+    ["G", "R", "B"],
+    ["B", "G", "R"]
+  ],
+  "boosters": {
+    "bomb": 0,
+    "mix": 0,
+    "fractions": 0,
+    "minusOneColor": 0,
+    "plusFiveShots": 0,
+    "rainbow": 0
+  }
+}
