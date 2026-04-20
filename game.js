@@ -39,6 +39,7 @@ const model = {
   currentLayerIndex: 0,
   boosters: {},
   activeBooster: null,
+  rainbowNextShot: false,
 };
 
 const ui = {
@@ -379,7 +380,7 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor' || booster.key === 'plusFiveShots') {
+    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor' || booster.key === 'plusFiveShots' || booster.key === 'rainbow') {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
@@ -466,6 +467,7 @@ class BoardScene extends Phaser.Scene {
     this.shooterY = 0;
     this.shooter = null;
     this.flashAccumulator = 0;
+    this.pendingShotColor = null;
   }
 
   key(r, c) {
@@ -589,6 +591,7 @@ class BoardScene extends Phaser.Scene {
       }
 
       pickNextShotColor();
+      model.rainbowNextShot = false;
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       refreshUI();
       this.animating = false;
@@ -853,12 +856,26 @@ class BoardScene extends Phaser.Scene {
     const targetCode = model.grid[row][col];
     if (!targetCode || targetCode === 'U') return;
 
+    if (model.activeBooster === 'rainbow') {
+      const count = Number(model.boosters.rainbow || 0);
+      if (count > 0) {
+        model.boosters.rainbow = count - 1;
+        model.activeBooster = null;
+        model.rainbowNextShot = true;
+        savePersistentState();
+        renderBoosterInventory();
+      }
+    }
+
+    const effectiveShotColor = model.rainbowNextShot ? visibleColor(targetCode) : model.selectedShotColor;
+    this.pendingShotColor = effectiveShotColor;
+
     if (Number.isFinite(model.shotsLeft)) {
       model.shotsLeft -= 1;
       if (model.shotsLeft < 0) model.shotsLeft = 0;
     }
 
-    const projectile = this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(2, 0xffffff);
+    const projectile = this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor]).setStrokeStyle(2, 0xffffff);
     const target = this.gridToPixel(row, col);
 
     this.animating = true;
@@ -894,9 +911,11 @@ class BoardScene extends Phaser.Scene {
 
   resolveHit(row, col) {
     const targetCode = model.grid[row][col];
-    if (visibleColor(targetCode) !== model.selectedShotColor) {
+    const shotColor = this.pendingShotColor || model.selectedShotColor;
+    if (visibleColor(targetCode) !== shotColor) {
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      model.rainbowNextShot = false;
       refreshUI();
       this.animating = false;
       if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
@@ -906,7 +925,7 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
-    const shotRegion = findShotRegion(row, col, model.selectedShotColor);
+    const shotRegion = findShotRegion(row, col, shotColor);
     const ordinaryGroup = shotRegion.ordinary;
     const twoColorGroup = shotRegion.twos;
 
@@ -922,7 +941,7 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
-    repaintTwoColorCells(twoColorGroup, model.selectedShotColor);
+    repaintTwoColorCells(twoColorGroup, shotColor);
 
     const removedKeys = ordinaryGroup.map(([r, c]) => this.key(r, c));
     ordinaryGroup.forEach(([r, c]) => {
@@ -1061,6 +1080,7 @@ function startLevelByIndex(index) {
   model.grid = cloneGrid(level.layers ? level.layers[0] : level.grid);
   model.score = 0;
   model.activeBooster = null;
+  model.rainbowNextShot = false;
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
   model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
