@@ -372,7 +372,6 @@ function refreshUI() {
     ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
   }
   ui.shopBalanceLabel.textContent = `Баланс: ${model.totalScore}`;
-  renderBoosterInventory();
 }
 
 function renderBoosterInventory() {
@@ -389,6 +388,7 @@ function renderBoosterInventory() {
       btn.onclick = () => {
         if (owned <= 0) return;
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
+        renderBoosterInventory();
         refreshUI();
       };
     } else {
@@ -425,6 +425,7 @@ function buyBooster(boosterKey) {
   model.totalScore -= booster.price;
   model.boosters[booster.key] = Number(model.boosters[booster.key] || 0) + 1;
   savePersistentState();
+  renderBoosterInventory();
   refreshUI();
   renderShopTable();
 }
@@ -590,6 +591,7 @@ class BoardScene extends Phaser.Scene {
     model.boosters.bomb = bombs - 1;
     model.activeBooster = null;
     savePersistentState();
+    renderBoosterInventory();
 
     const removed = [];
     for (let r = row - 1; r <= row + 1; r += 1) {
@@ -627,6 +629,7 @@ class BoardScene extends Phaser.Scene {
     this.animating = true;
     model.boosters.mix = mixCount - 1;
     model.activeBooster = null;
+    renderBoosterInventory();
 
     const palette = getBreakableColors(model.grid).filter((c) => c !== 'U');
     const fallbackPalette = ['R', 'G', 'B', 'Y', 'P', 'O'];
@@ -877,6 +880,7 @@ function startLevelByIndex(index) {
   pickNextShotColor();
 
   initPhaser(model.grid.length, model.grid[0].length);
+  renderBoosterInventory();
   refreshUI();
 }
 
