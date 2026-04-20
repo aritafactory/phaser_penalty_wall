@@ -123,6 +123,31 @@ function randomFrom(pool) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+function randomizeGridLayout(grid) {
+  const coords = [];
+  const values = [];
+
+  for (let r = 0; r < grid.length; r += 1) {
+    for (let c = 0; c < grid[0].length; c += 1) {
+      const cell = grid[r][c];
+      if (!cell || cell === 'U') continue;
+      coords.push([r, c]);
+      values.push(cell);
+    }
+  }
+
+  for (let i = values.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [values[i], values[j]] = [values[j], values[i]];
+  }
+
+  coords.forEach(([r, c], idx) => {
+    grid[r][c] = values[idx];
+  });
+
+  return grid;
+}
+
 function loadPersistentState() {
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
@@ -578,7 +603,7 @@ class BoardScene extends Phaser.Scene {
       if (isWin()) {
         if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
           model.currentLayerIndex += 1;
-          model.grid = cloneGrid(model.currentLevel.layers[model.currentLayerIndex]);
+          model.grid = randomizeGridLayout(cloneGrid(model.currentLevel.layers[model.currentLayerIndex]));
           this.renderGridStatic();
           ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
         } else {
@@ -1077,7 +1102,7 @@ function startLevelByIndex(index) {
   const level = model.levels[index];
   model.currentLevel = level;
   model.currentLayerIndex = 0;
-  model.grid = cloneGrid(level.layers ? level.layers[0] : level.grid);
+  model.grid = randomizeGridLayout(cloneGrid(level.layers ? level.layers[0] : level.grid));
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
