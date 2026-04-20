@@ -768,8 +768,8 @@ class BoardScene extends Phaser.Scene {
         if (visibleColor(cell) !== chosenColor) continue;
 
         if (isTwoColor(cell)) {
-          // По ТЗ: 2Color подходит по цвету -> становится обычным.
-          model.grid[r][c] = chosenColor;
+          // 2Color подходит по цвету -> становится обычным блоком другого цвета.
+          model.grid[r][c] = randomColorDifferentFrom(chosenColor, palette);
         } else {
           removed.push([r, c]); // Обычные и flashing удаляем.
         }
