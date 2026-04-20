@@ -379,7 +379,7 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    if (booster.key === 'bomb' || booster.key === 'mix') {
+    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions') {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
@@ -555,6 +555,10 @@ class BoardScene extends Phaser.Scene {
       this.useMix();
       return;
     }
+    if (model.activeBooster === 'fractions') {
+      this.useFractions(row, col);
+      return;
+    }
 
     this.shootToCell(row, col);
   }
@@ -659,6 +663,99 @@ class BoardScene extends Phaser.Scene {
     this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
     refreshUI();
     this.animating = false;
+  }
+
+  useFractions(row, col) {
+    const fractionsCount = Number(model.boosters.fractions || 0);
+    if (fractionsCount <= 0) return;
+    const targetCell = model.grid[row][col];
+    if (!targetCell || targetCell === 'U') return;
+
+    const targetColor = visibleColor(targetCell);
+    this.animating = true;
+    model.boosters.fractions = fractionsCount - 1;
+    model.activeBooster = null;
+    renderBoosterInventory();
+
+    const mainRegion = findShotRegion(row, col, targetColor);
+    const selectedRegions = [mainRegion];
+    const allSameColorRegions = this.collectColorRegions(targetColor);
+
+    const sameRegionKey = JSON.stringify(
+      [...mainRegion.ordinary, ...mainRegion.twos]
+        .map(([r, c]) => `${r},${c}`)
+        .sort()
+    );
+    const others = allSameColorRegions.filter((region) => {
+      const key = JSON.stringify(
+        [...region.ordinary, ...region.twos]
+          .map(([r, c]) => `${r},${c}`)
+          .sort()
+      );
+      return key !== sameRegionKey;
+    });
+
+    // До двух случайных дополнительных кластеров.
+    for (let i = 0; i < 2 && others.length > 0; i += 1) {
+      const idx = Math.floor(Math.random() * others.length);
+      selectedRegions.push(others[idx]);
+      others.splice(idx, 1);
+    }
+
+    const allOrdinary = [];
+    const allTwos = [];
+    selectedRegions.forEach((region) => {
+      allOrdinary.push(...region.ordinary);
+      allTwos.push(...region.twos);
+    });
+
+    repaintTwoColorCells(allTwos, targetColor);
+
+    const uniqueOrdinary = [...new Set(allOrdinary.map(([r, c]) => `${r},${c}`))].map((k) =>
+      k.split(',').map(Number)
+    );
+    const removedKeys = uniqueOrdinary.map(([r, c]) => this.key(r, c));
+    uniqueOrdinary.forEach(([r, c]) => {
+      model.grid[r][c] = null;
+    });
+
+    const earned = uniqueOrdinary.length * 10;
+    model.score += earned;
+    model.totalScore += earned;
+    savePersistentState();
+
+    if (uniqueOrdinary.length === 0) {
+      this.renderGridStatic();
+      pickNextShotColor();
+      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      refreshUI();
+      this.animating = false;
+      return;
+    }
+
+    const gravityMoves = applyGravityAndGetMoves();
+    this.completeAction(removedKeys, gravityMoves);
+  }
+
+  collectColorRegions(color) {
+    const regions = [];
+    const visited = new Set();
+
+    for (let r = 0; r < model.grid.length; r += 1) {
+      for (let c = 0; c < model.grid[0].length; c += 1) {
+        const cell = model.grid[r][c];
+        if (!cell || cell === 'U' || visibleColor(cell) !== color) continue;
+        const key = `${r},${c}`;
+        if (visited.has(key)) continue;
+
+        const region = findShotRegion(r, c, color);
+        const all = [...region.ordinary, ...region.twos];
+        all.forEach(([rr, cc]) => visited.add(`${rr},${cc}`));
+        regions.push(region);
+      }
+    }
+
+    return regions;
   }
 
   shootToCell(row, col) {
