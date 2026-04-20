@@ -672,6 +672,12 @@ class BoardScene extends Phaser.Scene {
     if (!targetCell || targetCell === 'U') return;
 
     const targetColor = visibleColor(targetCell);
+    if (targetColor !== model.selectedShotColor) {
+      ui.stateLabel.textContent = `Статус: Fractions ждёт цвет ${model.selectedShotColor}`;
+      refreshUI();
+      return;
+    }
+
     this.animating = true;
     model.boosters.fractions = fractionsCount - 1;
     model.activeBooster = null;
