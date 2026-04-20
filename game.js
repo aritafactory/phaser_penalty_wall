@@ -117,6 +117,11 @@ function randomColorDifferentFrom(prev, pool) {
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+function randomFrom(pool) {
+  if (!pool.length) return 'R';
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 function loadPersistentState() {
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
@@ -375,15 +380,15 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    if (booster.key === 'bomb') {
-      const label = model.activeBooster === 'bomb' ? 'Armed' : 'Use';
+    if (booster.key === 'bomb' || booster.key === 'mix') {
+      const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
-      const armedStyle = model.activeBooster === 'bomb' ? 'style="border:1px solid #22c55e;"' : '';
-      li.innerHTML = `<span>Bomb</span><span><button data-use-bomb ${disabled} ${armedStyle}>${label}</button> <strong>x${owned}</strong></span>`;
+      const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
+      li.innerHTML = `<span>${booster.name}</span><span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label}</button> <strong>x${owned}</strong></span>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
         if (owned <= 0) return;
-        model.activeBooster = model.activeBooster === 'bomb' ? null : 'bomb';
+        model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
         refreshUI();
       };
     } else {
@@ -545,6 +550,10 @@ class BoardScene extends Phaser.Scene {
       this.useBombAt(row, col);
       return;
     }
+    if (model.activeBooster === 'mix') {
+      this.useMix();
+      return;
+    }
 
     this.shootToCell(row, col);
   }
@@ -609,6 +618,44 @@ class BoardScene extends Phaser.Scene {
 
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
+  }
+
+  useMix() {
+    const mixCount = Number(model.boosters.mix || 0);
+    if (mixCount <= 0) return;
+
+    this.animating = true;
+    model.boosters.mix = mixCount - 1;
+    model.activeBooster = null;
+
+    const palette = getBreakableColors(model.grid).filter((c) => c !== 'U');
+    const fallbackPalette = ['R', 'G', 'B', 'Y', 'P', 'O'];
+    const source = palette.length ? palette : fallbackPalette;
+
+    for (let r = 0; r < model.grid.length; r += 1) {
+      for (let c = 0; c < model.grid[0].length; c += 1) {
+        const cell = model.grid[r][c];
+        if (!cell || cell === 'U') continue;
+
+        if (isTwoColor(cell)) {
+          model.grid[r][c] = `2${randomFrom(source)}`;
+        } else if (isFlashing(cell)) {
+          const { state } = parseFlashing(cell);
+          const c1 = randomFrom(source);
+          const c2 = randomColorDifferentFrom(c1, source);
+          model.grid[r][c] = makeFlashing(c1, c2, state);
+        } else {
+          model.grid[r][c] = randomFrom(source);
+        }
+      }
+    }
+
+    savePersistentState();
+    this.renderGridStatic();
+    pickNextShotColor();
+    this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+    refreshUI();
+    this.animating = false;
   }
 
   shootToCell(row, col) {
