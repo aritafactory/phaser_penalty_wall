@@ -379,7 +379,7 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions') {
+    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor') {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
@@ -559,6 +559,10 @@ class BoardScene extends Phaser.Scene {
       this.useFractions(row, col);
       return;
     }
+    if (model.activeBooster === 'minusOneColor') {
+      this.useMinusOneColor();
+      return;
+    }
 
     this.shootToCell(row, col);
   }
@@ -731,6 +735,60 @@ class BoardScene extends Phaser.Scene {
     savePersistentState();
 
     if (uniqueOrdinary.length === 0) {
+      this.renderGridStatic();
+      pickNextShotColor();
+      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      refreshUI();
+      this.animating = false;
+      return;
+    }
+
+    const gravityMoves = applyGravityAndGetMoves();
+    this.completeAction(removedKeys, gravityMoves);
+  }
+
+  useMinusOneColor() {
+    const count = Number(model.boosters.minusOneColor || 0);
+    if (count <= 0) return;
+
+    const palette = getBreakableColors(model.grid).filter((c) => c !== 'U');
+    if (palette.length === 0) return;
+    const chosenColor = randomFrom(palette);
+
+    this.animating = true;
+    model.boosters.minusOneColor = count - 1;
+    model.activeBooster = null;
+    renderBoosterInventory();
+
+    const removed = [];
+    for (let r = 0; r < model.grid.length; r += 1) {
+      for (let c = 0; c < model.grid[0].length; c += 1) {
+        const cell = model.grid[r][c];
+        if (!cell || cell === 'U') continue;
+        if (visibleColor(cell) !== chosenColor) continue;
+
+        if (isTwoColor(cell)) {
+          // По ТЗ: 2Color подходит по цвету -> становится обычным.
+          model.grid[r][c] = chosenColor;
+        } else {
+          removed.push([r, c]); // Обычные и flashing удаляем.
+        }
+      }
+    }
+
+    const removedKeys = removed.map(([r, c]) => this.key(r, c));
+    removed.forEach(([r, c]) => {
+      model.grid[r][c] = null;
+    });
+
+    const earned = removed.length * 10;
+    model.score += earned;
+    model.totalScore += earned;
+    savePersistentState();
+
+    ui.stateLabel.textContent = `Статус: -1 color выбрал ${chosenColor}`;
+
+    if (removed.length === 0) {
       this.renderGridStatic();
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
