@@ -6,7 +6,7 @@
     <title>Color Block Breaker</title>
     <style>
       body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
-      .app { max-width: 1440px; margin: 0 auto; padding: 16px; }
+      .app { max-width: 980px; margin: 0 auto; padding: 16px; }
       .controls { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-bottom: 12px; }
       select, button { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
       #game { border: 1px solid #334155; border-radius: 10px; overflow: hidden; }
@@ -25,16 +25,6 @@
       .inventory h3 { margin-top: 0; margin-bottom: 10px; }
       .inventory ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
       .inventory li { border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; background: #102044; display:flex; justify-content:space-between; }
-      .builder-layout { display:flex; gap:20px; align-items:flex-start; }
-      .builder { width: 48%; min-width: 420px; background: #18181b; border:1px solid #334155; border-radius: 12px; padding: 16px; }
-      .builder h2 { margin: 0 0 14px; }
-      .builder-grid { display:grid; gap:4px; margin: 12px 0; }
-      .builder-grid select { padding: 4px 6px; border-radius: 4px; }
-      .builder-row { display:flex; gap:10px; align-items:center; margin-bottom: 10px; flex-wrap: wrap; }
-      .builder-group { margin-top: 14px; }
-      .builder-group h3 { margin: 0 0 8px; }
-      .inline-check { display:flex; align-items:center; gap:8px; margin-bottom: 8px; }
-      .game-column { width: 52%; min-width: 640px; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   </head>
@@ -42,57 +32,26 @@
     <div class="app">
       <h1>Color Block Breaker (Phaser)</h1>
       <p class="sub">Режим: автослучайный цвет шара (без ручного выбора)</p>
-      <div class="builder-layout">
-        <section class="builder">
-          <h2>Level Builder</h2>
-          <div class="builder-row">
-            <label>Columns: <input id="builderCols" type="number" min="3" max="12" value="8" /></label>
-            <label>Rows: <input id="builderRows" type="number" min="3" max="10" value="6" /></label>
-            <button id="builderGenerateBtn">Generate Grid</button>
-            <button id="builderPreviewBtn">Restart Preview</button>
-          </div>
-          <div id="builderGrid" class="builder-grid"></div>
-
-          <div class="builder-group">
-            <h3>Complications</h3>
-            <label class="inline-check"><input type="checkbox" id="cAdditionalColors"/> Additional colors</label>
-            <label class="inline-check"><input type="checkbox" id="cTimer"/> Timer <input id="builderTimer" type="number" min="10" max="999" value="60"/></label>
-            <label class="inline-check"><input type="checkbox" id="cLimitedShots"/> Limited shots <input id="builderShots" type="number" min="1" max="200" value="10"/></label>
-            <label class="inline-check"><input type="checkbox" id="cUnbreakableBlocks"/> Unbreakable blocks</label>
-            <label class="inline-check"><input type="checkbox" id="cTwoColorsBlocks"/> 2 colors blocks</label>
-            <label class="inline-check"><input type="checkbox" id="cFlashingBlocks"/> Flashing colors blocks</label>
-            <label class="inline-check"><input type="checkbox" id="cSeveralLayers"/> Several layers of wall <input id="builderLayers" type="number" min="1" max="4" value="1"/></label>
-          </div>
-          <div class="builder-row">
-            <button id="builderDownloadBtn">Download Level File</button>
-            <button id="builderLoadBtn">Load Level File</button>
-            <input id="builderFileInput" type="file" accept=".json,application/json" style="display:none" />
-          </div>
-        </section>
-
-        <section class="game-column">
-          <div class="controls">
-            <label>Уровень:
-              <select id="levelSelect"></select>
-            </label>
-            <button id="startBtn">Запустить уровень</button>
-            <button id="shopBtn">Shop</button>
-          </div>
-          <div class="status">
-            <div class="badge" id="scoreLabel">Очки (уровень): 0</div>
-            <div class="badge" id="totalScoreLabel">Очки (всего): 0</div>
-            <div class="badge" id="shotsLabel">Выстрелы: ∞</div>
-            <div class="badge" id="timerLabel">Таймер: ∞</div>
-            <div class="badge" id="stateLabel">Статус: игра идёт</div>
-          </div>
-          <div class="play-layout">
-            <div id="game"></div>
-            <aside class="inventory">
-              <h3>Bought boosters</h3>
-              <ul id="boosterInventoryList"></ul>
-            </aside>
-          </div>
-        </section>
+      <div class="controls">
+        <label>Уровень:
+          <select id="levelSelect"></select>
+        </label>
+        <button id="startBtn">Запустить уровень</button>
+        <button id="shopBtn">Shop</button>
+      </div>
+      <div class="status">
+        <div class="badge" id="scoreLabel">Очки (уровень): 0</div>
+        <div class="badge" id="totalScoreLabel">Очки (всего): 0</div>
+        <div class="badge" id="shotsLabel">Выстрелы: ∞</div>
+        <div class="badge" id="timerLabel">Таймер: ∞</div>
+        <div class="badge" id="stateLabel">Статус: игра идёт</div>
+      </div>
+      <div class="play-layout">
+        <div id="game"></div>
+        <aside class="inventory">
+          <h3>Bought boosters</h3>
+          <ul id="boosterInventoryList"></ul>
+        </aside>
       </div>
     </div>
 

@@ -41,6 +41,7 @@ const model = {
   activeBooster: null,
   rainbowNextShot: false,
 };
+const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
 const ui = {
   levelSelect: document.getElementById('levelSelect'),
@@ -169,6 +170,13 @@ function randomizeGridLayout(grid) {
 }
 
 function loadPersistentState() {
+  if (IS_BUILDER_PAGE) {
+    model.totalScore = 0;
+    BOOSTER_CATALOG.forEach((b) => {
+      model.boosters[b.key] = Number.MAX_SAFE_INTEGER;
+    });
+    return;
+  }
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
 
@@ -181,6 +189,7 @@ function loadPersistentState() {
 }
 
 function savePersistentState() {
+  if (IS_BUILDER_PAGE) return;
   localStorage.setItem(STORAGE_KEYS.totalScore, String(model.totalScore));
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
 }
@@ -295,6 +304,7 @@ function buildBuiltinLevels() {
 }
 
 function populateLevelSelect() {
+  if (!ui.levelSelect) return;
   ui.levelSelect.innerHTML = '';
   model.levels.forEach((lvl, idx) => {
     const option = document.createElement('option');
@@ -577,15 +587,17 @@ function refreshUI() {
 }
 
 function renderBoosterInventory() {
+  if (!ui.boosterInventoryList) return;
   ui.boosterInventoryList.innerHTML = '';
   BOOSTER_CATALOG.forEach((booster) => {
-    const owned = Number(model.boosters[booster.key] || 0);
+    const owned = IS_BUILDER_PAGE ? Number.MAX_SAFE_INTEGER : Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
     if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor' || booster.key === 'plusFiveShots' || booster.key === 'rainbow') {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
-      li.innerHTML = `<span>${booster.name}</span><span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label}</button> <strong>x${owned}</strong></span>`;
+      const amountLabel = IS_BUILDER_PAGE ? '∞' : `x${owned}`;
+      li.innerHTML = `<span>${booster.name}</span><span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label}</button> <strong>${amountLabel}</strong></span>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
         if (owned <= 0) return;
@@ -804,7 +816,7 @@ class BoardScene extends Phaser.Scene {
     if (bombs <= 0) return;
 
     this.animating = true;
-    model.boosters.bomb = bombs - 1;
+    if (!IS_BUILDER_PAGE) model.boosters.bomb = bombs - 1;
     model.activeBooster = null;
     savePersistentState();
     renderBoosterInventory();
@@ -843,7 +855,7 @@ class BoardScene extends Phaser.Scene {
     if (mixCount <= 0) return;
 
     this.animating = true;
-    model.boosters.mix = mixCount - 1;
+    if (!IS_BUILDER_PAGE) model.boosters.mix = mixCount - 1;
     model.activeBooster = null;
     renderBoosterInventory();
 
@@ -891,7 +903,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
-    model.boosters.fractions = fractionsCount - 1;
+    if (!IS_BUILDER_PAGE) model.boosters.fractions = fractionsCount - 1;
     model.activeBooster = null;
     renderBoosterInventory();
 
@@ -964,7 +976,7 @@ class BoardScene extends Phaser.Scene {
     const chosenColor = randomFrom(palette);
 
     this.animating = true;
-    model.boosters.minusOneColor = count - 1;
+    if (!IS_BUILDER_PAGE) model.boosters.minusOneColor = count - 1;
     model.activeBooster = null;
     renderBoosterInventory();
 
@@ -1023,7 +1035,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
-    model.boosters.plusFiveShots = count - 1;
+    if (!IS_BUILDER_PAGE) model.boosters.plusFiveShots = count - 1;
     model.activeBooster = null;
     model.shotsLeft += 5;
     savePersistentState();
@@ -1060,7 +1072,7 @@ class BoardScene extends Phaser.Scene {
     if (model.activeBooster === 'rainbow') {
       const count = Number(model.boosters.rainbow || 0);
       if (count > 0) {
-        model.boosters.rainbow = count - 1;
+        if (!IS_BUILDER_PAGE) model.boosters.rainbow = count - 1;
         model.activeBooster = null;
         model.rainbowNextShot = true;
         savePersistentState();
@@ -1296,16 +1308,22 @@ function startLevelByIndex(index) {
 loadPersistentState();
 model.levels = buildBuiltinLevels();
 populateLevelSelect();
-generateBuilderGridFromInputs();
-ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
-ui.shopBtn.onclick = () => openShop();
-ui.closeShopBtn.onclick = () => closeShop();
-ui.shopModal.onclick = (event) => {
-  if (event.target === ui.shopModal) closeShop();
-};
-ui.builderGenerateBtn.onclick = () => generateBuilderGridFromInputs();
-ui.builderPreviewBtn.onclick = () => startCustomBuilderLevel();
-ui.builderDownloadBtn.onclick = () => downloadBuilderLevel();
-ui.builderLoadBtn.onclick = () => ui.builderFileInput.click();
-ui.builderFileInput.onchange = (event) => loadBuilderLevelFromFile(event);
-startLevelByIndex(0);
+if (ui.startBtn) ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
+if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
+if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
+if (ui.shopModal) {
+  ui.shopModal.onclick = (event) => {
+    if (event.target === ui.shopModal) closeShop();
+  };
+}
+if (ui.builderGenerateBtn && ui.builderPreviewBtn && ui.builderGrid) {
+  generateBuilderGridFromInputs();
+  ui.builderGenerateBtn.onclick = () => generateBuilderGridFromInputs();
+  ui.builderPreviewBtn.onclick = () => startCustomBuilderLevel();
+  ui.builderDownloadBtn.onclick = () => downloadBuilderLevel();
+  ui.builderLoadBtn.onclick = () => ui.builderFileInput.click();
+  ui.builderFileInput.onchange = (event) => loadBuilderLevelFromFile(event);
+  startCustomBuilderLevel();
+} else {
+  startLevelByIndex(0);
+}
