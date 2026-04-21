@@ -56,7 +56,27 @@ const ui = {
   shopBalanceLabel: document.getElementById('shopBalanceLabel'),
   shopTableBody: document.getElementById('shopTableBody'),
   boosterInventoryList: document.getElementById('boosterInventoryList'),
+  builderCols: document.getElementById('builderCols'),
+  builderRows: document.getElementById('builderRows'),
+  builderGenerateBtn: document.getElementById('builderGenerateBtn'),
+  builderPreviewBtn: document.getElementById('builderPreviewBtn'),
+  builderGrid: document.getElementById('builderGrid'),
+  builderDownloadBtn: document.getElementById('builderDownloadBtn'),
+  builderLoadBtn: document.getElementById('builderLoadBtn'),
+  builderFileInput: document.getElementById('builderFileInput'),
+  cAdditionalColors: document.getElementById('cAdditionalColors'),
+  cTimer: document.getElementById('cTimer'),
+  builderTimer: document.getElementById('builderTimer'),
+  cLimitedShots: document.getElementById('cLimitedShots'),
+  builderShots: document.getElementById('builderShots'),
+  cUnbreakableBlocks: document.getElementById('cUnbreakableBlocks'),
+  cTwoColorsBlocks: document.getElementById('cTwoColorsBlocks'),
+  cFlashingBlocks: document.getElementById('cFlashingBlocks'),
+  cSeveralLayers: document.getElementById('cSeveralLayers'),
+  builderLayers: document.getElementById('builderLayers'),
 };
+
+const BUILDER_CELL_CODES = ['R', 'G', 'B', 'Y', 'P', 'O', 'U', '2R', '2G', '2B', '2Y'];
 
 const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
@@ -282,6 +302,162 @@ function populateLevelSelect() {
     option.textContent = `${lvl.level}. ${lvl.description} [${lvl.complications.join(', ')}]`;
     ui.levelSelect.appendChild(option);
   });
+}
+
+function builderComplicationsFromUI() {
+  const complications = [];
+  if (ui.cAdditionalColors.checked) complications.push('additional_colors');
+  if (ui.cTimer.checked) complications.push('timer');
+  if (ui.cLimitedShots.checked) complications.push('limited_shots');
+  if (ui.cUnbreakableBlocks.checked) complications.push('unbreakable_blocks');
+  if (ui.cTwoColorsBlocks.checked) complications.push('two_colors_blocks');
+  if (ui.cFlashingBlocks.checked) complications.push('flashing_blocks');
+  if (ui.cSeveralLayers.checked) complications.push('several_layers');
+  return complications;
+}
+
+function buildGridFromBuilderUI() {
+  const rows = Number(ui.builderRows.value);
+  const cols = Number(ui.builderCols.value);
+  const grid = Array.from({ length: rows }, () => Array(cols).fill('R'));
+  const selectors = ui.builderGrid.querySelectorAll('select[data-row][data-col]');
+  selectors.forEach((selectEl) => {
+    const r = Number(selectEl.dataset.row);
+    const c = Number(selectEl.dataset.col);
+    if (Number.isFinite(r) && Number.isFinite(c) && grid[r] && typeof grid[r][c] !== 'undefined') {
+      grid[r][c] = selectEl.value;
+    }
+  });
+  return grid;
+}
+
+function renderBuilderGrid(grid) {
+  ui.builderRows.value = grid.length;
+  ui.builderCols.value = grid[0].length;
+  ui.builderGrid.innerHTML = '';
+  ui.builderGrid.style.gridTemplateColumns = `repeat(${grid[0].length}, minmax(48px, 1fr))`;
+
+  for (let r = 0; r < grid.length; r += 1) {
+    for (let c = 0; c < grid[0].length; c += 1) {
+      const select = document.createElement('select');
+      select.dataset.row = String(r);
+      select.dataset.col = String(c);
+      BUILDER_CELL_CODES.forEach((code) => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = code;
+        select.appendChild(option);
+      });
+      select.value = BUILDER_CELL_CODES.includes(grid[r][c]) ? grid[r][c] : 'R';
+      ui.builderGrid.appendChild(select);
+    }
+  }
+}
+
+function buildLevelFromBuilder() {
+  const baseGrid = buildGridFromBuilderUI();
+  const complications = builderComplicationsFromUI();
+  const layersCount = ui.cSeveralLayers.checked ? Math.max(1, Number(ui.builderLayers.value) || 1) : 1;
+  const level = {
+    level: 'custom',
+    description: 'Builder level',
+    complications,
+    grid: cloneGrid(baseGrid),
+  };
+
+  if (ui.cTimer.checked) level.timerSeconds = Math.max(1, Number(ui.builderTimer.value) || 60);
+  if (ui.cLimitedShots.checked) level.maxShots = Math.max(1, Number(ui.builderShots.value) || 10);
+
+  if (layersCount > 1) {
+    level.layers = Array.from({ length: layersCount }, () => cloneGrid(baseGrid));
+  }
+
+  return level;
+}
+
+function startCustomBuilderLevel() {
+  const customLevel = buildLevelFromBuilder();
+  model.currentLevel = customLevel;
+  model.currentLayerIndex = 0;
+  model.grid = randomizeGridLayout(cloneGrid(customLevel.layers ? customLevel.layers[0] : customLevel.grid));
+  model.score = 0;
+  model.activeBooster = null;
+  model.rainbowNextShot = false;
+  model.gameOver = false;
+  model.shotsLeft = Number.isFinite(customLevel.maxShots) ? customLevel.maxShots : Infinity;
+  model.timerLeft = Number.isFinite(customLevel.timerSeconds) ? customLevel.timerSeconds : Infinity;
+  model.selectedShotColor = getBreakableColors(model.grid)[0] || 'R';
+  pickNextShotColor();
+  initPhaser(model.grid.length, model.grid[0].length);
+  renderBoosterInventory();
+  refreshUI();
+  ui.stateLabel.textContent = 'Статус: preview builder-level';
+}
+
+function downloadBuilderLevel() {
+  const data = buildLevelFromBuilder();
+  const payload = JSON.stringify(data, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'builder-level.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadBuilderLevelFromFile(event) {
+  const [file] = event.target.files || [];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || '{}'));
+      const loadedGrid = parsed.layers?.[0] || parsed.grid;
+      if (!Array.isArray(loadedGrid) || !Array.isArray(loadedGrid[0])) {
+        throw new Error('Invalid grid');
+      }
+      renderBuilderGrid(loadedGrid);
+      const setByToken = (token, value = true) => {
+        if (token === 'additional_colors') ui.cAdditionalColors.checked = value;
+        if (token === 'timer') ui.cTimer.checked = value;
+        if (token === 'limited_shots') ui.cLimitedShots.checked = value;
+        if (token === 'unbreakable_blocks') ui.cUnbreakableBlocks.checked = value;
+        if (token === 'two_colors_blocks') ui.cTwoColorsBlocks.checked = value;
+        if (token === 'flashing_blocks') ui.cFlashingBlocks.checked = value;
+        if (token === 'several_layers') ui.cSeveralLayers.checked = value;
+      };
+      [
+        'additional_colors',
+        'timer',
+        'limited_shots',
+        'unbreakable_blocks',
+        'two_colors_blocks',
+        'flashing_blocks',
+        'several_layers',
+      ].forEach((token) => setByToken(token, false));
+      (parsed.complications || []).forEach((token) => setByToken(token, true));
+      ui.builderTimer.value = String(Number(parsed.timerSeconds) || 60);
+      ui.builderShots.value = String(Number(parsed.maxShots) || 10);
+      ui.builderLayers.value = String(parsed.layers?.length || 1);
+      ui.stateLabel.textContent = 'Статус: level loaded into builder';
+    } catch {
+      ui.stateLabel.textContent = 'Статус: ошибка чтения level JSON';
+    } finally {
+      ui.builderFileInput.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function generateBuilderGridFromInputs() {
+  const rows = Math.max(3, Math.min(10, Number(ui.builderRows.value) || 6));
+  const cols = Math.max(3, Math.min(12, Number(ui.builderCols.value) || 8));
+  const pool = ['R', 'G', 'B', 'Y'];
+  const grid = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => randomFrom(pool))
+  );
+  renderBuilderGrid(grid);
 }
 
 function getBreakableColors(grid) {
@@ -1120,10 +1296,16 @@ function startLevelByIndex(index) {
 loadPersistentState();
 model.levels = buildBuiltinLevels();
 populateLevelSelect();
+generateBuilderGridFromInputs();
 ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
 ui.shopBtn.onclick = () => openShop();
 ui.closeShopBtn.onclick = () => closeShop();
 ui.shopModal.onclick = (event) => {
   if (event.target === ui.shopModal) closeShop();
 };
+ui.builderGenerateBtn.onclick = () => generateBuilderGridFromInputs();
+ui.builderPreviewBtn.onclick = () => startCustomBuilderLevel();
+ui.builderDownloadBtn.onclick = () => downloadBuilderLevel();
+ui.builderLoadBtn.onclick = () => ui.builderFileInput.click();
+ui.builderFileInput.onchange = (event) => loadBuilderLevelFromFile(event);
 startLevelByIndex(0);
