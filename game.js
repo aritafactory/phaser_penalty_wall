@@ -426,7 +426,9 @@ function startCustomBuilderLevel() {
   const customLevel = buildLevelFromBuilder();
   model.currentLevel = customLevel;
   model.currentLayerIndex = 0;
-  model.grid = randomizeGridLayout(cloneGrid(customLevel.layers ? customLevel.layers[0] : customLevel.grid));
+  // Builder preview restart must restore exactly the form-defined layout
+  // (no random reshuffle between restarts).
+  model.grid = cloneGrid(customLevel.layers ? customLevel.layers[0] : customLevel.grid);
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
