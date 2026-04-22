@@ -14,6 +14,8 @@
       .builder-grid { display:grid; gap:4px; margin: 12px 0; }
       .builder-grid select { padding:4px 6px; border-radius: 4px; border:1px solid #334155; background:#1e293b; color:#e2e8f0; }
       .group { margin-top: 14px; }
+      .settings-row { display:flex; gap:16px; align-items:flex-start; }
+      .settings-row .group { flex:1; }
       .check { display:flex; align-items:center; gap:8px; margin-bottom: 8px; }
       select, button, input { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
       .controls { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-bottom: 12px; }
@@ -36,27 +38,29 @@
           <div class="row">
             <label>Columns: <input id="builderCols" type="number" min="3" max="12" value="8" /></label>
             <label>Rows: <input id="builderRows" type="number" min="3" max="10" value="6" /></label>
-            <button id="builderGenerateBtn">Generate Grid</button>
+            <button id="builderGenerateBtn">Generate Level</button>
             <button id="builderPreviewBtn">Restart Preview</button>
           </div>
           <div id="builderGrid" class="builder-grid"></div>
 
-          <div class="group">
-            <h3>Complications</h3>
-            <label class="check"><input type="checkbox" id="cAdditionalColors"/> Additional colors</label>
-            <label class="check"><input type="checkbox" id="cTimer"/> Timer <input id="builderTimer" type="number" min="10" max="999" value="60"/></label>
-            <label class="check"><input type="checkbox" id="cLimitedShots"/> Limited shots <input id="builderShots" type="number" min="1" max="200" value="10"/></label>
-            <label class="check"><input type="checkbox" id="cUnbreakableBlocks"/> Unbreakable blocks</label>
-            <label class="check"><input type="checkbox" id="cTwoColorsBlocks"/> 2 colors blocks</label>
-            <label class="check"><input type="checkbox" id="cFlashingBlocks"/> Flashing colors blocks</label>
-            <label class="check"><input type="checkbox" id="cSeveralLayers"/> Several layers of wall <input id="builderLayers" type="number" min="1" max="4" value="1"/></label>
-          </div>
+          <div class="settings-row">
+            <div class="group">
+              <h3>Complications</h3>
+              <label class="check"><input type="checkbox" id="cAdditionalColors"/> Additional colors</label>
+              <label class="check"><input type="checkbox" id="cTimer"/> Timer <input id="builderTimer" type="number" min="10" max="999" value="60"/></label>
+              <label class="check"><input type="checkbox" id="cLimitedShots"/> Limited shots <input id="builderShots" type="number" min="1" max="200" value="10"/></label>
+              <label class="check"><input type="checkbox" id="cUnbreakableBlocks"/> Unbreakable blocks</label>
+              <label class="check"><input type="checkbox" id="cTwoColorsBlocks"/> 2 colors blocks</label>
+              <label class="check"><input type="checkbox" id="cFlashingBlocks"/> Flashing colors blocks</label>
+              <label class="check"><input type="checkbox" id="cSeveralLayers"/> Several layers of wall <input id="builderLayers" type="number" min="1" max="4" value="1"/></label>
+            </div>
 
-          <div class="group">
-            <h3>Boosters</h3>
-            <aside class="inventory">
-              <ul id="boosterInventoryList"></ul>
-            </aside>
+            <div class="group">
+              <h3>Boosters</h3>
+              <aside class="inventory">
+                <ul id="boosterInventoryList"></ul>
+              </aside>
+            </div>
           </div>
 
           <div class="row">

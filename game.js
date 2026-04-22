@@ -77,7 +77,7 @@ const ui = {
   builderLayers: document.getElementById('builderLayers'),
 };
 
-const BUILDER_CELL_CODES = ['R', 'G', 'B', 'Y', 'P', 'O', 'U', '2R', '2G', '2B', '2Y'];
+const BASE_BUILDER_COLORS = ['R', 'G', 'B', 'Y'];
 
 const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
@@ -326,6 +326,42 @@ function builderComplicationsFromUI() {
   return complications;
 }
 
+function getBuilderBasePalette() {
+  const palette = [...BASE_BUILDER_COLORS];
+  if (ui.cAdditionalColors?.checked) palette.push('P', 'O');
+  return palette;
+}
+
+function getBuilderDropdownOptions() {
+  const options = [...getBuilderBasePalette()];
+  if (ui.cUnbreakableBlocks?.checked) options.push('U');
+  if (ui.cTwoColorsBlocks?.checked) {
+    getBuilderBasePalette().forEach((color) => options.push(`2${color}`));
+  }
+  if (ui.cFlashingBlocks?.checked) {
+    const palette = getBuilderBasePalette();
+    for (let i = 0; i < palette.length; i += 1) {
+      const c1 = palette[i];
+      const c2 = palette[(i + 1) % palette.length];
+      options.push(`F:${c1}:${c2}:0`);
+    }
+  }
+  return options;
+}
+
+function normalizeBuilderCellValue(value, options) {
+  if (options.includes(value)) return value;
+  if (typeof value === 'string' && value.startsWith('2')) {
+    const fallback = options.find((option) => option.startsWith('2')) || options[0];
+    return fallback;
+  }
+  if (typeof value === 'string' && value.startsWith('F:')) {
+    const fallback = options.find((option) => option.startsWith('F:')) || options[0];
+    return fallback;
+  }
+  return options[0] || 'R';
+}
+
 function buildGridFromBuilderUI() {
   const rows = Number(ui.builderRows.value);
   const cols = Number(ui.builderCols.value);
@@ -342,6 +378,7 @@ function buildGridFromBuilderUI() {
 }
 
 function renderBuilderGrid(grid) {
+  const options = getBuilderDropdownOptions();
   ui.builderRows.value = grid.length;
   ui.builderCols.value = grid[0].length;
   ui.builderGrid.innerHTML = '';
@@ -352,13 +389,13 @@ function renderBuilderGrid(grid) {
       const select = document.createElement('select');
       select.dataset.row = String(r);
       select.dataset.col = String(c);
-      BUILDER_CELL_CODES.forEach((code) => {
+      options.forEach((code) => {
         const option = document.createElement('option');
         option.value = code;
-        option.textContent = code;
+        option.textContent = code.replace(':0', '');
         select.appendChild(option);
       });
-      select.value = BUILDER_CELL_CODES.includes(grid[r][c]) ? grid[r][c] : 'R';
+      select.value = normalizeBuilderCellValue(grid[r][c], options);
       ui.builderGrid.appendChild(select);
     }
   }
@@ -411,7 +448,10 @@ function downloadBuilderLevel() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'builder-level.json';
+  const rows = data.grid.length;
+  const cols = data.grid[0].length;
+  const suffix = data.complications.length ? data.complications.join('_') : 'basic';
+  link.download = `${cols}x${rows}_${suffix}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -427,7 +467,6 @@ function loadBuilderLevelFromFile(event) {
       if (!Array.isArray(loadedGrid) || !Array.isArray(loadedGrid[0])) {
         throw new Error('Invalid grid');
       }
-      renderBuilderGrid(loadedGrid);
       const setByToken = (token, value = true) => {
         if (token === 'additional_colors') ui.cAdditionalColors.checked = value;
         if (token === 'timer') ui.cTimer.checked = value;
@@ -447,6 +486,7 @@ function loadBuilderLevelFromFile(event) {
         'several_layers',
       ].forEach((token) => setByToken(token, false));
       (parsed.complications || []).forEach((token) => setByToken(token, true));
+      renderBuilderGrid(loadedGrid);
       ui.builderTimer.value = String(Number(parsed.timerSeconds) || 60);
       ui.builderShots.value = String(Number(parsed.maxShots) || 10);
       ui.builderLayers.value = String(parsed.layers?.length || 1);
@@ -463,11 +503,32 @@ function loadBuilderLevelFromFile(event) {
 function generateBuilderGridFromInputs() {
   const rows = Math.max(3, Math.min(10, Number(ui.builderRows.value) || 6));
   const cols = Math.max(3, Math.min(12, Number(ui.builderCols.value) || 8));
-  const pool = ['R', 'G', 'B', 'Y'];
-  const grid = Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => randomFrom(pool))
-  );
+  const complications = builderComplicationsFromUI();
+  const palette = getBuilderBasePalette();
+  const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      const roll = Math.random();
+      if (complications.includes('unbreakable_blocks') && roll < 0.08) {
+        grid[r][c] = 'U';
+      } else if (complications.includes('two_colors_blocks') && roll < 0.22) {
+        grid[r][c] = `2${randomFrom(palette)}`;
+      } else if (complications.includes('flashing_blocks') && roll < 0.33) {
+        const c1 = randomFrom(palette);
+        grid[r][c] = makeFlashing(c1, randomColorDifferentFrom(c1, palette), 0);
+      } else {
+        grid[r][c] = randomFrom(palette);
+      }
+    }
+  }
+
   renderBuilderGrid(grid);
+}
+
+function refreshBuilderDropdownsFromCurrentGrid() {
+  const currentGrid = buildGridFromBuilderUI();
+  renderBuilderGrid(currentGrid);
 }
 
 function getBreakableColors(grid) {
@@ -1318,11 +1379,17 @@ if (ui.shopModal) {
 }
 if (ui.builderGenerateBtn && ui.builderPreviewBtn && ui.builderGrid) {
   generateBuilderGridFromInputs();
-  ui.builderGenerateBtn.onclick = () => generateBuilderGridFromInputs();
+  ui.builderGenerateBtn.onclick = () => {
+    generateBuilderGridFromInputs();
+    startCustomBuilderLevel();
+  };
   ui.builderPreviewBtn.onclick = () => startCustomBuilderLevel();
   ui.builderDownloadBtn.onclick = () => downloadBuilderLevel();
   ui.builderLoadBtn.onclick = () => ui.builderFileInput.click();
   ui.builderFileInput.onchange = (event) => loadBuilderLevelFromFile(event);
+  [ui.cAdditionalColors, ui.cUnbreakableBlocks, ui.cTwoColorsBlocks, ui.cFlashingBlocks].forEach((checkbox) => {
+    checkbox.onchange = () => refreshBuilderDropdownsFromCurrentGrid();
+  });
   startCustomBuilderLevel();
 } else {
   startLevelByIndex(0);
