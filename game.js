@@ -277,7 +277,7 @@ function buildBuiltinLevels() {
       level: idx + 1,
       description: `Встроенный уровень ${idx + 1}`,
       complications,
-      maxShots: complications.includes('limited_shots') ? Math.max(10, 22 - idx) : undefined,
+      maxShots: complications.includes('limited_shots') ? Math.max(10, 32 - idx) : undefined,
       timerSeconds: complications.includes('timer') ? Math.max(50, 100 - idx) : undefined,
       grid: primaryGrid,
     };
