@@ -9,11 +9,11 @@ const COLOR_MAP = {
 };
 
 const BASE_GRID = [
-  ['G', 'R', 'B', 'R', 'Y', 'R', 'B', 'G'],
-  ['B', 'B', 'B', 'B', 'B', 'B', 'Y', 'G'],
-  ['G', 'G', 'R', 'Y', 'Y', 'Y', 'R', 'R'],
-  ['G', 'G', 'R', 'G', 'Y', 'Y', 'Y', 'R'],
-  ['Y', 'Y', 'R', 'G', 'R', 'G', 'B', 'B'],
+  ['G', 'R', 'B', 'R', 'G', 'R', 'B', 'G'],
+  ['B', 'B', 'B', 'B', 'B', 'B', 'R', 'G'],
+  ['G', 'G', 'R', 'B', 'B', 'B', 'R', 'R'],
+  ['G', 'G', 'R', 'G', 'B', 'B', 'B', 'R'],
+  ['R', 'R', 'R', 'G', 'R', 'G', 'B', 'B'],
 ];
 
 const COMPLICATIONS = [
@@ -77,7 +77,7 @@ const ui = {
   builderLayers: document.getElementById('builderLayers'),
 };
 
-const BASE_BUILDER_COLORS = ['R', 'G', 'B', 'Y'];
+const BASE_BUILDER_COLORS = ['R', 'G', 'B'];
 
 const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
@@ -213,7 +213,7 @@ function combinations(arr, size) {
 }
 
 function withAdditionalColors(grid) {
-  const extra = ['P', 'O'];
+  const extra = ['Y', 'P', 'O'];
   return grid.map((row, r) =>
     row.map((cell, c) => {
       if (cell === 'U') return cell;
@@ -245,7 +245,7 @@ function withFlashingBlocks(grid) {
   const next = cloneGrid(grid);
   const points = [[0, 0], [2, 2], [4, 4]];
   const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
-  const fallback = ['R', 'G', 'B', 'Y'];
+  const fallback = ['R', 'G', 'B'];
   const palette = levelPalette.length ? levelPalette : fallback;
 
   points.forEach(([r, c], idx) => {
@@ -277,7 +277,7 @@ function buildBuiltinLevels() {
       level: idx + 1,
       description: `Встроенный уровень ${idx + 1}`,
       complications,
-      maxShots: complications.includes('limited_shots') ? Math.max(10, 32 - idx) : undefined,
+      maxShots: complications.includes('limited_shots') ? Math.max(10, 22 - idx) : undefined,
       timerSeconds: complications.includes('timer') ? Math.max(50, 100 - idx) : undefined,
       grid: primaryGrid,
     };
@@ -923,7 +923,7 @@ class BoardScene extends Phaser.Scene {
     renderBoosterInventory();
 
     const palette = getBreakableColors(model.grid).filter((c) => c !== 'U');
-    const fallbackPalette = ['R', 'G', 'B', 'Y', 'P', 'O'];
+    const fallbackPalette = ['R', 'G', 'B'];
     const source = palette.length ? palette : fallbackPalette;
 
     for (let r = 0; r < model.grid.length; r += 1) {
