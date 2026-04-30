@@ -5,7 +5,7 @@ const COLOR_MAP = {
   Y: 0xf1c40f,
   P: 0x9b59b6,
   O: 0xe67e22,
-  U: 0x000000,
+  U: 0x7f8c8d,
 };
 
 const BASE_GRID = [
@@ -235,8 +235,10 @@ function withUnbreakableBlocks(grid) {
 function withTwoColorBlocks(grid) {
   const next = cloneGrid(grid);
   const points = [[0, 2], [2, 4], [4, 6]];
+  const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
+  const palette = levelPalette.length ? levelPalette : ['R', 'G', 'B'];
   points.forEach(([r, c]) => {
-    if (next[r] && next[r][c] && next[r][c] !== 'U') next[r][c] = `2${next[r][c]}`;
+    if (next[r] && next[r][c] && next[r][c] !== 'U') next[r][c] = `2${randomFrom(palette)}`;
   });
   return next;
 }
@@ -287,11 +289,11 @@ function buildBuiltinLevels() {
         primaryGrid,
         applyComplicationsToGrid(
           [
-            ['R', 'B', 'Y', 'G', 'R', 'B', 'Y', 'G'],
-            ['G', 'Y', 'R', 'B', 'G', 'Y', 'R', 'B'],
-            ['B', 'R', 'G', 'Y', 'B', 'R', 'G', 'Y'],
-            ['Y', 'G', 'B', 'R', 'Y', 'G', 'B', 'R'],
-            ['R', 'Y', 'G', 'B', 'R', 'Y', 'G', 'B'],
+            ['R', 'B', 'G', 'G', 'R', 'B', 'G', 'G'],
+            ['G', 'R', 'R', 'B', 'G', 'R', 'R', 'B'],
+            ['B', 'R', 'G', 'G', 'B', 'R', 'G', 'G'],
+            ['G', 'G', 'B', 'R', 'G', 'G', 'B', 'R'],
+            ['R', 'G', 'G', 'B', 'R', 'G', 'G', 'B'],
           ],
           complications.filter((c) => c !== 'several_layers')
         ),
