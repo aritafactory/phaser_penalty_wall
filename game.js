@@ -5,7 +5,7 @@ const COLOR_MAP = {
   Y: 0xf1c40f,
   P: 0x9b59b6,
   O: 0xe67e22,
-  U: 0x7f8c8d,
+  U: 0x000000,
 };
 
 const BASE_GRID = [
