@@ -1,0 +1,62 @@
+{
+  "level": 17,
+  "description": "Встроенный уровень 17",
+  "complications": [
+    "additional_colors",
+    "timer",
+    "unbreakable_blocks"
+  ],
+  "timerSeconds": 84,
+  "grid": [
+    [
+      "Y",
+      "R",
+      "B",
+      "R",
+      "P",
+      "R",
+      "B",
+      "G"
+    ],
+    [
+      "B",
+      "U",
+      "B",
+      "P",
+      "B",
+      "B",
+      "U",
+      "O"
+    ],
+    [
+      "G",
+      "G",
+      "P",
+      "B",
+      "B",
+      "B",
+      "O",
+      "R"
+    ],
+    [
+      "G",
+      "P",
+      "R",
+      "U",
+      "B",
+      "O",
+      "B",
+      "R"
+    ],
+    [
+      "P",
+      "R",
+      "R",
+      "G",
+      "O",
+      "G",
+      "B",
+      "B"
+    ]
+  ]
+}

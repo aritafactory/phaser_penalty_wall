@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Level Builder</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+      .app { max-width: 1440px; margin: 0 auto; padding: 16px; }
+      .builder-layout { display:flex; gap:20px; align-items:flex-start; }
+      .left { width: 48%; min-width: 420px; background: #18181b; border:1px solid #334155; border-radius: 12px; padding: 16px; }
+      .right { width: 52%; min-width: 640px; }
+      .row { display:flex; gap:10px; align-items:center; margin-bottom: 10px; flex-wrap: wrap; }
+      .builder-grid { display:grid; gap:4px; margin: 12px 0; }
+      .builder-grid select { padding:4px 6px; border-radius: 4px; border:1px solid #334155; background:#1e293b; color:#e2e8f0; }
+      .group { margin-top: 14px; }
+      .settings-row { display:flex; gap:16px; align-items:flex-start; }
+      .settings-row .group { flex:1; }
+      .check { display:flex; align-items:center; gap:8px; margin-bottom: 8px; }
+      select, button, input { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
+      .controls { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-bottom: 12px; }
+      #game { border: 1px solid #334155; border-radius: 10px; overflow: hidden; }
+      .status { display:flex; gap: 12px; flex-wrap: wrap; }
+      .badge { background:#1e293b; border:1px solid #334155; padding: 6px 10px; border-radius: 999px; }
+      .play-layout { display: flex; gap: 12px; align-items: stretch; }
+      .inventory { width: 300px; min-width: 260px; border: 1px solid #334155; border-radius: 10px; padding: 10px; background: #07153b; }
+      .inventory ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+      .inventory li { border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; background: #102044; display:flex; justify-content:space-between; }
+      .modal-backdrop { display:none; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  </head>
+  <body data-page="builder">
+    <div class="app">
+      <div class="builder-layout">
+        <section class="left">
+          <h1>Level Builder</h1>
+          <div class="row">
+            <label>Columns: <input id="builderCols" type="number" min="3" max="12" value="8" /></label>
+            <label>Rows: <input id="builderRows" type="number" min="3" max="10" value="6" /></label>
+            <button id="builderGenerateBtn">Generate Level</button>
+            <button id="builderPreviewBtn">Restart Preview</button>
+          </div>
+          <div id="builderGrid" class="builder-grid"></div>
+
+          <div class="settings-row">
+            <div class="group">
+              <h3>Complications</h3>
+              <label class="check"><input type="checkbox" id="cAdditionalColors"/> Additional colors</label>
+              <label class="check"><input type="checkbox" id="cTimer"/> Timer <input id="builderTimer" type="number" min="10" max="999" value="60"/></label>
+              <label class="check"><input type="checkbox" id="cLimitedShots"/> Limited shots <input id="builderShots" type="number" min="1" max="200" value="10"/></label>
+              <label class="check"><input type="checkbox" id="cUnbreakableBlocks"/> Unbreakable blocks</label>
+              <label class="check"><input type="checkbox" id="cTwoColorsBlocks"/> 2 colors blocks</label>
+              <label class="check"><input type="checkbox" id="cFlashingBlocks"/> Flashing colors blocks</label>
+              <label class="check"><input type="checkbox" id="cSeveralLayers"/> Several layers of wall <input id="builderLayers" type="number" min="1" max="4" value="1"/></label>
+            </div>
+
+            <div class="group">
+              <h3>Boosters</h3>
+              <aside class="inventory">
+                <ul id="boosterInventoryList"></ul>
+              </aside>
+            </div>
+          </div>
+
+          <div class="row">
+            <button id="builderDownloadBtn">Download Level File</button>
+            <button id="builderLoadBtn">Load Level File</button>
+            <input id="builderFileInput" type="file" accept=".json,application/json" style="display:none" />
+          </div>
+        </section>
+
+        <section class="right">
+          <div class="controls">
+            <label style="display:none">Уровень: <select id="levelSelect"></select></label>
+            <button id="startBtn" style="display:none">Запустить уровень</button>
+            <button id="shopBtn" style="display:none">Shop</button>
+          </div>
+          <div class="status">
+            <div class="badge" id="scoreLabel">Очки (уровень): 0</div>
+            <div class="badge" id="totalScoreLabel">Очки (всего): 0</div>
+            <div class="badge" id="shotsLabel">Выстрелы: ∞</div>
+            <div class="badge" id="timerLabel">Таймер: ∞</div>
+            <div class="badge" id="stateLabel">Статус: preview builder-level</div>
+          </div>
+          <div class="play-layout">
+            <div id="game"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="shopModal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal"><button id="closeShopBtn">Закрыть</button><div id="shopBalanceLabel"></div><table><tbody id="shopTableBody"></tbody></table></div>
+    </div>
+
+    <script type="module" src="game.js?v=3"></script>
+  </body>
+</html>
