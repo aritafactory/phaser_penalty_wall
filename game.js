@@ -305,6 +305,16 @@ function buildBuiltinLevels() {
   });
 }
 
+async function loadBuiltinLevelsFromFiles() {
+  const urls = Array.from({ length: 23 }, (_, idx) => `levels/level_${String(idx + 1).padStart(3, '0')}.json`);
+  const responses = await Promise.all(urls.map((url) => fetch(url)));
+  if (responses.some((response) => !response.ok)) {
+    throw new Error('Failed to load levels from files');
+  }
+  const levels = await Promise.all(responses.map((response) => response.json()));
+  return levels.sort((a, b) => Number(a.level) - Number(b.level));
+}
+
 function populateLevelSelect() {
   if (!ui.levelSelect) return;
   ui.levelSelect.innerHTML = '';
@@ -1370,31 +1380,39 @@ function startLevelByIndex(index) {
   refreshUI();
 }
 
-loadPersistentState();
-model.levels = buildBuiltinLevels();
-populateLevelSelect();
-if (ui.startBtn) ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
-if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
-if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
-if (ui.shopModal) {
-  ui.shopModal.onclick = (event) => {
-    if (event.target === ui.shopModal) closeShop();
-  };
-}
-if (ui.builderGenerateBtn && ui.builderPreviewBtn && ui.builderGrid) {
-  generateBuilderGridFromInputs();
-  ui.builderGenerateBtn.onclick = () => {
+async function initApp() {
+  loadPersistentState();
+  try {
+    model.levels = await loadBuiltinLevelsFromFiles();
+  } catch {
+    model.levels = buildBuiltinLevels();
+  }
+  populateLevelSelect();
+  if (ui.startBtn) ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
+  if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
+  if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
+  if (ui.shopModal) {
+    ui.shopModal.onclick = (event) => {
+      if (event.target === ui.shopModal) closeShop();
+    };
+  }
+  if (ui.builderGenerateBtn && ui.builderPreviewBtn && ui.builderGrid) {
     generateBuilderGridFromInputs();
+    ui.builderGenerateBtn.onclick = () => {
+      generateBuilderGridFromInputs();
+      startCustomBuilderLevel();
+    };
+    ui.builderPreviewBtn.onclick = () => startCustomBuilderLevel();
+    ui.builderDownloadBtn.onclick = () => downloadBuilderLevel();
+    ui.builderLoadBtn.onclick = () => ui.builderFileInput.click();
+    ui.builderFileInput.onchange = (event) => loadBuilderLevelFromFile(event);
+    [ui.cAdditionalColors, ui.cUnbreakableBlocks, ui.cTwoColorsBlocks, ui.cFlashingBlocks].forEach((checkbox) => {
+      checkbox.onchange = () => refreshBuilderDropdownsFromCurrentGrid();
+    });
     startCustomBuilderLevel();
-  };
-  ui.builderPreviewBtn.onclick = () => startCustomBuilderLevel();
-  ui.builderDownloadBtn.onclick = () => downloadBuilderLevel();
-  ui.builderLoadBtn.onclick = () => ui.builderFileInput.click();
-  ui.builderFileInput.onchange = (event) => loadBuilderLevelFromFile(event);
-  [ui.cAdditionalColors, ui.cUnbreakableBlocks, ui.cTwoColorsBlocks, ui.cFlashingBlocks].forEach((checkbox) => {
-    checkbox.onchange = () => refreshBuilderDropdownsFromCurrentGrid();
-  });
-  startCustomBuilderLevel();
-} else {
-  startLevelByIndex(0);
+  } else {
+    startLevelByIndex(0);
+  }
 }
+
+initApp();
