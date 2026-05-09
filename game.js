@@ -306,12 +306,17 @@ function buildBuiltinLevels() {
 }
 
 async function loadBuiltinLevelsFromFiles() {
-  const urls = Array.from({ length: 23 }, (_, idx) => `levels/level_${String(idx + 1).padStart(3, '0')}.json`);
-  const responses = await Promise.all(urls.map((url) => fetch(url)));
-  if (responses.some((response) => !response.ok)) {
+  const levels = [];
+  for (let idx = 1; idx <= 999; idx += 1) {
+    const url = `levels/level_${String(idx).padStart(3, '0')}.json`;
+    const response = await fetch(url);
+    if (!response.ok) continue;
+    const level = await response.json();
+    levels.push(level);
+  }
+  if (!levels.length) {
     throw new Error('Failed to load levels from files');
   }
-  const levels = await Promise.all(responses.map((response) => response.json()));
   return levels.sort((a, b) => Number(a.level) - Number(b.level));
 }
 
