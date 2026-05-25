@@ -750,10 +750,16 @@ function pickNextShotColor() {
 class BoardScene extends Phaser.Scene {
   constructor() {
     super('board');
-    this.cell = 78;
+    const rows = model.grid.length || 1;
+    const cols = model.grid[0]?.length || 1;
+    const maxBoardWidth = 620;
+    const maxBoardHeight = 520;
+    const fitByWidth = Math.floor(maxBoardWidth / cols);
+    const fitByHeight = Math.floor(maxBoardHeight / rows);
+    this.cell = Math.max(40, Math.min(78, fitByWidth, fitByHeight));
     this.gridX = 12;
     this.gridY = 12;
-    this.playAreaHeight = 620;
+    this.playAreaHeight = Math.max(620, this.gridY * 2 + rows * this.cell + 120);
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -1355,13 +1361,20 @@ class BoardScene extends Phaser.Scene {
 
 function initPhaser(rows, cols) {
   if (phaserGame) phaserGame.destroy(true);
+  const maxBoardWidth = 620;
+  const maxBoardHeight = 520;
+  const fitByWidth = Math.floor(maxBoardWidth / cols);
+  const fitByHeight = Math.floor(maxBoardHeight / rows);
+  const cell = Math.max(40, Math.min(78, fitByWidth, fitByHeight));
+  const width = cols * cell + 24;
+  const height = Math.max(620, 24 + rows * cell + 120);
   boardScene = new BoardScene();
 
   phaserGame = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: cols * 78 + 24,
-    height: 620,
+    width,
+    height,
     scene: [boardScene],
   });
 }
