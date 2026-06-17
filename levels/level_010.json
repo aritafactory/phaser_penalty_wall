@@ -1,6 +1,6 @@
 {
   "level": 10,
-  "description": "Встроенный уровень 10",
+  "description": "Кастомный уровень 10",
   "complications": [
     "additional_colors",
     "unbreakable_blocks"

@@ -31,25 +31,24 @@
   <body>
     <div class="app">
       <h1>Color Block Breaker (Phaser)</h1>
-      <p class="sub">Режим: автослучайный цвет шара (без ручного выбора)</p>
       <div class="controls">
-        <label>Уровень:
+        <label>Level:
           <select id="levelSelect"></select>
         </label>
-        <button id="startBtn">Запустить уровень</button>
+        <button id="startBtn">Start Level</button>
         <button id="shopBtn">Shop</button>
       </div>
       <div class="status">
-        <div class="badge" id="scoreLabel">Очки (уровень): 0</div>
-        <div class="badge" id="totalScoreLabel">Очки (всего): 0</div>
-        <div class="badge" id="shotsLabel">Выстрелы: ∞</div>
-        <div class="badge" id="timerLabel">Таймер: ∞</div>
-        <div class="badge" id="stateLabel">Статус: игра идёт</div>
+        <div class="badge" id="scoreLabel">Level Score: 0</div>
+        <div class="badge" id="totalScoreLabel">Total Score: 0</div>
+        <div class="badge" id="shotsLabel">Shots: ∞</div>
+        <div class="badge" id="timerLabel">Timer: ∞</div>
+        <div class="badge" id="stateLabel">Status: Game in Progress</div>
       </div>
       <div class="play-layout">
         <div id="game"></div>
         <aside class="inventory">
-          <h3>Bought boosters</h3>
+          <h3>Boosters</h3>
           <ul id="boosterInventoryList"></ul>
         </aside>
       </div>
@@ -58,13 +57,13 @@
     <div id="shopModal" class="modal-backdrop" aria-hidden="true">
       <div class="modal">
         <div class="controls" style="justify-content:space-between">
-          <h2>Shop / Бустеры</h2>
-          <button id="closeShopBtn">Закрыть</button>
+          <h2>Shop</h2>
+          <button id="closeShopBtn">Close</button>
         </div>
-        <div class="badge" id="shopBalanceLabel">Баланс: 0</div>
+        <div class="badge" id="shopBalanceLabel">Balance: 0</div>
         <table class="shop-table">
           <thead>
-            <tr><th>Бустер</th><th>Цена</th><th>Эффект</th><th>Купить</th></tr>
+            <tr><th>Booster</th><th>Price</th><th>Effect</th><th>Buy</th></tr>
           </thead>
           <tbody id="shopTableBody"></tbody>
         </table>

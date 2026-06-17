@@ -2,60 +2,33 @@
   "level": 8,
   "description": "Встроенный уровень 8",
   "complications": [
-    "additional_colors",
-    "timer"
+    "limited_shots"
   ],
-  "timerSeconds": 93,
   "grid": [
     [
-      "Y",
       "R",
       "B",
-      "R",
-      "P",
-      "R",
-      "B",
+      "G",
       "G"
     ],
     [
-      "B",
-      "B",
-      "B",
-      "P",
-      "B",
-      "B",
+      "G",
       "R",
-      "O"
-    ],
-    [
-      "G",
-      "G",
-      "P",
-      "B",
-      "B",
-      "B",
-      "O",
+      "R",
       "R"
     ],
     [
       "G",
-      "P",
       "R",
-      "G",
-      "B",
-      "O",
-      "B",
+      "R",
       "R"
     ],
     [
-      "P",
-      "R",
-      "R",
-      "G",
-      "O",
-      "G",
       "B",
-      "B"
+      "G",
+      "R",
+      "R"
     ]
-  ]
+  ],
+  "maxShots": 12
 }
