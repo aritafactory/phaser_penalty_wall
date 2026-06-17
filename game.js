@@ -345,7 +345,7 @@ function builderComplicationsFromUI() {
 
 function getBuilderBasePalette() {
   const palette = [...BASE_BUILDER_COLORS];
-  if (ui.cAdditionalColors?.checked) palette.push('P', 'O');
+  if (ui.cAdditionalColors?.checked) palette.push('Y', 'P', 'O');
   return palette;
 }
 
