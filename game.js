@@ -8,6 +8,9 @@ const COLOR_MAP = {
   U: 0x7f8c8d,
 };
 
+const BASE_COLORS = ['R', 'G', 'B'];
+const ADDITIONAL_COLORS = ['Y', 'P', 'O'];
+
 const BASE_GRID = [
   ['G', 'R', 'B', 'R', 'G', 'R', 'B', 'G'],
   ['B', 'B', 'B', 'B', 'B', 'B', 'R', 'G'],
@@ -77,7 +80,7 @@ const ui = {
   builderLayers: document.getElementById('builderLayers'),
 };
 
-const BASE_BUILDER_COLORS = ['R', 'G', 'B'];
+const BASE_BUILDER_COLORS = BASE_COLORS;
 
 const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
@@ -213,19 +216,63 @@ function combinations(arr, size) {
 }
 
 function withAdditionalColors(grid) {
-  const extra = ['Y', 'P', 'O'];
-  return grid.map((row, r) =>
-    row.map((cell, c) => {
-      if (cell === 'U') return cell;
-      if ((r + c) % 4 === 0) return extra[(r + c) % extra.length];
+  const next = cloneGrid(grid);
+  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U');
+  points.forEach(([r, c], idx) => {
+    next[r][c] = ADDITIONAL_COLORS[idx % ADDITIONAL_COLORS.length];
+  });
+  return next;
+}
+
+function pickRandomCoords(grid, predicate, ratio = 0.25) {
+  const coords = [];
+  for (let r = 0; r < grid.length; r += 1) {
+    for (let c = 0; c < grid[0].length; c += 1) {
+      if (predicate(grid[r][c], r, c)) coords.push([r, c]);
+    }
+  }
+
+  for (let i = coords.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [coords[i], coords[j]] = [coords[j], coords[i]];
+  }
+
+  return coords.slice(0, Math.max(1, Math.round(coords.length * ratio)));
+}
+
+function getGridPalette(grid) {
+  const palette = [...new Set(grid.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
+  return palette.length ? palette : BASE_COLORS;
+}
+
+function regenerateRandomSpecialBlocks(grid, complications) {
+  let next = cloneGrid(grid);
+  const shouldRegenerateAdditional = complications.includes('additional_colors');
+  const shouldRegenerateUnbreakable = complications.includes('unbreakable_blocks');
+  const shouldRegenerateTwoColor = complications.includes('two_colors_blocks');
+  const shouldRegenerateFlashing = complications.includes('flashing_blocks');
+
+  next = next.map((row) =>
+    row.map((cell) => {
+      if (shouldRegenerateUnbreakable && cell === 'U') return randomFrom(BASE_COLORS);
+      if (shouldRegenerateAdditional && ADDITIONAL_COLORS.includes(visibleColor(cell))) return randomFrom(BASE_COLORS);
+      if (shouldRegenerateTwoColor && isTwoColor(cell)) return visibleColor(cell);
+      if (shouldRegenerateFlashing && isFlashing(cell)) return visibleColor(cell);
       return cell;
     })
   );
+
+  if (shouldRegenerateUnbreakable) next = withUnbreakableBlocks(next);
+  if (shouldRegenerateAdditional) next = withAdditionalColors(next);
+  if (shouldRegenerateTwoColor) next = withTwoColorBlocks(next);
+  if (shouldRegenerateFlashing) next = withFlashingBlocks(next);
+
+  return next;
 }
 
 function withUnbreakableBlocks(grid) {
   const next = cloneGrid(grid);
-  const points = [[1, 1], [1, 6], [3, 3]];
+  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U');
   points.forEach(([r, c]) => {
     if (next[r] && next[r][c]) next[r][c] = 'U';
   });
@@ -234,7 +281,7 @@ function withUnbreakableBlocks(grid) {
 
 function withTwoColorBlocks(grid) {
   const next = cloneGrid(grid);
-  const points = [[0, 2], [2, 4], [4, 6]];
+  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U');
   const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
   const palette = levelPalette.length ? levelPalette : ['R', 'G', 'B'];
   points.forEach(([r, c]) => {
@@ -245,7 +292,7 @@ function withTwoColorBlocks(grid) {
 
 function withFlashingBlocks(grid) {
   const next = cloneGrid(grid);
-  const points = [[0, 0], [2, 2], [4, 4]];
+  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell));
   const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
   const fallback = ['R', 'G', 'B'];
   const palette = levelPalette.length ? levelPalette : fallback;
@@ -523,23 +570,33 @@ function generateBuilderGridFromInputs() {
   const rows = Math.max(3, Math.min(10, Number(ui.builderRows.value) || 6));
   const cols = Math.max(3, Math.min(12, Number(ui.builderCols.value) || 8));
   const complications = builderComplicationsFromUI();
-  const palette = getBuilderBasePalette();
-  const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+  let grid = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => randomFrom(BASE_COLORS))
+  );
 
-  for (let r = 0; r < rows; r += 1) {
-    for (let c = 0; c < cols; c += 1) {
-      const roll = Math.random();
-      if (complications.includes('unbreakable_blocks') && roll < 0.08) {
-        grid[r][c] = 'U';
-      } else if (complications.includes('two_colors_blocks') && roll < 0.22) {
-        grid[r][c] = `2${randomFrom(palette)}`;
-      } else if (complications.includes('flashing_blocks') && roll < 0.33) {
-        const c1 = randomFrom(palette);
-        grid[r][c] = makeFlashing(c1, randomColorDifferentFrom(c1, palette), 0);
-      } else {
-        grid[r][c] = randomFrom(palette);
-      }
-    }
+  if (complications.includes('unbreakable_blocks')) {
+    pickRandomCoords(grid, (cell) => Boolean(cell) && cell !== 'U').forEach(([r, c]) => {
+      grid[r][c] = 'U';
+    });
+  }
+
+  if (complications.includes('additional_colors')) {
+    grid = withAdditionalColors(grid);
+  }
+
+  const palette = getGridPalette(grid);
+
+  if (complications.includes('two_colors_blocks')) {
+    pickRandomCoords(grid, (cell) => Boolean(cell) && cell !== 'U').forEach(([r, c]) => {
+      grid[r][c] = `2${randomFrom(palette)}`;
+    });
+  }
+
+  if (complications.includes('flashing_blocks')) {
+    pickRandomCoords(grid, (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell)).forEach(([r, c]) => {
+      const c1 = randomFrom(palette);
+      grid[r][c] = makeFlashing(c1, randomColorDifferentFrom(c1, palette), 0);
+    });
   }
 
   renderBuilderGrid(grid);
@@ -877,7 +934,12 @@ class BoardScene extends Phaser.Scene {
       if (isWin()) {
         if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
           model.currentLayerIndex += 1;
-          model.grid = randomizeGridLayout(cloneGrid(model.currentLevel.layers[model.currentLayerIndex]));
+          model.grid = randomizeGridLayout(
+            regenerateRandomSpecialBlocks(
+              cloneGrid(model.currentLevel.layers[model.currentLayerIndex]),
+              model.currentLevel.complications || []
+            )
+          );
           this.renderGridStatic();
           ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
         } else {
@@ -1383,7 +1445,9 @@ function startLevelByIndex(index) {
   const level = model.levels[index];
   model.currentLevel = level;
   model.currentLayerIndex = 0;
-  model.grid = randomizeGridLayout(cloneGrid(level.layers ? level.layers[0] : level.grid));
+  model.grid = randomizeGridLayout(
+    regenerateRandomSpecialBlocks(cloneGrid(level.layers ? level.layers[0] : level.grid), level.complications || [])
+  );
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
