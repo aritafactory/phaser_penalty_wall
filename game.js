@@ -5,11 +5,17 @@ const COLOR_MAP = {
   Y: 0xf1c40f,
   P: 0x9b59b6,
   O: 0xe67e22,
-  U: 0x7f8c8d,
+  U: 0x999b9b,
 };
 
 const BASE_COLORS = ['R', 'G', 'B'];
 const ADDITIONAL_COLORS = ['Y', 'P', 'O'];
+const COMPLICATION_RATIOS = {
+  additional_colors: 0.25,
+  unbreakable_blocks: 0.05,
+  two_colors_blocks: 0.1,
+  flashing_blocks: 0.1,
+};
 
 const BASE_GRID = [
   ['G', 'R', 'B', 'R', 'G', 'R', 'B', 'G'],
@@ -217,7 +223,11 @@ function combinations(arr, size) {
 
 function withAdditionalColors(grid) {
   const next = cloneGrid(grid);
-  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U');
+  const points = pickRandomCoords(
+    next,
+    (cell) => Boolean(cell) && cell !== 'U',
+    COMPLICATION_RATIOS.additional_colors
+  );
   points.forEach(([r, c], idx) => {
     next[r][c] = ADDITIONAL_COLORS[idx % ADDITIONAL_COLORS.length];
   });
@@ -272,7 +282,11 @@ function regenerateRandomSpecialBlocks(grid, complications) {
 
 function withUnbreakableBlocks(grid) {
   const next = cloneGrid(grid);
-  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U');
+  const points = pickRandomCoords(
+    next,
+    (cell) => Boolean(cell) && cell !== 'U',
+    COMPLICATION_RATIOS.unbreakable_blocks
+  );
   points.forEach(([r, c]) => {
     if (next[r] && next[r][c]) next[r][c] = 'U';
   });
@@ -281,7 +295,11 @@ function withUnbreakableBlocks(grid) {
 
 function withTwoColorBlocks(grid) {
   const next = cloneGrid(grid);
-  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U');
+  const points = pickRandomCoords(
+    next,
+    (cell) => Boolean(cell) && cell !== 'U',
+    COMPLICATION_RATIOS.two_colors_blocks
+  );
   const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
   const palette = levelPalette.length ? levelPalette : ['R', 'G', 'B'];
   points.forEach(([r, c]) => {
@@ -292,7 +310,11 @@ function withTwoColorBlocks(grid) {
 
 function withFlashingBlocks(grid) {
   const next = cloneGrid(grid);
-  const points = pickRandomCoords(next, (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell));
+  const points = pickRandomCoords(
+    next,
+    (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell),
+    COMPLICATION_RATIOS.flashing_blocks
+  );
   const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
   const fallback = ['R', 'G', 'B'];
   const palette = levelPalette.length ? levelPalette : fallback;
@@ -575,7 +597,11 @@ function generateBuilderGridFromInputs() {
   );
 
   if (complications.includes('unbreakable_blocks')) {
-    pickRandomCoords(grid, (cell) => Boolean(cell) && cell !== 'U').forEach(([r, c]) => {
+    pickRandomCoords(
+      grid,
+      (cell) => Boolean(cell) && cell !== 'U',
+      COMPLICATION_RATIOS.unbreakable_blocks
+    ).forEach(([r, c]) => {
       grid[r][c] = 'U';
     });
   }
@@ -587,13 +613,21 @@ function generateBuilderGridFromInputs() {
   const palette = getGridPalette(grid);
 
   if (complications.includes('two_colors_blocks')) {
-    pickRandomCoords(grid, (cell) => Boolean(cell) && cell !== 'U').forEach(([r, c]) => {
+    pickRandomCoords(
+      grid,
+      (cell) => Boolean(cell) && cell !== 'U',
+      COMPLICATION_RATIOS.two_colors_blocks
+    ).forEach(([r, c]) => {
       grid[r][c] = `2${randomFrom(palette)}`;
     });
   }
 
   if (complications.includes('flashing_blocks')) {
-    pickRandomCoords(grid, (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell)).forEach(([r, c]) => {
+    pickRandomCoords(
+      grid,
+      (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell),
+      COMPLICATION_RATIOS.flashing_blocks
+    ).forEach(([r, c]) => {
       const c1 = randomFrom(palette);
       grid[r][c] = makeFlashing(c1, randomColorDifferentFrom(c1, palette), 0);
     });
