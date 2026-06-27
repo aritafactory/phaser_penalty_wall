@@ -83,6 +83,10 @@ const ui = {
   gameBalanceLabel: document.getElementById('gameBalanceLabel'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
+  failModal: document.getElementById('failModal'),
+  failHomeBtn: document.getElementById('failHomeBtn'),
+  failShopBtn: document.getElementById('failShopBtn'),
+  failRetryBtn: document.getElementById('failRetryBtn'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -535,6 +539,7 @@ function startCustomBuilderLevel() {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  closeFailModal();
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(customLevel.maxShots) ? customLevel.maxShots : Infinity;
   model.timerLeft = Number.isFinite(customLevel.timerSeconds) ? customLevel.timerSeconds : Infinity;
@@ -1001,11 +1006,11 @@ class BoardScene extends Phaser.Scene {
           ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
         } else {
           model.gameOver = true;
+          closeFailModal();
           ui.stateLabel.textContent = 'Статус: победа';
         }
       } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+        failLevel('Статус: поражение (кончились выстрелы)');
       }
 
       pickNextShotColor();
@@ -1337,8 +1342,7 @@ class BoardScene extends Phaser.Scene {
       refreshUI();
       this.animating = false;
       if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+        failLevel('Статус: поражение (кончились выстрелы)');
       }
       return;
     }
@@ -1470,14 +1474,38 @@ class BoardScene extends Phaser.Scene {
       model.timerLeft -= delta / 1000;
       if (model.timerLeft <= 0) {
         model.timerLeft = 0;
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: поражение (время вышло)';
+        failLevel('Статус: поражение (время вышло)');
       }
       refreshUI();
     }
   }
 }
 
+
+
+function openFailModal() {
+  if (!ui.failModal) return;
+  ui.failModal.classList.add('open');
+  ui.failModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeFailModal() {
+  if (!ui.failModal) return;
+  ui.failModal.classList.remove('open');
+  ui.failModal.setAttribute('aria-hidden', 'true');
+}
+
+function failLevel(message = 'Статус: поражение') {
+  model.gameOver = true;
+  ui.stateLabel.textContent = message;
+  refreshUI();
+  openFailModal();
+}
+
+function retryCurrentLevel() {
+  closeFailModal();
+  startLevelByIndex(model.currentLevelIndex || 0);
+}
 
 function showStartScreen() {
   if (ui.levelsScreen) ui.levelsScreen.hidden = true;
@@ -1573,6 +1601,7 @@ function startLevelByIndex(index) {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  closeFailModal();
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
   model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
@@ -1606,6 +1635,9 @@ async function initApp() {
   if (ui.levelsPlusBtn) ui.levelsPlusBtn.onclick = () => openShop();
   if (ui.gameHomeBtn) ui.gameHomeBtn.onclick = () => showLevelsScreen();
   if (ui.gamePlusBtn) ui.gamePlusBtn.onclick = () => openShop();
+  if (ui.failHomeBtn) ui.failHomeBtn.onclick = () => { closeFailModal(); showLevelsScreen(); };
+  if (ui.failShopBtn) ui.failShopBtn.onclick = () => { closeFailModal(); openShop(); };
+  if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
