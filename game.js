@@ -87,6 +87,13 @@ const ui = {
   failHomeBtn: document.getElementById('failHomeBtn'),
   failShopBtn: document.getElementById('failShopBtn'),
   failRetryBtn: document.getElementById('failRetryBtn'),
+  winModal: document.getElementById('winModal'),
+  winHomeBtn: document.getElementById('winHomeBtn'),
+  winShopBtn: document.getElementById('winShopBtn'),
+  winNextBtn: document.getElementById('winNextBtn'),
+  winLevelLabel: document.getElementById('winLevelLabel'),
+  winMovesLabel: document.getElementById('winMovesLabel'),
+  winRewardLabel: document.getElementById('winRewardLabel'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -540,6 +547,7 @@ function startCustomBuilderLevel() {
   model.activeBooster = null;
   model.rainbowNextShot = false;
   closeFailModal();
+  closeWinModal();
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(customLevel.maxShots) ? customLevel.maxShots : Infinity;
   model.timerLeft = Number.isFinite(customLevel.timerSeconds) ? customLevel.timerSeconds : Infinity;
@@ -1008,6 +1016,7 @@ class BoardScene extends Phaser.Scene {
           model.gameOver = true;
           closeFailModal();
           ui.stateLabel.textContent = 'Статус: победа';
+          openWinModal();
         }
       } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
         failLevel('Статус: поражение (кончились выстрелы)');
@@ -1483,6 +1492,36 @@ class BoardScene extends Phaser.Scene {
 
 
 
+
+function openWinModal() {
+  if (!ui.winModal) return;
+  const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
+  const reward = movesLeft * 10;
+  if (reward > 0) {
+    model.score += reward;
+    model.totalScore += reward;
+    savePersistentState();
+  }
+  if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
+  if (ui.winMovesLabel) ui.winMovesLabel.textContent = `Moves Left: ${movesLeft}`;
+  if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${reward}`;
+  refreshUI();
+  ui.winModal.classList.add('open');
+  ui.winModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeWinModal() {
+  if (!ui.winModal) return;
+  ui.winModal.classList.remove('open');
+  ui.winModal.setAttribute('aria-hidden', 'true');
+}
+
+function goToNextLevel() {
+  closeWinModal();
+  const nextIndex = Math.min(model.currentLevelIndex + 1, model.levels.length - 1);
+  startLevelByIndex(nextIndex);
+}
+
 function openFailModal() {
   if (!ui.failModal) return;
   ui.failModal.classList.add('open');
@@ -1602,6 +1641,7 @@ function startLevelByIndex(index) {
   model.activeBooster = null;
   model.rainbowNextShot = false;
   closeFailModal();
+  closeWinModal();
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
   model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
@@ -1638,6 +1678,9 @@ async function initApp() {
   if (ui.failHomeBtn) ui.failHomeBtn.onclick = () => { closeFailModal(); showLevelsScreen(); };
   if (ui.failShopBtn) ui.failShopBtn.onclick = () => { closeFailModal(); openShop(); };
   if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
+  if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
+  if (ui.winShopBtn) ui.winShopBtn.onclick = () => { closeWinModal(); openShop(); };
+  if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
