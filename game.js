@@ -66,6 +66,11 @@ const ui = {
   shopBalanceLabel: document.getElementById('shopBalanceLabel'),
   shopTableBody: document.getElementById('shopTableBody'),
   boosterInventoryList: document.getElementById('boosterInventoryList'),
+  startScreen: document.getElementById('startScreen'),
+  startPlayBtn: document.getElementById('startPlayBtn'),
+  startShopBtn: document.getElementById('startShopBtn'),
+  startPlusBtn: document.getElementById('startPlusBtn'),
+  startBalanceLabel: document.getElementById('startBalanceLabel'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -749,6 +754,7 @@ function isWin() {
 function refreshUI() {
   ui.scoreLabel.textContent = `Очки (уровень): ${model.score}`;
   ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
+  if (ui.startBalanceLabel) ui.startBalanceLabel.textContent = String(model.totalScore);
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   if (!model.gameOver) {
@@ -1506,6 +1512,15 @@ async function initApp() {
   populateLevelSelect();
   if (ui.startBtn) ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
   if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
+  if (ui.startPlayBtn) {
+    ui.startPlayBtn.onclick = () => {
+      if (ui.startScreen) ui.startScreen.hidden = true;
+      document.body.classList.remove('start-active');
+      startLevelByIndex(Number(ui.levelSelect?.value || 0));
+    };
+  }
+  if (ui.startShopBtn) ui.startShopBtn.onclick = () => openShop();
+  if (ui.startPlusBtn) ui.startPlusBtn.onclick = () => openShop();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
@@ -1526,8 +1541,11 @@ async function initApp() {
       checkbox.onchange = () => refreshBuilderDropdownsFromCurrentGrid();
     });
     startCustomBuilderLevel();
-  } else {
+  } else if (!ui.startScreen) {
     startLevelByIndex(0);
+  } else {
+    renderBoosterInventory();
+    refreshUI();
   }
 }
 
