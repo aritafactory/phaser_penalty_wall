@@ -45,6 +45,7 @@ const model = {
   gameOver: false,
   levels: [],
   currentLevel: null,
+  currentLevelIndex: 0,
   currentLayerIndex: 0,
   boosters: {},
   activeBooster: null,
@@ -77,6 +78,11 @@ const ui = {
   levelsPlusBtn: document.getElementById('levelsPlusBtn'),
   levelsBalanceLabel: document.getElementById('levelsBalanceLabel'),
   levelsGrid: document.getElementById('levelsGrid'),
+  gameHomeBtn: document.getElementById('gameHomeBtn'),
+  gamePlusBtn: document.getElementById('gamePlusBtn'),
+  gameBalanceLabel: document.getElementById('gameBalanceLabel'),
+  gameLevelLabel: document.getElementById('gameLevelLabel'),
+  gameMovesLabel: document.getElementById('gameMovesLabel'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -762,6 +768,9 @@ function refreshUI() {
   ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
   if (ui.startBalanceLabel) ui.startBalanceLabel.textContent = String(model.totalScore);
   if (ui.levelsBalanceLabel) ui.levelsBalanceLabel.textContent = String(model.totalScore);
+  if (ui.gameBalanceLabel) ui.gameBalanceLabel.textContent = String(model.totalScore);
+  if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
+  if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   if (!model.gameOver) {
@@ -781,7 +790,8 @@ function renderBoosterInventory() {
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
       const amountLabel = IS_BUILDER_PAGE ? '∞' : `x${owned}`;
-      li.innerHTML = `<span>${booster.name}</span><span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label}</button> <strong>${amountLabel}</strong></span>`;
+      const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', rainbow: '🌈' };
+      li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label.toUpperCase()}</button>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
         if (owned <= 0) return;
@@ -856,14 +866,14 @@ class BoardScene extends Phaser.Scene {
     super('board');
     const rows = model.grid.length || 1;
     const cols = model.grid[0]?.length || 1;
-    const maxBoardWidth = 620;
-    const maxBoardHeight = 520;
+    const maxBoardWidth = 1060;
+    const maxBoardHeight = 620;
     const fitByWidth = Math.floor(maxBoardWidth / cols);
     const fitByHeight = Math.floor(maxBoardHeight / rows);
-    this.cell = Math.max(40, Math.min(78, fitByWidth, fitByHeight));
+    this.cell = Math.max(52, Math.min(104, fitByWidth, fitByHeight));
     this.gridX = 12;
     this.gridY = 12;
-    this.playAreaHeight = Math.max(620, this.gridY * 2 + rows * this.cell + 120);
+    this.playAreaHeight = Math.max(760, this.gridY * 2 + rows * this.cell + 160);
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -1534,13 +1544,13 @@ function renderLevelsScreen() {
 
 function initPhaser(rows, cols) {
   if (phaserGame) phaserGame.destroy(true);
-  const maxBoardWidth = 620;
-  const maxBoardHeight = 520;
+  const maxBoardWidth = 1060;
+  const maxBoardHeight = 620;
   const fitByWidth = Math.floor(maxBoardWidth / cols);
   const fitByHeight = Math.floor(maxBoardHeight / rows);
-  const cell = Math.max(40, Math.min(78, fitByWidth, fitByHeight));
+  const cell = Math.max(52, Math.min(104, fitByWidth, fitByHeight));
   const width = cols * cell + 24;
-  const height = Math.max(620, 24 + rows * cell + 120);
+  const height = Math.max(760, 24 + rows * cell + 160);
   boardScene = new BoardScene();
 
   phaserGame = new Phaser.Game({
@@ -1554,6 +1564,7 @@ function initPhaser(rows, cols) {
 
 function startLevelByIndex(index) {
   const level = model.levels[index];
+  model.currentLevelIndex = index;
   model.currentLevel = level;
   model.currentLayerIndex = 0;
   model.grid = randomizeGridLayout(
@@ -1593,6 +1604,8 @@ async function initApp() {
   if (ui.levelsBackBtn) ui.levelsBackBtn.onclick = () => showStartScreen();
   if (ui.levelsShopBtn) ui.levelsShopBtn.onclick = () => openShop();
   if (ui.levelsPlusBtn) ui.levelsPlusBtn.onclick = () => openShop();
+  if (ui.gameHomeBtn) ui.gameHomeBtn.onclick = () => showLevelsScreen();
+  if (ui.gamePlusBtn) ui.gamePlusBtn.onclick = () => openShop();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
