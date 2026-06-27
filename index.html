@@ -46,6 +46,26 @@
       .shop-start-btn { background: linear-gradient(180deg, #252b32, #0d1117); }
       .floating-block { position:absolute; width: 120px; height: 120px; border-radius: 14px; transform: rotate(var(--rot)); background: var(--color); box-shadow: inset 0 4px 9px rgba(255,255,255,.22), inset 0 -7px 8px rgba(0,0,0,.28), 0 14px 22px rgba(0,0,0,.65), 0 0 38px var(--glow); }
       .b1{--rot:20deg;--color:#d92721;--glow:rgba(217,39,33,.45);left:14%;top:13%}.b2{--rot:18deg;--color:#0872c9;--glow:rgba(8,114,201,.45);left:5%;top:34%}.b3{--rot:-12deg;--color:#e4b900;--glow:rgba(228,185,0,.45);left:11%;top:56%}.b4{--rot:20deg;--color:#555;--glow:rgba(255,255,255,.12);left:7%;bottom:7%}.b5{--rot:-15deg;--color:#07913a;--glow:rgba(7,145,58,.45);right:16%;top:18%}.b6{--rot:-15deg;--color:#76209b;--glow:rgba(118,32,155,.45);right:6%;top:38%}.b7{--rot:16deg;--color:#df7000;--glow:rgba(223,112,0,.45);right:10%;top:61%}.b8{--rot:-15deg;--color:#4a4a4a;--glow:rgba(255,255,255,.12);right:8%;bottom:7%}
+
+      .levels-screen { position: fixed; inset: 0; z-index: 55; min-height: 100vh; overflow: auto; padding: 28px 24px; background: radial-gradient(circle at 50% 12%, rgba(57, 72, 84, .22), transparent 28%), linear-gradient(180deg, #0d1318, #070b0f); }
+      .levels-screen[hidden] { display: none; }
+      .levels-panel { min-height: min(880px, calc(100vh - 56px)); border-radius: 16px; border: 1px solid rgba(166, 181, 199, .2); background: linear-gradient(180deg, rgba(24,31,38,.9), rgba(10,15,19,.94)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 20px 50px rgba(0,0,0,.55); overflow: hidden; }
+      .levels-header { height: 122px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 28px; border-bottom: 1px solid rgba(255,255,255,.12); box-shadow: 0 6px 22px rgba(0,0,0,.35); }
+      .levels-title { margin: 0; font-size: clamp(36px, 4vw, 56px); font-weight: 900; letter-spacing: .05em; color: #f4f4f4; text-shadow: 0 4px 0 #5e6268, 0 9px 14px #000; }
+      .levels-actions { justify-self: end; display: flex; align-items: center; gap: 64px; }
+      .shop-pill { height: 74px; min-width: 170px; border-radius: 11px; font-size: 30px; font-weight: 900; border: 2px solid var(--panel-border); background: linear-gradient(180deg, rgba(42,48,55,.96), rgba(13,17,22,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 22px rgba(0,0,0,.45); }
+      .levels-grid { display: grid; grid-template-columns: repeat(10, minmax(88px, 1fr)); gap: 24px 18px; padding: 50px 52px 34px; }
+      .level-card { height: 178px; border-radius: 10px; border: 2px solid rgba(166,181,199,.2); background: linear-gradient(145deg, rgba(36,43,50,.86), rgba(10,15,19,.94)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 16px rgba(0,0,0,.42); color: #cfd2d7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; cursor: pointer; }
+      .level-card.selected { border-color: #16a9ff; box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 0 0 1px rgba(22,169,255,.65), 0 0 18px rgba(22,169,255,.55); }
+      .level-card.locked { cursor: not-allowed; opacity: .78; }
+      .level-number { font-size: clamp(34px, 3.1vw, 55px); line-height: .9; font-weight: 900; text-shadow: 0 3px 0 #0a0d10, 0 6px 8px #000; }
+      .level-card.unlocked .level-number { color: #68db6b; } .level-card.selected .level-number { color: #45bdff; } .level-card.locked .level-number { color: #d6d7db; }
+      .level-stars { min-height: 30px; font-size: 31px; letter-spacing: 1px; line-height: 1; color: #ffc600; text-shadow: 0 2px 2px #000; }
+      .level-card.selected .level-stars { color: #384049; }
+      .level-lock { font-size: 38px; filter: grayscale(1) drop-shadow(0 3px 3px #000); opacity: .8; }
+      .levels-dots { display: flex; justify-content: center; gap: 22px; padding: 18px 0 48px; }
+      .levels-dot { width: 20px; height: 20px; border-radius: 50%; background: #30363c; border: 1px solid rgba(255,255,255,.16); box-shadow: inset 0 2px 3px rgba(255,255,255,.08), 0 3px 6px rgba(0,0,0,.4); }
+      .levels-dot.active { background: #1da2ff; box-shadow: 0 0 10px rgba(29,162,255,.65); }
       .app { max-width: 980px; margin: 0 auto; padding: 16px; }
       .controls { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-bottom: 12px; }
       select, button { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
@@ -91,6 +111,21 @@
           <button id="startPlayBtn" class="menu-btn play-btn" type="button">▶ &nbsp; PLAY</button>
           <button id="startShopBtn" class="menu-btn shop-start-btn" type="button">🛒 &nbsp; SHOP</button>
         </div>
+      </div>
+    </section>
+
+    <section id="levelsScreen" class="levels-screen" aria-label="Levels" hidden>
+      <div class="levels-panel">
+        <header class="levels-header">
+          <button id="levelsBackBtn" class="icon-btn" type="button" aria-label="Back">‹</button>
+          <h1 class="levels-title">LEVELS</h1>
+          <div class="levels-actions">
+            <button id="levelsShopBtn" class="shop-pill" type="button">🛒 &nbsp; SHOP</button>
+            <div class="currency-pill" aria-label="Total score"><span class="gem">💎</span><span id="levelsBalanceLabel">0</span><button class="plus-btn" id="levelsPlusBtn" type="button" aria-label="Open shop">+</button></div>
+          </div>
+        </header>
+        <div id="levelsGrid" class="levels-grid" aria-label="Level list"></div>
+        <div class="levels-dots" aria-hidden="true"><span class="levels-dot active"></span><span class="levels-dot"></span><span class="levels-dot"></span><span class="levels-dot"></span><span class="levels-dot"></span><span class="levels-dot"></span></div>
       </div>
     </section>
     <div class="app">
