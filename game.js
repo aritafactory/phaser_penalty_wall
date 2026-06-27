@@ -66,6 +66,17 @@ const ui = {
   shopBalanceLabel: document.getElementById('shopBalanceLabel'),
   shopTableBody: document.getElementById('shopTableBody'),
   boosterInventoryList: document.getElementById('boosterInventoryList'),
+  startScreen: document.getElementById('startScreen'),
+  startPlayBtn: document.getElementById('startPlayBtn'),
+  startShopBtn: document.getElementById('startShopBtn'),
+  startPlusBtn: document.getElementById('startPlusBtn'),
+  startBalanceLabel: document.getElementById('startBalanceLabel'),
+  levelsScreen: document.getElementById('levelsScreen'),
+  levelsBackBtn: document.getElementById('levelsBackBtn'),
+  levelsShopBtn: document.getElementById('levelsShopBtn'),
+  levelsPlusBtn: document.getElementById('levelsPlusBtn'),
+  levelsBalanceLabel: document.getElementById('levelsBalanceLabel'),
+  levelsGrid: document.getElementById('levelsGrid'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -749,6 +760,8 @@ function isWin() {
 function refreshUI() {
   ui.scoreLabel.textContent = `Очки (уровень): ${model.score}`;
   ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
+  if (ui.startBalanceLabel) ui.startBalanceLabel.textContent = String(model.totalScore);
+  if (ui.levelsBalanceLabel) ui.levelsBalanceLabel.textContent = String(model.totalScore);
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   if (!model.gameOver) {
@@ -1455,6 +1468,70 @@ class BoardScene extends Phaser.Scene {
   }
 }
 
+
+function showStartScreen() {
+  if (ui.levelsScreen) ui.levelsScreen.hidden = true;
+  if (ui.startScreen) ui.startScreen.hidden = false;
+  document.body.classList.add('start-active');
+}
+
+function showLevelsScreen() {
+  if (ui.startScreen) ui.startScreen.hidden = true;
+  if (ui.levelsScreen) ui.levelsScreen.hidden = false;
+  document.body.classList.add('start-active');
+  renderLevelsScreen();
+}
+
+function hideMenuScreens() {
+  if (ui.startScreen) ui.startScreen.hidden = true;
+  if (ui.levelsScreen) ui.levelsScreen.hidden = true;
+  document.body.classList.remove('start-active');
+}
+
+function renderLevelsScreen() {
+  if (!ui.levelsGrid) return;
+  const totalSlots = 30;
+  const selectedLevel = 7;
+  const unlockedThrough = Math.min(7, model.levels.length || 0);
+  ui.levelsGrid.innerHTML = '';
+
+  for (let levelNumber = 1; levelNumber <= totalSlots; levelNumber += 1) {
+    const isAvailable = levelNumber <= model.levels.length;
+    const isUnlocked = isAvailable && levelNumber <= unlockedThrough;
+    const isSelected = levelNumber === selectedLevel && isUnlocked;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `level-card ${isUnlocked ? 'unlocked' : 'locked'}${isSelected ? ' selected' : ''}`;
+    card.setAttribute('aria-label', isUnlocked ? `Start level ${levelNumber}` : `Level ${levelNumber} locked`);
+    card.disabled = !isUnlocked;
+
+    const number = document.createElement('span');
+    number.className = 'level-number';
+    number.textContent = String(levelNumber);
+    card.appendChild(number);
+
+    const meta = document.createElement('span');
+    if (isUnlocked) {
+      meta.className = 'level-stars';
+      meta.textContent = isSelected ? '★★★' : '★★★';
+    } else {
+      meta.className = 'level-lock';
+      meta.textContent = '🔒';
+    }
+    card.appendChild(meta);
+
+    if (isUnlocked) {
+      card.onclick = () => {
+        if (ui.levelSelect) ui.levelSelect.value = String(levelNumber - 1);
+        hideMenuScreens();
+        startLevelByIndex(levelNumber - 1);
+      };
+    }
+
+    ui.levelsGrid.appendChild(card);
+  }
+}
+
 function initPhaser(rows, cols) {
   if (phaserGame) phaserGame.destroy(true);
   const maxBoardWidth = 620;
@@ -1506,6 +1583,16 @@ async function initApp() {
   populateLevelSelect();
   if (ui.startBtn) ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
   if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
+  if (ui.startPlayBtn) {
+    ui.startPlayBtn.onclick = () => {
+      showLevelsScreen();
+    };
+  }
+  if (ui.startShopBtn) ui.startShopBtn.onclick = () => openShop();
+  if (ui.startPlusBtn) ui.startPlusBtn.onclick = () => openShop();
+  if (ui.levelsBackBtn) ui.levelsBackBtn.onclick = () => showStartScreen();
+  if (ui.levelsShopBtn) ui.levelsShopBtn.onclick = () => openShop();
+  if (ui.levelsPlusBtn) ui.levelsPlusBtn.onclick = () => openShop();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
@@ -1526,8 +1613,12 @@ async function initApp() {
       checkbox.onchange = () => refreshBuilderDropdownsFromCurrentGrid();
     });
     startCustomBuilderLevel();
-  } else {
+  } else if (!ui.startScreen) {
     startLevelByIndex(0);
+  } else {
+    renderBoosterInventory();
+    renderLevelsScreen();
+    refreshUI();
   }
 }
 
