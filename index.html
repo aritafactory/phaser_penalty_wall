@@ -117,11 +117,20 @@
       .win-btn.primary { min-width: 270px; background: linear-gradient(180deg, #35c654, #147e2d); border-color: rgba(79,232,104,.72); }
       .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.75); display: none; align-items: center; justify-content: center; z-index: 100; }
       .modal-backdrop.open { display: flex; }
-      .modal { width: min(920px, 94vw); max-height: 86vh; overflow: auto; background: #0b122a; border: 1px solid #334155; border-radius: 12px; padding: 16px; }
-      .modal h2 { margin-top: 0; }
-      .shop-table { width: 100%; border-collapse: collapse; }
-      .shop-table th, .shop-table td { border: 1px solid #334155; padding: 8px; vertical-align: top; }
-      .shop-table th { background: #1e293b; }
+      .modal { width: min(710px, 94vw); max-height: 86vh; overflow: auto; background: radial-gradient(circle at 50% 0%, rgba(53,62,70,.45), transparent 42%), linear-gradient(180deg, rgba(28,35,42,.98), rgba(8,12,16,.98)); border: 2px solid rgba(166,181,199,.22); border-radius: 16px; padding: 22px 24px; box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 24px 70px rgba(0,0,0,.72); }
+      .shop-header { position: relative; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
+      .modal h2 { margin: 0; font-size: 48px; color:#f3f3f3; text-shadow: 0 4px 0 #5e6268, 0 10px 18px #000; letter-spacing:.04em; }
+      .shop-close { position:absolute; right:0; top:-4px; width:54px; height:54px; border-radius:8px; border:1px solid rgba(166,181,199,.28); background:linear-gradient(180deg, rgba(42,48,55,.96), rgba(13,17,22,.96)); color:#fff; font-size:38px; font-weight:900; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px rgba(0,0,0,.45); }
+      .shop-balance { display:none; }
+      .shop-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:16px; }
+      .shop-card { min-height: 188px; border: 1px solid rgba(166,181,199,.24); border-radius: 10px; padding: 20px 14px 14px; background: linear-gradient(145deg, rgba(30,37,44,.9), rgba(9,14,18,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 18px rgba(0,0,0,.38); display:grid; grid-template-columns: 96px 1fr; gap: 12px; position:relative; }
+      .shop-icon { grid-row: 1 / span 3; font-size:70px; align-self:center; justify-self:center; filter: drop-shadow(0 6px 7px #000); }
+      .shop-owned { position:absolute; right:12px; top:10px; min-width:42px; padding:4px 8px; border-radius:8px; border:1px solid rgba(166,181,199,.25); background:rgba(5,8,12,.45); font-size:22px; font-weight:800; text-align:center; }
+      .shop-name { padding-right:48px; font-size:26px; font-weight:900; color:#fff; text-shadow: 0 3px 6px #000; }
+      .shop-effect { font-size:22px; line-height:1.26; color:#d7d9dd; text-shadow: 0 2px 4px #000; }
+      .shop-buy-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .shop-price { font-size:25px; font-weight:900; color:#fff; text-shadow: 0 3px 6px #000; }
+      .shop-buy { width:112px; height:46px; border-radius:7px; border:1px solid rgba(75, 220, 92, .55); background:linear-gradient(180deg, #35b846, #137627); color:#fff; font-size:24px; font-weight:900; text-shadow:0 2px 3px #000; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 7px 12px rgba(0,0,0,.35); }
       @media (max-width: 900px) { .floating-block { width: 72px; height: 72px; } .icon-btn, .currency-pill { height: 58px; } .icon-btn { width:58px; font-size:30px; } .currency-pill { min-width:168px; font-size:24px; } .gem { width:32px; height:32px; } .plus-btn { width:38px; height:38px; font-size:30px; } .swatches { gap:14px; } .swatch { width:22px; height:22px; } .menu-btn { height:78px; } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
@@ -229,17 +238,12 @@
     </div>
     <div id="shopModal" class="modal-backdrop" aria-hidden="true">
       <div class="modal">
-        <div class="controls" style="justify-content:space-between">
-          <h2>Shop</h2>
-          <button id="closeShopBtn">Close</button>
+        <div class="shop-header">
+          <h2>SHOP</h2>
+          <button id="closeShopBtn" class="shop-close" type="button" aria-label="Close shop">×</button>
         </div>
-        <div class="badge" id="shopBalanceLabel">Balance: 0</div>
-        <table class="shop-table">
-          <thead>
-            <tr><th>Booster</th><th>Price</th><th>Effect</th><th>Buy</th></tr>
-          </thead>
-          <tbody id="shopTableBody"></tbody>
-        </table>
+        <div class="badge shop-balance" id="shopBalanceLabel">Balance: 0</div>
+        <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
     <script type="module" src="game.js?v=2"></script>

@@ -122,12 +122,12 @@ const STORAGE_KEYS = {
 };
 
 const BOOSTER_CATALOG = [
-  { key: 'bomb', name: 'Bomb', price: 100, effect: 'Удаляет область 3×3 вокруг цели, включая special-блоки и U.' },
-  { key: 'mix', name: 'Mix', price: 50, effect: 'Перемешивает текущие цвета разрушаемых немигающих блоков.' },
-  { key: 'fractions', name: 'Fractions', price: 75, effect: 'Удаляет целевой кластер и до двух случайных кластеров того же цвета.' },
-  { key: 'minusOneColor', name: '-1 color', price: 100, effect: 'Удаляет все блоки наименее представленного цвета среди разрушаемых.' },
-  { key: 'plusFiveShots', name: '+5 shots', price: 50, effect: 'Добавляет пять выстрелов, если у уровня есть maxShots.' },
-  { key: 'rainbow', name: 'Rainbow', price: 75, effect: 'Следующий выстрел игнорирует проверку совпадения цвета шара и цели.' },
+  { key: 'bomb', name: 'Bomb', price: 120, effect: 'Blast away colored balls.' },
+  { key: 'mix', name: 'Mix', price: 120, effect: 'Shuffle all balls on screen.' },
+  { key: 'fractions', name: 'Fractions', price: 150, effect: 'Split a ball into 3 random balls.' },
+  { key: 'minusOneColor', name: '-1 Color', price: 120, effect: 'Remove one ball color.' },
+  { key: 'plusFiveShots', name: '+5 Shots', price: 150, effect: 'Add 5 extra shots.' },
+  { key: 'rainbow', name: 'Rainbow', price: 200, effect: 'Turn a ball into a rainbow ball.' },
 ];
 
 let phaserGame;
@@ -819,20 +819,26 @@ function renderBoosterInventory() {
   });
 }
 
+function boosterIcon(boosterKey) {
+  return { bomb: '💣', mix: '🌈', fractions: '🧩', minusOneColor: '-1', plusFiveShots: '+5', rainbow: '🌈' }[boosterKey] || '✨';
+}
+
 function renderShopTable() {
   ui.shopTableBody.innerHTML = '';
   BOOSTER_CATALOG.forEach((booster) => {
-    const tr = document.createElement('tr');
+    const card = document.createElement('article');
+    card.className = 'shop-card';
     const owned = Number(model.boosters[booster.key] || 0);
-    tr.innerHTML = `
-      <td>${booster.name}<br/><small>Куплено: ${owned}</small></td>
-      <td>${booster.price}</td>
-      <td>${booster.effect}</td>
-      <td><button data-booster="${booster.key}">Buy</button></td>
+    card.innerHTML = `
+      <span class="shop-icon">${boosterIcon(booster.key)}</span>
+      <span class="shop-owned">x${owned}</span>
+      <div class="shop-name">${booster.name}</div>
+      <div class="shop-effect">${booster.effect}</div>
+      <div class="shop-buy-row"><span class="shop-price">💎 ${booster.price}</span><button class="shop-buy" data-booster="${booster.key}">BUY</button></div>
     `;
-    const buyBtn = tr.querySelector('button');
+    const buyBtn = card.querySelector('button');
     buyBtn.onclick = () => buyBooster(booster.key);
-    ui.shopTableBody.appendChild(tr);
+    ui.shopTableBody.appendChild(card);
   });
 }
 
