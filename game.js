@@ -46,6 +46,8 @@ const model = {
   levels: [],
   currentLevel: null,
   currentLevelIndex: 0,
+  highestUnlockedLevel: 1,
+  winAwarded: false,
   currentLayerIndex: 0,
   boosters: {},
   activeBooster: null,
@@ -119,6 +121,7 @@ const BASE_BUILDER_COLORS = BASE_COLORS;
 const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
   boosters: 'cbb_boosters',
+  highestUnlockedLevel: 'cbb_highest_unlocked_level',
 };
 
 const BOOSTER_CATALOG = [
@@ -132,6 +135,15 @@ const BOOSTER_CATALOG = [
 
 let phaserGame;
 let boardScene;
+
+
+function currentLevelMultiplier() {
+  return Math.max(1, model.currentLevelIndex + 1);
+}
+
+function pointsForRemovedBlocks(count) {
+  return count * 10 * currentLevelMultiplier();
+}
 
 function cloneGrid(grid) {
   return grid.map((row) => row.slice());
@@ -209,6 +221,7 @@ function randomizeGridLayout(grid) {
 function loadPersistentState() {
   if (IS_BUILDER_PAGE) {
     model.totalScore = 0;
+    model.highestUnlockedLevel = Number.MAX_SAFE_INTEGER;
     BOOSTER_CATALOG.forEach((b) => {
       model.boosters[b.key] = Number.MAX_SAFE_INTEGER;
     });
@@ -216,6 +229,8 @@ function loadPersistentState() {
   }
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
+  const savedUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedLevel) || '1');
+  model.highestUnlockedLevel = Number.isFinite(savedUnlocked) && savedUnlocked > 0 ? Math.floor(savedUnlocked) : 1;
 
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.boosters) || '{}');
@@ -228,6 +243,7 @@ function loadPersistentState() {
 function savePersistentState() {
   if (IS_BUILDER_PAGE) return;
   localStorage.setItem(STORAGE_KEYS.totalScore, String(model.totalScore));
+  localStorage.setItem(STORAGE_KEYS.highestUnlockedLevel, String(model.highestUnlockedLevel));
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
 }
 
@@ -546,6 +562,7 @@ function startCustomBuilderLevel() {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  model.winAwarded = false;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -1066,10 +1083,8 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = removed.length * 10;
+    const earned = pointsForRemovedBlocks(removed.length);
     model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
@@ -1174,10 +1189,8 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = uniqueOrdinary.length * 10;
+    const earned = pointsForRemovedBlocks(uniqueOrdinary.length);
     model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
     if (uniqueOrdinary.length === 0) {
       this.renderGridStatic();
@@ -1226,10 +1239,8 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = removed.length * 10;
+    const earned = pointsForRemovedBlocks(removed.length);
     model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
     ui.stateLabel.textContent = `Статус: -1 color выбрал ${chosenColor}`;
 
@@ -1384,10 +1395,8 @@ class BoardScene extends Phaser.Scene {
     ordinaryGroup.forEach(([r, c]) => {
       model.grid[r][c] = null;
     });
-    const earned = ordinaryGroup.length * 10;
+    const earned = pointsForRemovedBlocks(ordinaryGroup.length);
     model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
     if (ordinaryGroup.length === 0) {
       // Кластер состоял только из 2Color: поле не падает, просто перерисовываем.
@@ -1502,15 +1511,18 @@ class BoardScene extends Phaser.Scene {
 function openWinModal() {
   if (!ui.winModal) return;
   const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
-  const reward = movesLeft * 10;
-  if (reward > 0) {
-    model.score += reward;
-    model.totalScore += reward;
+  const moveBonus = movesLeft * 10;
+  const totalAward = model.score + moveBonus;
+  if (!model.winAwarded) {
+    model.totalScore += totalAward;
+    model.highestUnlockedLevel = Math.max(model.highestUnlockedLevel, Math.min(model.currentLevelIndex + 2, model.levels.length));
+    model.winAwarded = true;
     savePersistentState();
   }
   if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
   if (ui.winMovesLabel) ui.winMovesLabel.textContent = `Moves Left: ${movesLeft}`;
-  if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${reward}`;
+  if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
+  renderLevelsScreen();
   refreshUI();
   ui.winModal.classList.add('open');
   ui.winModal.setAttribute('aria-hidden', 'false');
@@ -1574,8 +1586,8 @@ function hideMenuScreens() {
 function renderLevelsScreen() {
   if (!ui.levelsGrid) return;
   const totalSlots = 30;
-  const selectedLevel = 7;
-  const unlockedThrough = Math.min(7, model.levels.length || 0);
+  const selectedLevel = Math.min(model.currentLevelIndex + 1, totalSlots);
+  const unlockedThrough = Math.min(model.highestUnlockedLevel, model.levels.length || 0);
   ui.levelsGrid.innerHTML = '';
 
   for (let levelNumber = 1; levelNumber <= totalSlots; levelNumber += 1) {
@@ -1646,6 +1658,7 @@ function startLevelByIndex(index) {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  model.winAwarded = false;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
