@@ -1129,6 +1129,51 @@ class BoardScene extends Phaser.Scene {
     this.animating = false;
   }
 
+
+  animateFractionsSplit(row, col, selectedRegions, color, done) {
+    const origin = this.gridToPixel(row, col);
+    const regionAnchors = selectedRegions
+      .map((region) => region.ordinary[0] || region.twos[0])
+      .filter(Boolean)
+      .map(([r, c]) => this.gridToPixel(r, c));
+    const fallbackOffsets = [
+      { x: -this.cell, y: -this.cell * 0.7 },
+      { x: this.cell, y: -this.cell * 0.7 },
+      { x: 0, y: this.cell },
+    ];
+    const destinations = Array.from({ length: 3 }, (_, idx) => {
+      const anchor = regionAnchors[idx] || regionAnchors[regionAnchors.length - 1] || origin;
+      if (anchor === origin || (anchor.x === origin.x && anchor.y === origin.y)) {
+        const offset = fallbackOffsets[idx];
+        return { x: origin.x + offset.x, y: origin.y + offset.y };
+      }
+      return anchor;
+    });
+
+    let finished = 0;
+    destinations.forEach((target, idx) => {
+      const ball = this.add.circle(origin.x, origin.y, 13, COLOR_MAP[color] || 0xffffff)
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(100);
+      this.tweens.add({
+        targets: ball,
+        x: target.x,
+        y: target.y,
+        scaleX: 1.25,
+        scaleY: 1.25,
+        alpha: 0.25,
+        delay: idx * 70,
+        duration: 360,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          ball.destroy();
+          finished += 1;
+          if (finished === destinations.length) done();
+        },
+      });
+    });
+  }
+
   useFractions(row, col) {
     const fractionsCount = Number(model.boosters.fractions || 0);
     if (fractionsCount <= 0) return;
@@ -1179,30 +1224,33 @@ class BoardScene extends Phaser.Scene {
       allTwos.push(...region.twos);
     });
 
-    repaintTwoColorCells(allTwos, targetColor);
-
     const uniqueOrdinary = [...new Set(allOrdinary.map(([r, c]) => `${r},${c}`))].map((k) =>
       k.split(',').map(Number)
     );
-    const removedKeys = uniqueOrdinary.map(([r, c]) => this.key(r, c));
-    uniqueOrdinary.forEach(([r, c]) => {
-      model.grid[r][c] = null;
+
+    this.animateFractionsSplit(row, col, selectedRegions, targetColor, () => {
+      repaintTwoColorCells(allTwos, targetColor);
+
+      const removedKeys = uniqueOrdinary.map(([r, c]) => this.key(r, c));
+      uniqueOrdinary.forEach(([r, c]) => {
+        model.grid[r][c] = null;
+      });
+
+      const earned = pointsForRemovedBlocks(uniqueOrdinary.length);
+      model.score += earned;
+
+      if (uniqueOrdinary.length === 0) {
+        this.renderGridStatic();
+        pickNextShotColor();
+        this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+        refreshUI();
+        this.animating = false;
+        return;
+      }
+
+      const gravityMoves = applyGravityAndGetMoves();
+      this.completeAction(removedKeys, gravityMoves);
     });
-
-    const earned = pointsForRemovedBlocks(uniqueOrdinary.length);
-    model.score += earned;
-
-    if (uniqueOrdinary.length === 0) {
-      this.renderGridStatic();
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      refreshUI();
-      this.animating = false;
-      return;
-    }
-
-    const gravityMoves = applyGravityAndGetMoves();
-    this.completeAction(removedKeys, gravityMoves);
   }
 
   useMinusOneColor() {
