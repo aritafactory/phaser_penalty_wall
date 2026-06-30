@@ -85,13 +85,12 @@ const ui = {
   gameBalanceLabel: document.getElementById('gameBalanceLabel'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
+  gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
   failModal: document.getElementById('failModal'),
   failHomeBtn: document.getElementById('failHomeBtn'),
-  failShopBtn: document.getElementById('failShopBtn'),
   failRetryBtn: document.getElementById('failRetryBtn'),
   winModal: document.getElementById('winModal'),
   winHomeBtn: document.getElementById('winHomeBtn'),
-  winShopBtn: document.getElementById('winShopBtn'),
   winNextBtn: document.getElementById('winNextBtn'),
   winLevelLabel: document.getElementById('winLevelLabel'),
   winMovesLabel: document.getElementById('winMovesLabel'),
@@ -801,6 +800,7 @@ function refreshUI() {
   if (ui.gameBalanceLabel) ui.gameBalanceLabel.textContent = String(model.totalScore);
   if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
   if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
+  if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   if (!model.gameOver) {
@@ -1743,10 +1743,8 @@ async function initApp() {
   if (ui.gameHomeBtn) ui.gameHomeBtn.onclick = () => showLevelsScreen();
   if (ui.gamePlusBtn) ui.gamePlusBtn.onclick = () => openShop();
   if (ui.failHomeBtn) ui.failHomeBtn.onclick = () => { closeFailModal(); showLevelsScreen(); };
-  if (ui.failShopBtn) ui.failShopBtn.onclick = () => { closeFailModal(); openShop(); };
   if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
   if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
-  if (ui.winShopBtn) ui.winShopBtn.onclick = () => { closeWinModal(); openShop(); };
   if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {

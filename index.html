@@ -68,16 +68,16 @@
       .levels-dot.active { background: #1da2ff; box-shadow: 0 0 10px rgba(29,162,255,.65); }
 
       .app { max-width: none; min-height: 100vh; margin: 0; padding: 0 28px 32px; background: radial-gradient(circle at 50% 10%, rgba(54,67,79,.25), transparent 35%), linear-gradient(180deg, #10161b, #060a0d); }
-      .game-topbar { height: 118px; margin: 0 -28px 24px; padding: 0 28px; display: grid; grid-template-columns: auto 220px 1px minmax(280px, 1fr) 1px 250px minmax(320px, auto); gap: 28px; align-items: center; border-bottom: 1px solid rgba(255,255,255,.16); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+      .game-topbar { height: 118px; margin: 0 -28px 24px; padding: 0 28px; display: grid; grid-template-columns: auto minmax(150px, 220px) 1px minmax(220px, 1fr) 1px minmax(160px, 240px) minmax(150px, 220px) minmax(260px, auto); gap: 28px; align-items: center; border-bottom: 1px solid rgba(255,255,255,.16); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
       .home-btn, .settings-btn { width: 74px; height: 74px; border-radius: 10px; border: 2px solid var(--panel-border); background: linear-gradient(180deg, rgba(42,48,55,.96), rgba(13,17,22,.96)); color: #fff; font-size: 42px; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 22px rgba(0,0,0,.45); cursor: pointer; }
-      .game-title, .game-stat { font-size: clamp(28px, 2.4vw, 38px); font-weight: 900; letter-spacing: .03em; color: #f6f6f6; text-shadow: 0 3px 0 #5e6268, 0 7px 12px #000; }
+      .game-title, .game-stat { font-size: clamp(22px, 2.1vw, 38px); font-weight: 900; letter-spacing: .03em; color: #f6f6f6; text-shadow: 0 3px 0 #5e6268, 0 7px 12px #000; }
       .game-goal { justify-self: center; font-size: clamp(23px, 2vw, 31px); font-weight: 400; color: #e8e8e8; text-shadow: 0 4px 8px #000; }
       .game-goal strong, .game-stat strong { font-weight: 900; }
       .game-divider { width: 1px; height: 56px; background: rgba(255,255,255,.3); box-shadow: 0 0 8px rgba(255,255,255,.12); }
       .game-currency { justify-self: end; display:flex; align-items:center; gap: 12px; }
       .game-currency .currency-pill { height: 72px; min-width: 180px; font-size: 30px; }
       .game-currency .plus-btn { width: 64px; height: 64px; }
-      .game-board-layout { width: min(1468px, 100%); margin: 0 auto; display: grid; grid-template-columns: minmax(640px, 1fr) 400px; gap: 34px; align-items: start; }
+      .game-board-layout { width: min(1468px, 100%); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 400px); gap: clamp(16px, 2vw, 34px); align-items: start; }
       #game { border: 2px solid rgba(166,181,199,.18); border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, rgba(19,25,30,.96), rgba(8,12,15,.98)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 35px rgba(0,0,0,.48); }
       .inventory { width: 100%; min-width: 0; border: 2px solid rgba(166,181,199,.18); border-radius: 10px; padding: 20px 10px 12px; background: linear-gradient(180deg, rgba(24,30,36,.92), rgba(9,13,17,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 18px 35px rgba(0,0,0,.45); }
       .inventory h3 { margin: 0 18px 20px; font-size: 34px; letter-spacing: .03em; text-transform: uppercase; color: #f1f1f1; text-shadow: 0 3px 0 #5e6268, 0 7px 12px #000; }
@@ -131,7 +131,40 @@
       .shop-buy-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
       .shop-price { font-size:25px; font-weight:900; color:#fff; text-shadow: 0 3px 6px #000; }
       .shop-buy { width:112px; height:46px; border-radius:7px; border:1px solid rgba(75, 220, 92, .55); background:linear-gradient(180deg, #35b846, #137627); color:#fff; font-size:24px; font-weight:900; text-shadow:0 2px 3px #000; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 7px 12px rgba(0,0,0,.35); }
-      @media (max-width: 900px) { .floating-block { width: 72px; height: 72px; } .icon-btn, .currency-pill { height: 58px; } .icon-btn { width:58px; font-size:30px; } .currency-pill { min-width:168px; font-size:24px; } .gem { width:32px; height:32px; } .plus-btn { width:38px; height:38px; font-size:30px; } .swatches { gap:14px; } .swatch { width:22px; height:22px; } .menu-btn { height:78px; } }
+
+      @media (max-width: 1400px) {
+        .levels-grid { grid-template-columns: repeat(5, minmax(96px, 1fr)); }
+        .game-topbar { grid-template-columns: auto minmax(120px, 180px) 1px minmax(180px, 1fr) 1px minmax(130px, 180px) minmax(130px, 180px); gap: 18px; }
+        .game-currency { grid-column: 1 / -1; justify-self: end; margin-top: -10px; }
+        .game-board-layout { grid-template-columns: 1fr; }
+        .inventory { max-width: 720px; justify-self: center; }
+      }
+      @media (max-width: 900px) {
+        .floating-block { width: 72px; height: 72px; }
+        .icon-btn, .currency-pill { height: 58px; }
+        .icon-btn { width:58px; font-size:30px; }
+        .currency-pill { min-width:168px; font-size:24px; }
+        .gem { width:32px; height:32px; }
+        .plus-btn { width:38px; height:38px; font-size:30px; }
+        .swatches { gap:14px; }
+        .swatch { width:22px; height:22px; }
+        .menu-btn { height:78px; }
+        .levels-screen { padding: 12px; }
+        .levels-header { height: auto; min-height: 96px; grid-template-columns: auto 1fr; gap: 12px; padding: 14px; }
+        .levels-title { justify-self: end; font-size: clamp(30px, 8vw, 46px); }
+        .levels-actions { grid-column: 1 / -1; justify-self: stretch; justify-content: space-between; gap: 12px; }
+        .levels-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); gap: 14px; padding: 24px 18px; }
+        .level-card { height: 132px; }
+        .app { padding: 0 12px 24px; }
+        .game-topbar { margin: 0 -12px 18px; padding: 12px; height: auto; grid-template-columns: auto 1fr 1fr; gap: 12px; }
+        .game-divider { display:none; }
+        .game-goal { grid-column: 1 / -1; justify-self: start; }
+        .game-currency { grid-column: 1 / -1; justify-self: stretch; justify-content: flex-end; margin-top: 0; }
+        .shop-grid { grid-template-columns: 1fr; }
+        .win-dialog, .fail-dialog { padding: 28px 18px; }
+        .win-stars { gap: 16px; }
+        .win-btn, .fail-btn { width: 100%; min-width: 0; height: 72px; font-size: 24px; }
+      }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   </head>
@@ -182,6 +215,7 @@
         <div class="game-goal"><strong>GOAL:</strong> Clear all blocks</div>
         <div class="game-divider"></div>
         <div id="gameMovesLabel" class="game-stat"><strong>MOVES:</strong> ∞</div>
+        <div id="gameTimerTopLabel" class="game-stat"><strong>TIMER:</strong> ∞</div>
         <div class="game-currency"><div class="currency-pill" aria-label="Total score"><span class="gem">💎</span><span id="gameBalanceLabel">0</span></div><button id="gamePlusBtn" class="plus-btn" type="button" aria-label="Open shop">+</button><button class="settings-btn" type="button" aria-label="Settings">⚙</button></div>
       </header>
       <div class="controls">
@@ -218,7 +252,6 @@
         <p id="winRewardLabel" class="win-reward">💎 +0</p>
         <div class="win-actions">
           <button id="winHomeBtn" class="win-btn secondary" type="button">⌂ &nbsp; HOME</button>
-          <button id="winShopBtn" class="win-btn secondary" type="button">🛒 &nbsp; SHOP</button>
           <button id="winNextBtn" class="win-btn primary" type="button">NEXT LEVEL</button>
         </div>
       </div>
@@ -231,7 +264,6 @@
         <p class="fail-subtitle">Better luck next time!</p>
         <div class="fail-actions">
           <button id="failHomeBtn" class="fail-btn secondary" type="button">⌂ &nbsp; HOME</button>
-          <button id="failShopBtn" class="fail-btn secondary" type="button">🛒 &nbsp; SHOP</button>
           <button id="failRetryBtn" class="fail-btn primary" type="button">↻ &nbsp; TRY AGAIN</button>
         </div>
       </div>
