@@ -902,14 +902,17 @@ class BoardScene extends Phaser.Scene {
     super('board');
     const rows = model.grid.length || 1;
     const cols = model.grid[0]?.length || 1;
-    const maxBoardWidth = 1060;
-    const maxBoardHeight = 620;
+    const viewportWidth = window.innerWidth || 1200;
+    const viewportHeight = window.innerHeight || 800;
+    const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
+    const maxBoardHeight = Math.max(260, viewportHeight - 300);
     const fitByWidth = Math.floor(maxBoardWidth / cols);
     const fitByHeight = Math.floor(maxBoardHeight / rows);
-    this.cell = Math.max(52, Math.min(104, fitByWidth, fitByHeight));
+    const minCell = viewportWidth < 600 ? 28 : 40;
+    this.cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
     this.gridX = 12;
     this.gridY = 12;
-    this.playAreaHeight = Math.max(760, this.gridY * 2 + rows * this.cell + 160);
+    this.playAreaHeight = Math.max(360, this.gridY * 2 + rows * this.cell + 150);
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -1677,13 +1680,16 @@ function renderLevelsScreen() {
 
 function initPhaser(rows, cols) {
   if (phaserGame) phaserGame.destroy(true);
-  const maxBoardWidth = 1060;
-  const maxBoardHeight = 620;
+  const viewportWidth = window.innerWidth || 1200;
+  const viewportHeight = window.innerHeight || 800;
+  const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
+  const maxBoardHeight = Math.max(260, viewportHeight - 300);
   const fitByWidth = Math.floor(maxBoardWidth / cols);
   const fitByHeight = Math.floor(maxBoardHeight / rows);
-  const cell = Math.max(52, Math.min(104, fitByWidth, fitByHeight));
+  const minCell = viewportWidth < 600 ? 28 : 40;
+  const cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
   const width = cols * cell + 24;
-  const height = Math.max(760, 24 + rows * cell + 160);
+  const height = Math.max(360, 24 + rows * cell + 150);
   boardScene = new BoardScene();
 
   phaserGame = new Phaser.Game({
