@@ -48,6 +48,7 @@ const model = {
   currentLevelIndex: 0,
   highestUnlockedLevel: 1,
   winAwarded: false,
+  ineffectiveShotStreak: 0,
   currentLayerIndex: 0,
   boosters: {},
   activeBooster: null,
@@ -567,6 +568,7 @@ function startCustomBuilderLevel() {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
   closeFailModal();
   closeWinModal();
@@ -892,15 +894,93 @@ function closeShop() {
   ui.shopModal.setAttribute('aria-hidden', 'true');
 }
 
+function getColorGroupStats() {
+  const seen = new Set();
+  const stats = new Map();
+  const rows = model.grid.length;
+  const cols = model.grid[0]?.length || 0;
+
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      const key = `${r},${c}`;
+      if (seen.has(key)) continue;
+      const color = visibleColor(model.grid[r][c]);
+      if (!color || color === 'U') {
+        seen.add(key);
+        continue;
+      }
+
+      const queue = [[r, c]];
+      seen.add(key);
+      let size = 0;
+      while (queue.length) {
+        const [cr, cc] = queue.shift();
+        const cellColor = visibleColor(model.grid[cr][cc]);
+        if (cellColor !== color) continue;
+        size += 1;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+          const nr = cr + dr;
+          const nc = cc + dc;
+          const nKey = `${nr},${nc}`;
+          if (isInsideGrid(nr, nc) && !seen.has(nKey) && visibleColor(model.grid[nr][nc]) === color) {
+            seen.add(nKey);
+            queue.push([nr, nc]);
+          }
+        });
+      }
+
+      const current = stats.get(color) || { color, largestGroup: 0, groupCount: 0 };
+      current.largestGroup = Math.max(current.largestGroup, size);
+      current.groupCount += 1;
+      stats.set(color, current);
+    }
+  }
+
+  return [...stats.values()];
+}
+
+function weightedPick(stats) {
+  const totalWeight = stats.reduce((sum, item) => sum + item.largestGroup, 0);
+  if (totalWeight <= 0) return randomFrom(stats.map((item) => item.color));
+  let roll = Math.random() * totalWeight;
+  for (const item of stats) {
+    roll -= item.largestGroup;
+    if (roll <= 0) return item.color;
+  }
+  return stats[stats.length - 1].color;
+}
+
+function strongestColorStats(stats) {
+  const sorted = [...stats].sort((a, b) => b.largestGroup - a.largestGroup);
+  const maxGroup = sorted[0]?.largestGroup || 0;
+  return sorted.filter((item, idx) => idx < 3 && item.largestGroup >= Math.max(1, maxGroup * 0.75));
+}
+
 function pickNextShotColor() {
-  const colors = getBreakableColors(model.grid);
-  if (!colors.length) {
+  const stats = getColorGroupStats();
+  if (!stats.length) {
     model.selectedShotColor = 'R';
     return;
   }
-  const candidates = colors.filter((c) => c !== model.selectedShotColor);
-  if (!candidates.length) return;
-  model.selectedShotColor = candidates[Math.floor(Math.random() * candidates.length)];
+
+  const previousColor = model.selectedShotColor;
+  const availableStats = stats.length > 1 ? stats.filter((item) => item.color !== previousColor) : stats;
+  const strongStats = strongestColorStats(availableStats);
+  const forceStrong = model.ineffectiveShotStreak >= 2;
+  const shouldPickStrong = forceStrong || Math.random() < 0.7;
+  const pickPool = shouldPickStrong && strongStats.length ? strongStats : availableStats;
+
+  model.selectedShotColor = shouldPickStrong
+    ? weightedPick(pickPool)
+    : randomFrom(availableStats.map((item) => item.color));
+}
+
+function recordNormalShotOutcome(ordinaryRemoved) {
+  if (ordinaryRemoved >= 2) {
+    model.ineffectiveShotStreak = 0;
+  } else {
+    model.ineffectiveShotStreak += 1;
+  }
 }
 
 class BoardScene extends Phaser.Scene {
@@ -926,6 +1006,7 @@ class BoardScene extends Phaser.Scene {
     this.shooter = null;
     this.flashAccumulator = 0;
     this.pendingShotColor = null;
+    this.pendingShotUsedBooster = false;
   }
 
   key(r, c) {
@@ -1360,7 +1441,22 @@ class BoardScene extends Phaser.Scene {
 
   shootToCell(row, col) {
     const targetCode = model.grid[row][col];
-    if (!targetCode || targetCode === 'U') return;
+    if (!targetCode || targetCode === 'U') {
+      if (!model.activeBooster) {
+        if (Number.isFinite(model.shotsLeft)) {
+          model.shotsLeft -= 1;
+          if (model.shotsLeft < 0) model.shotsLeft = 0;
+        }
+        recordNormalShotOutcome(0);
+        pickNextShotColor();
+        this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+        refreshUI();
+        if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+          failLevel('Статус: поражение (кончились выстрелы)');
+        }
+      }
+      return;
+    }
 
     if (model.activeBooster === 'rainbow') {
       const count = Number(model.boosters.rainbow || 0);
@@ -1375,6 +1471,7 @@ class BoardScene extends Phaser.Scene {
 
     const effectiveShotColor = model.rainbowNextShot ? visibleColor(targetCode) : model.selectedShotColor;
     this.pendingShotColor = effectiveShotColor;
+    this.pendingShotUsedBooster = model.rainbowNextShot;
 
     if (Number.isFinite(model.shotsLeft)) {
       model.shotsLeft -= 1;
@@ -1419,6 +1516,7 @@ class BoardScene extends Phaser.Scene {
     const targetCode = model.grid[row][col];
     const shotColor = this.pendingShotColor || model.selectedShotColor;
     if (visibleColor(targetCode) !== shotColor) {
+      if (!this.pendingShotUsedBooster) recordNormalShotOutcome(0);
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       model.rainbowNextShot = false;
@@ -1439,12 +1537,15 @@ class BoardScene extends Phaser.Scene {
     // 2) 2Color внутри этого же кластера не удаляем, а перекрашиваем.
     // 3) Если в кластере только 2Color (без обычных), просто перекрашиваем их.
     if (ordinaryGroup.length === 0 && twoColorGroup.length === 0) {
+      if (!this.pendingShotUsedBooster) recordNormalShotOutcome(0);
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       refreshUI();
       this.animating = false;
       return;
     }
+
+    if (!this.pendingShotUsedBooster) recordNormalShotOutcome(ordinaryGroup.length);
 
     repaintTwoColorCells(twoColorGroup, shotColor);
 
@@ -1718,6 +1819,7 @@ function startLevelByIndex(index) {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
   closeFailModal();
   closeWinModal();
