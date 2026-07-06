@@ -5,7 +5,7 @@
     "timer",
     "limited_shots"
   ],
-  "maxShots": 10,
+  "maxShots": 15,
   "timerSeconds": 87,
   "grid": [
     [
