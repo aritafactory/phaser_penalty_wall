@@ -418,17 +418,23 @@ function buildBuiltinLevels() {
 }
 
 async function loadBuiltinLevelsFromFiles() {
-  const levels = [];
-  for (let idx = 1; idx <= 999; idx += 1) {
-    const url = `levels/level_${String(idx).padStart(3, '0')}.json`;
-    const response = await fetch(url);
-    if (!response.ok) continue;
-    const level = await response.json();
-    levels.push(level);
+  const manifestResponse = await fetch('levels/manifest.json');
+  if (!manifestResponse.ok) {
+    throw new Error('Failed to load levels manifest');
   }
-  if (!levels.length) {
-    throw new Error('Failed to load levels from files');
+
+  const levelFiles = await manifestResponse.json();
+  if (!Array.isArray(levelFiles) || levelFiles.length === 0) {
+    throw new Error('Levels manifest is empty');
   }
+
+  const levels = await Promise.all(
+    levelFiles.map(async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to load level file: ${url}`);
+      return response.json();
+    })
+  );
   return levels.sort((a, b) => Number(a.level) - Number(b.level));
 }
 
