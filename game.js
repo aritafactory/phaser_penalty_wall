@@ -130,6 +130,9 @@ const BOOSTER_CATALOG = [
   { key: 'fractions', name: 'Fractions', price: 150, effect: 'Split a ball into 3 random balls.' },
   { key: 'minusOneColor', name: '-1 Color', price: 120, effect: 'Remove one ball color.' },
   { key: 'plusFiveShots', name: '+5 Shots', price: 150, effect: 'Add 5 extra shots.' },
+  { key: 'plusTenSeconds', name: '+10 Seconds', price: 150, effect: 'Add 10 seconds on timer levels.' },
+  { key: 'compressor', name: 'Compressor', price: 180, effect: 'Push each row toward the center.' },
+  { key: 'rotator', name: 'Rotator', price: 180, effect: 'Rotate a 3×3 ring clockwise.' },
   { key: 'rainbow', name: 'Rainbow', price: 200, effect: 'Turn a ball into a rainbow ball.' },
 ];
 
@@ -823,16 +826,24 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = IS_BUILDER_PAGE ? Number.MAX_SAFE_INTEGER : Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor' || booster.key === 'plusFiveShots' || booster.key === 'rainbow') {
+    if (BOOSTER_CATALOG.some((item) => item.key === booster.key)) {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
       const amountLabel = IS_BUILDER_PAGE ? '∞' : `x${owned}`;
-      const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', rainbow: '🌈' };
+      const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' };
       li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label.toUpperCase()}</button>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
         if (owned <= 0) return;
+        if (booster.key === 'plusTenSeconds' && boardScene) {
+          boardScene.usePlusTenSeconds();
+          return;
+        }
+        if (booster.key === 'compressor' && boardScene) {
+          boardScene.useCompressor();
+          return;
+        }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
         renderBoosterInventory();
         refreshUI();
@@ -845,7 +856,7 @@ function renderBoosterInventory() {
 }
 
 function boosterIcon(boosterKey) {
-  return { bomb: '💣', mix: '🌈', fractions: '🧩', minusOneColor: '-1', plusFiveShots: '+5', rainbow: '🌈' }[boosterKey] || '✨';
+  return { bomb: '💣', mix: '🌈', fractions: '🧩', minusOneColor: '-1', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' }[boosterKey] || '✨';
 }
 
 function renderShopTable() {
@@ -1115,6 +1126,10 @@ class BoardScene extends Phaser.Scene {
       this.usePlusFiveShots();
       return;
     }
+    if (model.activeBooster === 'rotator') {
+      this.useRotator(row, col);
+      return;
+    }
 
     this.shootToCell(row, col);
   }
@@ -1347,6 +1362,92 @@ class BoardScene extends Phaser.Scene {
 
       const gravityMoves = applyGravityAndGetMoves();
       this.completeAction(removedKeys, gravityMoves);
+    });
+  }
+
+
+  usePlusTenSeconds() {
+    const count = Number(model.boosters.plusTenSeconds || 0);
+    if (count <= 0) return;
+    if (!Number.isFinite(model.timerLeft)) {
+      ui.stateLabel.textContent = 'Статус: +10 Seconds доступен только на уровнях с таймером';
+      refreshUI();
+      return;
+    }
+
+    if (!IS_BUILDER_PAGE) model.boosters.plusTenSeconds = count - 1;
+    model.activeBooster = null;
+    model.timerLeft += 10;
+    savePersistentState();
+    renderBoosterInventory();
+    refreshUI();
+  }
+
+  useCompressor() {
+    const count = Number(model.boosters.compressor || 0);
+    if (count <= 0) return;
+    const cols = model.grid[0].length;
+    const mid = Math.floor(cols / 2);
+
+    model.grid = model.grid.map((row) => {
+      const next = Array(cols).fill(null);
+      const left = row.slice(0, mid).filter(Boolean);
+      const rightStart = cols % 2 === 0 ? mid : mid + 1;
+      const right = row.slice(rightStart).filter(Boolean);
+
+      if (cols % 2 === 1) next[mid] = row[mid] || null;
+      let leftWrite = mid - 1;
+      for (let i = left.length - 1; i >= 0; i -= 1) {
+        next[leftWrite] = left[i];
+        leftWrite -= 1;
+      }
+      let rightWrite = rightStart;
+      for (let i = 0; i < right.length; i += 1) {
+        next[rightWrite] = right[i];
+        rightWrite += 1;
+      }
+      return next;
+    });
+
+    if (!IS_BUILDER_PAGE) model.boosters.compressor = count - 1;
+    model.activeBooster = null;
+    savePersistentState();
+    this.renderGridStatic();
+    pickNextShotColor();
+    this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+    renderBoosterInventory();
+    refreshUI();
+  }
+
+  useRotator(row, col) {
+    const count = Number(model.boosters.rotator || 0);
+    if (count <= 0) return;
+    if (row <= 0 || col <= 0 || row >= model.grid.length - 1 || col >= model.grid[0].length - 1) {
+      ui.stateLabel.textContent = 'Статус: Rotator нужен полный квадрат 3×3';
+      refreshUI();
+      return;
+    }
+
+    const ring = [
+      [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
+      [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
+    ];
+    const values = ring.map(([r, c]) => model.grid[r][c]);
+    ring.forEach(([r, c], idx) => {
+      model.grid[r][c] = values[(idx + values.length - 1) % values.length];
+    });
+
+    this.animating = true;
+    if (!IS_BUILDER_PAGE) model.boosters.rotator = count - 1;
+    model.activeBooster = null;
+    savePersistentState();
+    const gravityMoves = applyGravityAndGetMoves();
+    this.animateRemovalAndFall([], gravityMoves, () => {
+      pickNextShotColor();
+      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      renderBoosterInventory();
+      refreshUI();
+      this.animating = false;
     });
   }
 
