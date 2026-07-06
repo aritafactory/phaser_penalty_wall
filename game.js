@@ -45,6 +45,10 @@ const model = {
   gameOver: false,
   levels: [],
   currentLevel: null,
+  currentLevelIndex: 0,
+  highestUnlockedLevel: 1,
+  winAwarded: false,
+  ineffectiveShotStreak: 0,
   currentLayerIndex: 0,
   boosters: {},
   activeBooster: null,
@@ -66,6 +70,32 @@ const ui = {
   shopBalanceLabel: document.getElementById('shopBalanceLabel'),
   shopTableBody: document.getElementById('shopTableBody'),
   boosterInventoryList: document.getElementById('boosterInventoryList'),
+  startScreen: document.getElementById('startScreen'),
+  startPlayBtn: document.getElementById('startPlayBtn'),
+  startShopBtn: document.getElementById('startShopBtn'),
+  startPlusBtn: document.getElementById('startPlusBtn'),
+  startBalanceLabel: document.getElementById('startBalanceLabel'),
+  levelsScreen: document.getElementById('levelsScreen'),
+  levelsBackBtn: document.getElementById('levelsBackBtn'),
+  levelsShopBtn: document.getElementById('levelsShopBtn'),
+  levelsPlusBtn: document.getElementById('levelsPlusBtn'),
+  levelsBalanceLabel: document.getElementById('levelsBalanceLabel'),
+  levelsGrid: document.getElementById('levelsGrid'),
+  gameHomeBtn: document.getElementById('gameHomeBtn'),
+  gamePlusBtn: document.getElementById('gamePlusBtn'),
+  gameBalanceLabel: document.getElementById('gameBalanceLabel'),
+  gameLevelLabel: document.getElementById('gameLevelLabel'),
+  gameMovesLabel: document.getElementById('gameMovesLabel'),
+  gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
+  failModal: document.getElementById('failModal'),
+  failHomeBtn: document.getElementById('failHomeBtn'),
+  failRetryBtn: document.getElementById('failRetryBtn'),
+  winModal: document.getElementById('winModal'),
+  winHomeBtn: document.getElementById('winHomeBtn'),
+  winNextBtn: document.getElementById('winNextBtn'),
+  winLevelLabel: document.getElementById('winLevelLabel'),
+  winMovesLabel: document.getElementById('winMovesLabel'),
+  winRewardLabel: document.getElementById('winRewardLabel'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -91,19 +121,32 @@ const BASE_BUILDER_COLORS = BASE_COLORS;
 const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
   boosters: 'cbb_boosters',
+  highestUnlockedLevel: 'cbb_highest_unlocked_level',
 };
 
 const BOOSTER_CATALOG = [
-  { key: 'bomb', name: 'Bomb', price: 100, effect: 'Удаляет область 3×3 вокруг цели, включая special-блоки и U.' },
-  { key: 'mix', name: 'Mix', price: 50, effect: 'Перемешивает текущие цвета разрушаемых немигающих блоков.' },
-  { key: 'fractions', name: 'Fractions', price: 75, effect: 'Удаляет целевой кластер и до двух случайных кластеров того же цвета.' },
-  { key: 'minusOneColor', name: '-1 color', price: 100, effect: 'Удаляет все блоки наименее представленного цвета среди разрушаемых.' },
-  { key: 'plusFiveShots', name: '+5 shots', price: 50, effect: 'Добавляет пять выстрелов, если у уровня есть maxShots.' },
-  { key: 'rainbow', name: 'Rainbow', price: 75, effect: 'Следующий выстрел игнорирует проверку совпадения цвета шара и цели.' },
+  { key: 'bomb', name: 'Bomb', price: 120, effect: 'Blast away colored balls.' },
+  { key: 'mix', name: 'Mix', price: 120, effect: 'Shuffle all balls on screen.' },
+  { key: 'fractions', name: 'Fractions', price: 150, effect: 'Split a ball into 3 random balls.' },
+  { key: 'minusOneColor', name: '-1 Color', price: 120, effect: 'Remove one ball color.' },
+  { key: 'plusFiveShots', name: '+5 Shots', price: 150, effect: 'Add 5 extra shots.' },
+  { key: 'plusTenSeconds', name: '+10 Seconds', price: 150, effect: 'Add 10 seconds on timer levels.' },
+  { key: 'compressor', name: 'Compressor', price: 180, effect: 'Push each row toward the center.' },
+  { key: 'rotator', name: 'Rotator', price: 180, effect: 'Rotate a 3×3 ring clockwise.' },
+  { key: 'rainbow', name: 'Rainbow', price: 200, effect: 'Turn a ball into a rainbow ball.' },
 ];
 
 let phaserGame;
 let boardScene;
+
+
+function currentLevelMultiplier() {
+  return Math.max(1, model.currentLevelIndex + 1);
+}
+
+function pointsForRemovedBlocks(count) {
+  return count * 10 * currentLevelMultiplier();
+}
 
 function cloneGrid(grid) {
   return grid.map((row) => row.slice());
@@ -181,6 +224,7 @@ function randomizeGridLayout(grid) {
 function loadPersistentState() {
   if (IS_BUILDER_PAGE) {
     model.totalScore = 0;
+    model.highestUnlockedLevel = Number.MAX_SAFE_INTEGER;
     BOOSTER_CATALOG.forEach((b) => {
       model.boosters[b.key] = Number.MAX_SAFE_INTEGER;
     });
@@ -188,6 +232,8 @@ function loadPersistentState() {
   }
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
+  const savedUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedLevel) || '1');
+  model.highestUnlockedLevel = Number.isFinite(savedUnlocked) && savedUnlocked > 0 ? Math.floor(savedUnlocked) : 1;
 
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.boosters) || '{}');
@@ -200,6 +246,7 @@ function loadPersistentState() {
 function savePersistentState() {
   if (IS_BUILDER_PAGE) return;
   localStorage.setItem(STORAGE_KEYS.totalScore, String(model.totalScore));
+  localStorage.setItem(STORAGE_KEYS.highestUnlockedLevel, String(model.highestUnlockedLevel));
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
 }
 
@@ -375,17 +422,23 @@ function buildBuiltinLevels() {
 }
 
 async function loadBuiltinLevelsFromFiles() {
-  const levels = [];
-  for (let idx = 1; idx <= 999; idx += 1) {
-    const url = `levels/level_${String(idx).padStart(3, '0')}.json`;
-    const response = await fetch(url);
-    if (!response.ok) continue;
-    const level = await response.json();
-    levels.push(level);
+  const manifestResponse = await fetch('levels/manifest.json');
+  if (!manifestResponse.ok) {
+    throw new Error('Failed to load levels manifest');
   }
-  if (!levels.length) {
-    throw new Error('Failed to load levels from files');
+
+  const levelFiles = await manifestResponse.json();
+  if (!Array.isArray(levelFiles) || levelFiles.length === 0) {
+    throw new Error('Levels manifest is empty');
   }
+
+  const levels = await Promise.all(
+    levelFiles.map(async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to load level file: ${url}`);
+      return response.json();
+    })
+  );
   return levels.sort((a, b) => Number(a.level) - Number(b.level));
 }
 
@@ -518,6 +571,10 @@ function startCustomBuilderLevel() {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  model.ineffectiveShotStreak = 0;
+  model.winAwarded = false;
+  closeFailModal();
+  closeWinModal();
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(customLevel.maxShots) ? customLevel.maxShots : Infinity;
   model.timerLeft = Number.isFinite(customLevel.timerSeconds) ? customLevel.timerSeconds : Infinity;
@@ -749,6 +806,12 @@ function isWin() {
 function refreshUI() {
   ui.scoreLabel.textContent = `Очки (уровень): ${model.score}`;
   ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
+  if (ui.startBalanceLabel) ui.startBalanceLabel.textContent = String(model.totalScore);
+  if (ui.levelsBalanceLabel) ui.levelsBalanceLabel.textContent = String(model.totalScore);
+  if (ui.gameBalanceLabel) ui.gameBalanceLabel.textContent = String(model.totalScore);
+  if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
+  if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
+  if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   if (!model.gameOver) {
@@ -763,15 +826,24 @@ function renderBoosterInventory() {
   BOOSTER_CATALOG.forEach((booster) => {
     const owned = IS_BUILDER_PAGE ? Number.MAX_SAFE_INTEGER : Number(model.boosters[booster.key] || 0);
     const li = document.createElement('li');
-    if (booster.key === 'bomb' || booster.key === 'mix' || booster.key === 'fractions' || booster.key === 'minusOneColor' || booster.key === 'plusFiveShots' || booster.key === 'rainbow') {
+    if (BOOSTER_CATALOG.some((item) => item.key === booster.key)) {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
       const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
       const amountLabel = IS_BUILDER_PAGE ? '∞' : `x${owned}`;
-      li.innerHTML = `<span>${booster.name}</span><span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label}</button> <strong>${amountLabel}</strong></span>`;
+      const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' };
+      li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label.toUpperCase()}</button>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
         if (owned <= 0) return;
+        if (booster.key === 'plusTenSeconds' && boardScene) {
+          boardScene.usePlusTenSeconds();
+          return;
+        }
+        if (booster.key === 'compressor' && boardScene) {
+          boardScene.useCompressor();
+          return;
+        }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
         renderBoosterInventory();
         refreshUI();
@@ -783,20 +855,26 @@ function renderBoosterInventory() {
   });
 }
 
+function boosterIcon(boosterKey) {
+  return { bomb: '💣', mix: '🌈', fractions: '🧩', minusOneColor: '-1', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' }[boosterKey] || '✨';
+}
+
 function renderShopTable() {
   ui.shopTableBody.innerHTML = '';
   BOOSTER_CATALOG.forEach((booster) => {
-    const tr = document.createElement('tr');
+    const card = document.createElement('article');
+    card.className = 'shop-card';
     const owned = Number(model.boosters[booster.key] || 0);
-    tr.innerHTML = `
-      <td>${booster.name}<br/><small>Куплено: ${owned}</small></td>
-      <td>${booster.price}</td>
-      <td>${booster.effect}</td>
-      <td><button data-booster="${booster.key}">Buy</button></td>
+    card.innerHTML = `
+      <span class="shop-icon">${boosterIcon(booster.key)}</span>
+      <span class="shop-owned">x${owned}</span>
+      <div class="shop-name">${booster.name}</div>
+      <div class="shop-effect">${booster.effect}</div>
+      <div class="shop-buy-row"><span class="shop-price">💎 ${booster.price}</span><button class="shop-buy" data-booster="${booster.key}">BUY</button></div>
     `;
-    const buyBtn = tr.querySelector('button');
+    const buyBtn = card.querySelector('button');
     buyBtn.onclick = () => buyBooster(booster.key);
-    ui.shopTableBody.appendChild(tr);
+    ui.shopTableBody.appendChild(card);
   });
 }
 
@@ -827,15 +905,100 @@ function closeShop() {
   ui.shopModal.setAttribute('aria-hidden', 'true');
 }
 
+function getColorGroupStats() {
+  const seen = new Set();
+  const stats = new Map();
+  const rows = model.grid.length;
+  const cols = model.grid[0]?.length || 0;
+
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      const key = `${r},${c}`;
+      if (seen.has(key)) continue;
+      const color = visibleColor(model.grid[r][c]);
+      if (!color || color === 'U') {
+        seen.add(key);
+        continue;
+      }
+
+      const queue = [[r, c]];
+      seen.add(key);
+      let size = 0;
+      while (queue.length) {
+        const [cr, cc] = queue.shift();
+        const cellColor = visibleColor(model.grid[cr][cc]);
+        if (cellColor !== color) continue;
+        size += 1;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+          const nr = cr + dr;
+          const nc = cc + dc;
+          const nKey = `${nr},${nc}`;
+          if (isInsideGrid(nr, nc) && !seen.has(nKey) && visibleColor(model.grid[nr][nc]) === color) {
+            seen.add(nKey);
+            queue.push([nr, nc]);
+          }
+        });
+      }
+
+      const current = stats.get(color) || { color, largestGroup: 0, groupCount: 0 };
+      current.largestGroup = Math.max(current.largestGroup, size);
+      current.groupCount += 1;
+      stats.set(color, current);
+    }
+  }
+
+  return [...stats.values()];
+}
+
+function weightedPick(stats) {
+  const totalWeight = stats.reduce((sum, item) => sum + item.largestGroup, 0);
+  if (totalWeight <= 0) return randomFrom(stats.map((item) => item.color));
+  let roll = Math.random() * totalWeight;
+  for (const item of stats) {
+    roll -= item.largestGroup;
+    if (roll <= 0) return item.color;
+  }
+  return stats[stats.length - 1].color;
+}
+
+function strongestColorStats(stats) {
+  const sorted = [...stats].sort((a, b) => b.largestGroup - a.largestGroup);
+  const maxGroup = sorted[0]?.largestGroup || 0;
+  return sorted.filter((item, idx) => idx < 3 && item.largestGroup >= Math.max(1, maxGroup * 0.75));
+}
+
 function pickNextShotColor() {
-  const colors = getBreakableColors(model.grid);
-  if (!colors.length) {
+  const stats = getColorGroupStats();
+  if (!stats.length) {
     model.selectedShotColor = 'R';
     return;
   }
-  const candidates = colors.filter((c) => c !== model.selectedShotColor);
-  if (!candidates.length) return;
-  model.selectedShotColor = candidates[Math.floor(Math.random() * candidates.length)];
+
+  const previousColor = model.selectedShotColor;
+  const usefulStats = stats.some((item) => item.largestGroup >= 2)
+    ? stats.filter((item) => item.largestGroup >= 2)
+    : stats;
+  let availableStats = usefulStats.length > 1 ? usefulStats.filter((item) => item.color !== previousColor) : usefulStats;
+
+  // Prefer repeating a useful color over switching to a color whose visible blocks are all isolated.
+  if (!availableStats.length) availableStats = usefulStats;
+
+  const strongStats = strongestColorStats(availableStats);
+  const forceStrong = model.ineffectiveShotStreak >= 2;
+  const shouldPickStrong = forceStrong || Math.random() < 0.7;
+  const pickPool = shouldPickStrong && strongStats.length ? strongStats : availableStats;
+
+  model.selectedShotColor = shouldPickStrong
+    ? weightedPick(pickPool)
+    : randomFrom(availableStats.map((item) => item.color));
+}
+
+function recordNormalShotOutcome(ordinaryRemoved) {
+  if (ordinaryRemoved >= 2) {
+    model.ineffectiveShotStreak = 0;
+  } else {
+    model.ineffectiveShotStreak += 1;
+  }
 }
 
 class BoardScene extends Phaser.Scene {
@@ -843,14 +1006,17 @@ class BoardScene extends Phaser.Scene {
     super('board');
     const rows = model.grid.length || 1;
     const cols = model.grid[0]?.length || 1;
-    const maxBoardWidth = 620;
-    const maxBoardHeight = 520;
+    const viewportWidth = window.innerWidth || 1200;
+    const viewportHeight = window.innerHeight || 800;
+    const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
+    const maxBoardHeight = Math.max(260, viewportHeight - 300);
     const fitByWidth = Math.floor(maxBoardWidth / cols);
     const fitByHeight = Math.floor(maxBoardHeight / rows);
-    this.cell = Math.max(40, Math.min(78, fitByWidth, fitByHeight));
+    const minCell = viewportWidth < 600 ? 28 : 40;
+    this.cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
     this.gridX = 12;
     this.gridY = 12;
-    this.playAreaHeight = Math.max(620, this.gridY * 2 + rows * this.cell + 120);
+    this.playAreaHeight = Math.max(360, this.gridY * 2 + rows * this.cell + 150);
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -858,6 +1024,7 @@ class BoardScene extends Phaser.Scene {
     this.shooter = null;
     this.flashAccumulator = 0;
     this.pendingShotColor = null;
+    this.pendingShotUsedBooster = false;
   }
 
   key(r, c) {
@@ -959,6 +1126,10 @@ class BoardScene extends Phaser.Scene {
       this.usePlusFiveShots();
       return;
     }
+    if (model.activeBooster === 'rotator') {
+      this.useRotator(row, col);
+      return;
+    }
 
     this.shootToCell(row, col);
   }
@@ -978,11 +1149,12 @@ class BoardScene extends Phaser.Scene {
           ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
         } else {
           model.gameOver = true;
+          closeFailModal();
           ui.stateLabel.textContent = 'Статус: победа';
+          openWinModal();
         }
       } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+        failLevel('Статус: поражение (кончились выстрелы)');
       }
 
       pickNextShotColor();
@@ -1023,10 +1195,8 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = removed.length * 10;
+    const earned = pointsForRemovedBlocks(removed.length);
     model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
@@ -1069,6 +1239,51 @@ class BoardScene extends Phaser.Scene {
     this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
     refreshUI();
     this.animating = false;
+  }
+
+
+  animateFractionsSplit(row, col, selectedRegions, color, done) {
+    const origin = this.gridToPixel(row, col);
+    const regionAnchors = selectedRegions
+      .map((region) => region.ordinary[0] || region.twos[0])
+      .filter(Boolean)
+      .map(([r, c]) => this.gridToPixel(r, c));
+    const fallbackOffsets = [
+      { x: -this.cell, y: -this.cell * 0.7 },
+      { x: this.cell, y: -this.cell * 0.7 },
+      { x: 0, y: this.cell },
+    ];
+    const destinations = Array.from({ length: 3 }, (_, idx) => {
+      const anchor = regionAnchors[idx] || regionAnchors[regionAnchors.length - 1] || origin;
+      if (anchor === origin || (anchor.x === origin.x && anchor.y === origin.y)) {
+        const offset = fallbackOffsets[idx];
+        return { x: origin.x + offset.x, y: origin.y + offset.y };
+      }
+      return anchor;
+    });
+
+    let finished = 0;
+    destinations.forEach((target, idx) => {
+      const ball = this.add.circle(origin.x, origin.y, 13, COLOR_MAP[color] || 0xffffff)
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(100);
+      this.tweens.add({
+        targets: ball,
+        x: target.x,
+        y: target.y,
+        scaleX: 1.25,
+        scaleY: 1.25,
+        alpha: 0.25,
+        delay: idx * 70,
+        duration: 360,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          ball.destroy();
+          finished += 1;
+          if (finished === destinations.length) done();
+        },
+      });
+    });
   }
 
   useFractions(row, col) {
@@ -1121,32 +1336,119 @@ class BoardScene extends Phaser.Scene {
       allTwos.push(...region.twos);
     });
 
-    repaintTwoColorCells(allTwos, targetColor);
-
     const uniqueOrdinary = [...new Set(allOrdinary.map(([r, c]) => `${r},${c}`))].map((k) =>
       k.split(',').map(Number)
     );
-    const removedKeys = uniqueOrdinary.map(([r, c]) => this.key(r, c));
-    uniqueOrdinary.forEach(([r, c]) => {
-      model.grid[r][c] = null;
+
+    this.animateFractionsSplit(row, col, selectedRegions, targetColor, () => {
+      repaintTwoColorCells(allTwos, targetColor);
+
+      const removedKeys = uniqueOrdinary.map(([r, c]) => this.key(r, c));
+      uniqueOrdinary.forEach(([r, c]) => {
+        model.grid[r][c] = null;
+      });
+
+      const earned = pointsForRemovedBlocks(uniqueOrdinary.length);
+      model.score += earned;
+
+      if (uniqueOrdinary.length === 0) {
+        this.renderGridStatic();
+        pickNextShotColor();
+        this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+        refreshUI();
+        this.animating = false;
+        return;
+      }
+
+      const gravityMoves = applyGravityAndGetMoves();
+      this.completeAction(removedKeys, gravityMoves);
     });
+  }
 
-    const earned = uniqueOrdinary.length * 10;
-    model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
-    if (uniqueOrdinary.length === 0) {
-      this.renderGridStatic();
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+  usePlusTenSeconds() {
+    const count = Number(model.boosters.plusTenSeconds || 0);
+    if (count <= 0) return;
+    if (!Number.isFinite(model.timerLeft)) {
+      ui.stateLabel.textContent = 'Статус: +10 Seconds доступен только на уровнях с таймером';
       refreshUI();
-      this.animating = false;
       return;
     }
 
+    if (!IS_BUILDER_PAGE) model.boosters.plusTenSeconds = count - 1;
+    model.activeBooster = null;
+    model.timerLeft += 10;
+    savePersistentState();
+    renderBoosterInventory();
+    refreshUI();
+  }
+
+  useCompressor() {
+    const count = Number(model.boosters.compressor || 0);
+    if (count <= 0) return;
+    const cols = model.grid[0].length;
+    const mid = Math.floor(cols / 2);
+
+    model.grid = model.grid.map((row) => {
+      const next = Array(cols).fill(null);
+      const left = row.slice(0, mid).filter(Boolean);
+      const rightStart = cols % 2 === 0 ? mid : mid + 1;
+      const right = row.slice(rightStart).filter(Boolean);
+
+      if (cols % 2 === 1) next[mid] = row[mid] || null;
+      let leftWrite = mid - 1;
+      for (let i = left.length - 1; i >= 0; i -= 1) {
+        next[leftWrite] = left[i];
+        leftWrite -= 1;
+      }
+      let rightWrite = rightStart;
+      for (let i = 0; i < right.length; i += 1) {
+        next[rightWrite] = right[i];
+        rightWrite += 1;
+      }
+      return next;
+    });
+
+    if (!IS_BUILDER_PAGE) model.boosters.compressor = count - 1;
+    model.activeBooster = null;
+    savePersistentState();
+    this.renderGridStatic();
+    pickNextShotColor();
+    this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+    renderBoosterInventory();
+    refreshUI();
+  }
+
+  useRotator(row, col) {
+    const count = Number(model.boosters.rotator || 0);
+    if (count <= 0) return;
+    if (row <= 0 || col <= 0 || row >= model.grid.length - 1 || col >= model.grid[0].length - 1) {
+      ui.stateLabel.textContent = 'Статус: Rotator нужен полный квадрат 3×3';
+      refreshUI();
+      return;
+    }
+
+    const ring = [
+      [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
+      [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
+    ];
+    const values = ring.map(([r, c]) => model.grid[r][c]);
+    ring.forEach(([r, c], idx) => {
+      model.grid[r][c] = values[(idx + values.length - 1) % values.length];
+    });
+
+    this.animating = true;
+    if (!IS_BUILDER_PAGE) model.boosters.rotator = count - 1;
+    model.activeBooster = null;
+    savePersistentState();
     const gravityMoves = applyGravityAndGetMoves();
-    this.completeAction(removedKeys, gravityMoves);
+    this.animateRemovalAndFall([], gravityMoves, () => {
+      pickNextShotColor();
+      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+      renderBoosterInventory();
+      refreshUI();
+      this.animating = false;
+    });
   }
 
   useMinusOneColor() {
@@ -1183,10 +1485,8 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = removed.length * 10;
+    const earned = pointsForRemovedBlocks(removed.length);
     model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
     ui.stateLabel.textContent = `Статус: -1 color выбрал ${chosenColor}`;
 
@@ -1249,7 +1549,22 @@ class BoardScene extends Phaser.Scene {
 
   shootToCell(row, col) {
     const targetCode = model.grid[row][col];
-    if (!targetCode || targetCode === 'U') return;
+    if (!targetCode || targetCode === 'U') {
+      if (!model.activeBooster) {
+        if (Number.isFinite(model.shotsLeft)) {
+          model.shotsLeft -= 1;
+          if (model.shotsLeft < 0) model.shotsLeft = 0;
+        }
+        recordNormalShotOutcome(0);
+        pickNextShotColor();
+        this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+        refreshUI();
+        if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+          failLevel('Статус: поражение (кончились выстрелы)');
+        }
+      }
+      return;
+    }
 
     if (model.activeBooster === 'rainbow') {
       const count = Number(model.boosters.rainbow || 0);
@@ -1264,6 +1579,7 @@ class BoardScene extends Phaser.Scene {
 
     const effectiveShotColor = model.rainbowNextShot ? visibleColor(targetCode) : model.selectedShotColor;
     this.pendingShotColor = effectiveShotColor;
+    this.pendingShotUsedBooster = model.rainbowNextShot;
 
     if (Number.isFinite(model.shotsLeft)) {
       model.shotsLeft -= 1;
@@ -1308,14 +1624,14 @@ class BoardScene extends Phaser.Scene {
     const targetCode = model.grid[row][col];
     const shotColor = this.pendingShotColor || model.selectedShotColor;
     if (visibleColor(targetCode) !== shotColor) {
+      if (!this.pendingShotUsedBooster) recordNormalShotOutcome(0);
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       model.rainbowNextShot = false;
       refreshUI();
       this.animating = false;
       if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: поражение (кончились выстрелы)';
+        failLevel('Статус: поражение (кончились выстрелы)');
       }
       return;
     }
@@ -1329,6 +1645,7 @@ class BoardScene extends Phaser.Scene {
     // 2) 2Color внутри этого же кластера не удаляем, а перекрашиваем.
     // 3) Если в кластере только 2Color (без обычных), просто перекрашиваем их.
     if (ordinaryGroup.length === 0 && twoColorGroup.length === 0) {
+      if (!this.pendingShotUsedBooster) recordNormalShotOutcome(0);
       pickNextShotColor();
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       refreshUI();
@@ -1336,16 +1653,16 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
+    if (!this.pendingShotUsedBooster) recordNormalShotOutcome(ordinaryGroup.length);
+
     repaintTwoColorCells(twoColorGroup, shotColor);
 
     const removedKeys = ordinaryGroup.map(([r, c]) => this.key(r, c));
     ordinaryGroup.forEach(([r, c]) => {
       model.grid[r][c] = null;
     });
-    const earned = ordinaryGroup.length * 10;
+    const earned = pointsForRemovedBlocks(ordinaryGroup.length);
     model.score += earned;
-    model.totalScore += earned;
-    savePersistentState();
 
     if (ordinaryGroup.length === 0) {
       // Кластер состоял только из 2Color: поле не падает, просто перерисовываем.
@@ -1447,23 +1764,147 @@ class BoardScene extends Phaser.Scene {
       model.timerLeft -= delta / 1000;
       if (model.timerLeft <= 0) {
         model.timerLeft = 0;
-        model.gameOver = true;
-        ui.stateLabel.textContent = 'Статус: поражение (время вышло)';
+        failLevel('Статус: поражение (время вышло)');
       }
       refreshUI();
     }
   }
 }
 
+
+
+
+function openWinModal() {
+  if (!ui.winModal) return;
+  const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
+  const moveBonus = movesLeft * 10;
+  const totalAward = model.score + moveBonus;
+  if (!model.winAwarded) {
+    model.totalScore += totalAward;
+    model.highestUnlockedLevel = Math.max(model.highestUnlockedLevel, Math.min(model.currentLevelIndex + 2, model.levels.length));
+    model.winAwarded = true;
+    savePersistentState();
+  }
+  if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
+  if (ui.winMovesLabel) ui.winMovesLabel.textContent = `Moves Left: ${movesLeft}`;
+  if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
+  renderLevelsScreen();
+  refreshUI();
+  ui.winModal.classList.add('open');
+  ui.winModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeWinModal() {
+  if (!ui.winModal) return;
+  ui.winModal.classList.remove('open');
+  ui.winModal.setAttribute('aria-hidden', 'true');
+}
+
+function goToNextLevel() {
+  closeWinModal();
+  const nextIndex = Math.min(model.currentLevelIndex + 1, model.levels.length - 1);
+  startLevelByIndex(nextIndex);
+}
+
+function openFailModal() {
+  if (!ui.failModal) return;
+  ui.failModal.classList.add('open');
+  ui.failModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeFailModal() {
+  if (!ui.failModal) return;
+  ui.failModal.classList.remove('open');
+  ui.failModal.setAttribute('aria-hidden', 'true');
+}
+
+function failLevel(message = 'Статус: поражение') {
+  model.gameOver = true;
+  ui.stateLabel.textContent = message;
+  refreshUI();
+  openFailModal();
+}
+
+function retryCurrentLevel() {
+  closeFailModal();
+  startLevelByIndex(model.currentLevelIndex || 0);
+}
+
+function showStartScreen() {
+  if (ui.levelsScreen) ui.levelsScreen.hidden = true;
+  if (ui.startScreen) ui.startScreen.hidden = false;
+  document.body.classList.add('start-active');
+}
+
+function showLevelsScreen() {
+  if (ui.startScreen) ui.startScreen.hidden = true;
+  if (ui.levelsScreen) ui.levelsScreen.hidden = false;
+  document.body.classList.add('start-active');
+  renderLevelsScreen();
+}
+
+function hideMenuScreens() {
+  if (ui.startScreen) ui.startScreen.hidden = true;
+  if (ui.levelsScreen) ui.levelsScreen.hidden = true;
+  document.body.classList.remove('start-active');
+}
+
+function renderLevelsScreen() {
+  if (!ui.levelsGrid) return;
+  const totalSlots = 30;
+  const selectedLevel = Math.min(model.currentLevelIndex + 1, totalSlots);
+  const unlockedThrough = Math.min(model.highestUnlockedLevel, model.levels.length || 0);
+  ui.levelsGrid.innerHTML = '';
+
+  for (let levelNumber = 1; levelNumber <= totalSlots; levelNumber += 1) {
+    const isAvailable = levelNumber <= model.levels.length;
+    const isUnlocked = isAvailable && levelNumber <= unlockedThrough;
+    const isSelected = levelNumber === selectedLevel && isUnlocked;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `level-card ${isUnlocked ? 'unlocked' : 'locked'}${isSelected ? ' selected' : ''}`;
+    card.setAttribute('aria-label', isUnlocked ? `Start level ${levelNumber}` : `Level ${levelNumber} locked`);
+    card.disabled = !isUnlocked;
+
+    const number = document.createElement('span');
+    number.className = 'level-number';
+    number.textContent = String(levelNumber);
+    card.appendChild(number);
+
+    const meta = document.createElement('span');
+    if (isUnlocked) {
+      meta.className = 'level-stars';
+      meta.textContent = isSelected ? '★★★' : '★★★';
+    } else {
+      meta.className = 'level-lock';
+      meta.textContent = '🔒';
+    }
+    card.appendChild(meta);
+
+    if (isUnlocked) {
+      card.onclick = () => {
+        if (ui.levelSelect) ui.levelSelect.value = String(levelNumber - 1);
+        hideMenuScreens();
+        startLevelByIndex(levelNumber - 1);
+      };
+    }
+
+    ui.levelsGrid.appendChild(card);
+  }
+}
+
 function initPhaser(rows, cols) {
   if (phaserGame) phaserGame.destroy(true);
-  const maxBoardWidth = 620;
-  const maxBoardHeight = 520;
+  const viewportWidth = window.innerWidth || 1200;
+  const viewportHeight = window.innerHeight || 800;
+  const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
+  const maxBoardHeight = Math.max(260, viewportHeight - 300);
   const fitByWidth = Math.floor(maxBoardWidth / cols);
   const fitByHeight = Math.floor(maxBoardHeight / rows);
-  const cell = Math.max(40, Math.min(78, fitByWidth, fitByHeight));
+  const minCell = viewportWidth < 600 ? 28 : 40;
+  const cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
   const width = cols * cell + 24;
-  const height = Math.max(620, 24 + rows * cell + 120);
+  const height = Math.max(360, 24 + rows * cell + 150);
   boardScene = new BoardScene();
 
   phaserGame = new Phaser.Game({
@@ -1477,6 +1918,7 @@ function initPhaser(rows, cols) {
 
 function startLevelByIndex(index) {
   const level = model.levels[index];
+  model.currentLevelIndex = index;
   model.currentLevel = level;
   model.currentLayerIndex = 0;
   model.grid = randomizeGridLayout(
@@ -1485,6 +1927,10 @@ function startLevelByIndex(index) {
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
+  model.ineffectiveShotStreak = 0;
+  model.winAwarded = false;
+  closeFailModal();
+  closeWinModal();
   model.gameOver = false;
   model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
   model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
@@ -1506,6 +1952,22 @@ async function initApp() {
   populateLevelSelect();
   if (ui.startBtn) ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
   if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
+  if (ui.startPlayBtn) {
+    ui.startPlayBtn.onclick = () => {
+      showLevelsScreen();
+    };
+  }
+  if (ui.startShopBtn) ui.startShopBtn.onclick = () => openShop();
+  if (ui.startPlusBtn) ui.startPlusBtn.onclick = () => openShop();
+  if (ui.levelsBackBtn) ui.levelsBackBtn.onclick = () => showStartScreen();
+  if (ui.levelsShopBtn) ui.levelsShopBtn.onclick = () => openShop();
+  if (ui.levelsPlusBtn) ui.levelsPlusBtn.onclick = () => openShop();
+  if (ui.gameHomeBtn) ui.gameHomeBtn.onclick = () => showLevelsScreen();
+  if (ui.gamePlusBtn) ui.gamePlusBtn.onclick = () => openShop();
+  if (ui.failHomeBtn) ui.failHomeBtn.onclick = () => { closeFailModal(); showLevelsScreen(); };
+  if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
+  if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
+  if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
@@ -1526,8 +1988,12 @@ async function initApp() {
       checkbox.onchange = () => refreshBuilderDropdownsFromCurrentGrid();
     });
     startCustomBuilderLevel();
-  } else {
+  } else if (!ui.startScreen) {
     startLevelByIndex(0);
+  } else {
+    renderBoosterInventory();
+    renderLevelsScreen();
+    refreshUI();
   }
 }
 
