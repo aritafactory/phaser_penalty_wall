@@ -964,7 +964,14 @@ function pickNextShotColor() {
   }
 
   const previousColor = model.selectedShotColor;
-  const availableStats = stats.length > 1 ? stats.filter((item) => item.color !== previousColor) : stats;
+  const usefulStats = stats.some((item) => item.largestGroup >= 2)
+    ? stats.filter((item) => item.largestGroup >= 2)
+    : stats;
+  let availableStats = usefulStats.length > 1 ? usefulStats.filter((item) => item.color !== previousColor) : usefulStats;
+
+  // Prefer repeating a useful color over switching to a color whose visible blocks are all isolated.
+  if (!availableStats.length) availableStats = usefulStats;
+
   const strongStats = strongestColorStats(availableStats);
   const forceStrong = model.ineffectiveShotStreak >= 2;
   const shouldPickStrong = forceStrong || Math.random() < 0.7;
