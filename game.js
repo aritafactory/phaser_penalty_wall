@@ -1025,7 +1025,6 @@ class BoardScene extends Phaser.Scene {
     this.flashAccumulator = 0;
     this.pendingShotColor = null;
     this.pendingShotUsedBooster = false;
-    this.targetZoneGraphics = null;
   }
 
   key(r, c) {
