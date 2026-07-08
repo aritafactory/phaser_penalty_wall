@@ -1085,7 +1085,40 @@ class BoardScene extends Phaser.Scene {
       }
     }
 
+    this.drawTargetZoneOverlay();
     this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+  }
+
+  drawTargetZoneOverlay() {
+    if (this.targetZoneGraphics) this.targetZoneGraphics.destroy();
+    const cells = model.currentLevel?.shapeGoal?.cells;
+    if (!Array.isArray(cells) || !cells.length) return;
+
+    const graphics = this.add.graphics().setDepth(80);
+    graphics.lineStyle(3, 0xffffff, 0.95);
+    cells.forEach(([r, c]) => {
+      if (!Number.isInteger(r) || !Number.isInteger(c) || !model.grid[r] || typeof model.grid[r][c] === 'undefined') return;
+      const x = this.gridX + c * this.cell;
+      const y = this.gridY + r * this.cell;
+      this.strokeDottedRect(graphics, x + 5, y + 5, this.cell - 10, this.cell - 10, 8, 6);
+    });
+    this.targetZoneGraphics = graphics;
+  }
+
+  strokeDottedRect(graphics, x, y, width, height, dash = 8, gap = 6) {
+    const drawDottedLine = (x1, y1, x2, y2) => {
+      const length = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+      const dx = (x2 - x1) / length;
+      const dy = (y2 - y1) / length;
+      for (let pos = 0; pos < length; pos += dash + gap) {
+        const end = Math.min(pos + dash, length);
+        graphics.lineBetween(x1 + dx * pos, y1 + dy * pos, x1 + dx * end, y1 + dy * end);
+      }
+    };
+    drawDottedLine(x, y, x + width, y);
+    drawDottedLine(x + width, y, x + width, y + height);
+    drawDottedLine(x + width, y + height, x, y + height);
+    drawDottedLine(x, y + height, x, y);
   }
 
   createBlock(r, c, code) {
@@ -1921,9 +1954,10 @@ function startLevelByIndex(index) {
   model.currentLevelIndex = index;
   model.currentLevel = level;
   model.currentLayerIndex = 0;
-  model.grid = randomizeGridLayout(
-    regenerateRandomSpecialBlocks(cloneGrid(level.layers ? level.layers[0] : level.grid), level.complications || [])
-  );
+  const sourceGrid = cloneGrid(level.layers ? level.layers[0] : level.grid);
+  model.grid = level.randomize === false
+    ? sourceGrid
+    : randomizeGridLayout(regenerateRandomSpecialBlocks(sourceGrid, level.complications || []));
   model.score = 0;
   model.activeBooster = null;
   model.rainbowNextShot = false;
