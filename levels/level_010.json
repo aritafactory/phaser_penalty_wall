@@ -49,5 +49,8 @@
         2
       ]
     ]
+  },
+  "startingBoosters": {
+    "rainbow": 1
   }
 }

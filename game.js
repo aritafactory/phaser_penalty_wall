@@ -51,6 +51,7 @@ const model = {
   ineffectiveShotStreak: 0,
   currentLayerIndex: 0,
   boosters: {},
+  levelBoosters: {},
   activeBooster: null,
   rainbowNextShot: false,
 };
@@ -570,6 +571,7 @@ function startCustomBuilderLevel() {
   model.grid = cloneGrid(customLevel.layers ? customLevel.layers[0] : customLevel.grid);
   model.score = 0;
   model.activeBooster = null;
+  model.levelBoosters = {};
   model.rainbowNextShot = false;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
@@ -800,6 +802,10 @@ function applyGravityAndGetMoves() {
 }
 
 function isWin() {
+  const shapeCells = model.currentLevel?.shapeGoal?.cells;
+  if (Array.isArray(shapeCells) && shapeCells.length) {
+    return shapeCells.every(([r, c]) => model.grid[r]?.[c] === 'U');
+  }
   return model.grid.every((row) => row.every((cell) => !cell || cell === 'U'));
 }
 
@@ -820,11 +826,27 @@ function refreshUI() {
   ui.shopBalanceLabel.textContent = `Баланс: ${model.totalScore}`;
 }
 
+
+function boosterCount(boosterKey) {
+  if (IS_BUILDER_PAGE) return Number.MAX_SAFE_INTEGER;
+  return Number(model.boosters[boosterKey] || 0) + Number(model.levelBoosters[boosterKey] || 0);
+}
+
+function consumeBooster(boosterKey) {
+  if (IS_BUILDER_PAGE) return;
+  if (Number(model.levelBoosters[boosterKey] || 0) > 0) {
+    model.levelBoosters[boosterKey] -= 1;
+    return;
+  }
+  model.boosters[boosterKey] = Math.max(0, Number(model.boosters[boosterKey] || 0) - 1);
+  savePersistentState();
+}
+
 function renderBoosterInventory() {
   if (!ui.boosterInventoryList) return;
   ui.boosterInventoryList.innerHTML = '';
   BOOSTER_CATALOG.forEach((booster) => {
-    const owned = IS_BUILDER_PAGE ? Number.MAX_SAFE_INTEGER : Number(model.boosters[booster.key] || 0);
+    const owned = boosterCount(booster.key);
     const li = document.createElement('li');
     if (BOOSTER_CATALOG.some((item) => item.key === booster.key)) {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
@@ -1025,6 +1047,7 @@ class BoardScene extends Phaser.Scene {
     this.flashAccumulator = 0;
     this.pendingShotColor = null;
     this.pendingShotUsedBooster = false;
+    this.targetZoneGraphics = null;
   }
 
   key(r, c) {
@@ -1199,11 +1222,11 @@ class BoardScene extends Phaser.Scene {
   }
 
   useBombAt(row, col) {
-    const bombs = Number(model.boosters.bomb || 0);
+    const bombs = boosterCount('bomb');
     if (bombs <= 0) return;
 
     this.animating = true;
-    if (!IS_BUILDER_PAGE) model.boosters.bomb = bombs - 1;
+    consumeBooster('bomb');
     model.activeBooster = null;
     savePersistentState();
     renderBoosterInventory();
@@ -1236,11 +1259,11 @@ class BoardScene extends Phaser.Scene {
   }
 
   useMix() {
-    const mixCount = Number(model.boosters.mix || 0);
+    const mixCount = boosterCount('mix');
     if (mixCount <= 0) return;
 
     this.animating = true;
-    if (!IS_BUILDER_PAGE) model.boosters.mix = mixCount - 1;
+    consumeBooster('mix');
     model.activeBooster = null;
     renderBoosterInventory();
 
@@ -1320,7 +1343,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   useFractions(row, col) {
-    const fractionsCount = Number(model.boosters.fractions || 0);
+    const fractionsCount = boosterCount('fractions');
     if (fractionsCount <= 0) return;
     const targetCell = model.grid[row][col];
     if (!targetCell || targetCell === 'U') return;
@@ -1333,7 +1356,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
-    if (!IS_BUILDER_PAGE) model.boosters.fractions = fractionsCount - 1;
+    consumeBooster('fractions');
     model.activeBooster = null;
     renderBoosterInventory();
 
@@ -1400,7 +1423,7 @@ class BoardScene extends Phaser.Scene {
 
 
   usePlusTenSeconds() {
-    const count = Number(model.boosters.plusTenSeconds || 0);
+    const count = boosterCount('plusTenSeconds');
     if (count <= 0) return;
     if (!Number.isFinite(model.timerLeft)) {
       ui.stateLabel.textContent = 'Статус: +10 Seconds доступен только на уровнях с таймером';
@@ -1408,7 +1431,7 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
-    if (!IS_BUILDER_PAGE) model.boosters.plusTenSeconds = count - 1;
+    consumeBooster('plusTenSeconds');
     model.activeBooster = null;
     model.timerLeft += 10;
     savePersistentState();
@@ -1417,7 +1440,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   useCompressor() {
-    const count = Number(model.boosters.compressor || 0);
+    const count = boosterCount('compressor');
     if (count <= 0) return;
     const cols = model.grid[0].length;
     const mid = Math.floor(cols / 2);
@@ -1442,7 +1465,7 @@ class BoardScene extends Phaser.Scene {
       return next;
     });
 
-    if (!IS_BUILDER_PAGE) model.boosters.compressor = count - 1;
+    consumeBooster('compressor');
     model.activeBooster = null;
     savePersistentState();
     this.renderGridStatic();
@@ -1453,7 +1476,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   useRotator(row, col) {
-    const count = Number(model.boosters.rotator || 0);
+    const count = boosterCount('rotator');
     if (count <= 0) return;
     if (row <= 0 || col <= 0 || row >= model.grid.length - 1 || col >= model.grid[0].length - 1) {
       ui.stateLabel.textContent = 'Статус: Rotator нужен полный квадрат 3×3';
@@ -1471,7 +1494,7 @@ class BoardScene extends Phaser.Scene {
     });
 
     this.animating = true;
-    if (!IS_BUILDER_PAGE) model.boosters.rotator = count - 1;
+    consumeBooster('rotator');
     model.activeBooster = null;
     savePersistentState();
     const gravityMoves = applyGravityAndGetMoves();
@@ -1485,7 +1508,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   useMinusOneColor() {
-    const count = Number(model.boosters.minusOneColor || 0);
+    const count = boosterCount('minusOneColor');
     if (count <= 0) return;
 
     const palette = getBreakableColors(model.grid).filter((c) => c !== 'U');
@@ -1493,7 +1516,7 @@ class BoardScene extends Phaser.Scene {
     const chosenColor = randomFrom(palette);
 
     this.animating = true;
-    if (!IS_BUILDER_PAGE) model.boosters.minusOneColor = count - 1;
+    consumeBooster('minusOneColor');
     model.activeBooster = null;
     renderBoosterInventory();
 
@@ -1537,7 +1560,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   usePlusFiveShots() {
-    const count = Number(model.boosters.plusFiveShots || 0);
+    const count = boosterCount('plusFiveShots');
     if (count <= 0) return;
 
     // Бустер работает только на уровнях с ограничением выстрелов.
@@ -1550,7 +1573,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
-    if (!IS_BUILDER_PAGE) model.boosters.plusFiveShots = count - 1;
+    consumeBooster('plusFiveShots');
     model.activeBooster = null;
     model.shotsLeft += 5;
     savePersistentState();
@@ -1600,9 +1623,9 @@ class BoardScene extends Phaser.Scene {
     }
 
     if (model.activeBooster === 'rainbow') {
-      const count = Number(model.boosters.rainbow || 0);
+      const count = boosterCount('rainbow');
       if (count > 0) {
-        if (!IS_BUILDER_PAGE) model.boosters.rainbow = count - 1;
+        consumeBooster('rainbow');
         model.activeBooster = null;
         model.rainbowNextShot = true;
         savePersistentState();
@@ -1960,6 +1983,7 @@ function startLevelByIndex(index) {
     : randomizeGridLayout(regenerateRandomSpecialBlocks(sourceGrid, level.complications || []));
   model.score = 0;
   model.activeBooster = null;
+  model.levelBoosters = { ...(level.startingBoosters || {}) };
   model.rainbowNextShot = false;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
