@@ -1,60 +1,56 @@
 {
   "level": 10,
   "description": "Кастомный уровень 10",
-  "complications": [
-    "additional_colors",
-    "unbreakable_blocks"
-  ],
+  "complications": [],
   "grid": [
     [
-      "Y",
-      "R",
+      "G",
       "B",
+      "U",
+      "B"
+    ],
+    [
       "R",
-      "P",
-      "R",
-      "B",
+      "U",
+      "U",
       "G"
     ],
     [
-      "B",
-      "U",
-      "B",
-      "P",
-      "B",
-      "B",
-      "U",
-      "O"
-    ],
-    [
+      "R",
+      "R",
       "G",
-      "G",
-      "P",
-      "B",
-      "B",
-      "B",
-      "O",
       "R"
     ],
     [
-      "G",
-      "P",
       "R",
       "U",
-      "B",
-      "O",
-      "B",
-      "R"
-    ],
-    [
-      "P",
-      "R",
-      "R",
       "G",
-      "O",
-      "G",
-      "B",
       "B"
     ]
-  ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        3,
+        2
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "rainbow": 1
+  }
 }
