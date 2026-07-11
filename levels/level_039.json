@@ -1,0 +1,50 @@
+{
+  "level": 39,
+  "description": "Встроенный уровень 39",
+  "complications": [
+    "timer",
+    "limited_shots",
+    "additional_colors",
+    "two_colors_blocks",
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "B",
+      "P",
+      "B",
+      "2B",
+      "P"
+    ],
+    [
+      "R",
+      "R",
+      "B",
+      "G",
+      "2Y"
+    ],
+    [
+      "G",
+      "G",
+      "Y",
+      "U",
+      "R"
+    ],
+    [
+      "R",
+      "G",
+      "G",
+      "R",
+      "G"
+    ],
+    [
+      "2B",
+      "O",
+      "R",
+      "B",
+      "R"
+    ]
+  ],
+  "timerSeconds": 54,
+  "maxShots": 27
+}

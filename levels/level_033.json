@@ -1,0 +1,46 @@
+{
+  "level": 33,
+  "description": "Встроенный уровень 33",
+  "complications": [
+    "timer",
+    "two_colors_blocks"
+  ],
+  "grid": [
+    [
+      "G",
+      "R",
+      "R",
+      "B",
+      "R"
+    ],
+    [
+      "R",
+      "G",
+      "2G",
+      "G",
+      "B"
+    ],
+    [
+      "2G",
+      "B",
+      "G",
+      "R",
+      "B"
+    ],
+    [
+      "R",
+      "B",
+      "2R",
+      "R",
+      "R"
+    ],
+    [
+      "B",
+      "G",
+      "G",
+      "B",
+      "B"
+    ]
+  ],
+  "timerSeconds": 56
+}

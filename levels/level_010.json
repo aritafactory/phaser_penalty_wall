@@ -1,56 +1,37 @@
 {
   "level": 10,
-  "description": "Кастомный уровень 10",
-  "complications": [],
+  "description": "Встроенный уровень 10",
+  "complications": [
+    "timer",
+    "limited_shots",
+    "additional_colors"
+  ],
   "grid": [
     [
-      "G",
-      "B",
-      "U",
-      "B"
-    ],
-    [
+      "P",
       "R",
-      "U",
-      "U",
+      "B",
       "G"
     ],
     [
-      "R",
-      "R",
-      "G",
-      "R"
+      "B",
+      "O",
+      "B",
+      "G"
     ],
     [
-      "R",
-      "U",
       "G",
+      "Y",
+      "Y",
+      "G"
+    ],
+    [
+      "G",
+      "P",
+      "B",
       "B"
     ]
   ],
-  "randomize": false,
-  "shapeGoal": {
-    "type": "move_unbreakable_to_zone",
-    "cells": [
-      [
-        2,
-        1
-      ],
-      [
-        2,
-        2
-      ],
-      [
-        3,
-        1
-      ],
-      [
-        3,
-        2
-      ]
-    ]
-  },
-  "startingBoosters": {
-    "rainbow": 1
-  }
+  "timerSeconds": 30,
+  "maxShots": 10
 }

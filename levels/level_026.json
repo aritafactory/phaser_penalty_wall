@@ -2,58 +2,39 @@
   "level": 26,
   "description": "Встроенный уровень 26",
   "complications": [
-    "additional_colors"
+    "limited_shots",
+    "additional_colors",
+    "unbreakable_blocks"
   ],
   "grid": [
     [
-      "Y",
-      "R",
+      "G",
       "B",
+      "B",
+      "Y",
+      "R"
+    ],
+    [
+      "O",
+      "G",
       "R",
       "P",
-      "R",
+      "G"
+    ],
+    [
+      "U",
+      "G",
+      "G",
       "B",
       "G"
     ],
     [
-      "B",
-      "B",
-      "B",
       "P",
-      "B",
-      "B",
-      "R",
-      "O"
-    ],
-    [
-      "G",
-      "G",
-      "P",
-      "B",
-      "B",
-      "B",
-      "O",
-      "R"
-    ],
-    [
-      "G",
-      "P",
-      "R",
       "G",
       "B",
-      "O",
-      "B",
-      "R"
-    ],
-    [
-      "P",
-      "R",
-      "R",
-      "G",
-      "O",
-      "G",
-      "B",
+      "Y",
       "B"
     ]
-  ]
+  ],
+  "maxShots": 19
 }

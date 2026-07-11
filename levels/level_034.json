@@ -1,6 +1,6 @@
 {
-  "level": 24,
-  "description": "Встроенный уровень 24",
+  "level": 34,
+  "description": "Встроенный уровень 34",
   "complications": [
     "limited_shots",
     "unbreakable_blocks"
@@ -9,31 +9,38 @@
     [
       "R",
       "G",
-      "R",
       "G",
+      "B",
+      "U"
+    ],
+    [
+      "B",
+      "B",
+      "B",
+      "B",
+      "G"
+    ],
+    [
+      "R",
+      "R",
+      "B",
+      "R",
+      "G"
+    ],
+    [
+      "B",
+      "G",
+      "R",
+      "R",
       "R"
     ],
     [
-      "B",
-      "U",
       "G",
-      "B",
-      "B"
-    ],
-    [
-      "B",
-      "R",
-      "G",
-      "B",
-      "R"
-    ],
-    [
-      "G",
-      "B",
       "G",
       "R",
+      "B",
       "G"
     ]
   ],
-  "maxShots": 19
+  "maxShots": 24
 }

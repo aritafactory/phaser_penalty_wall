@@ -2,59 +2,41 @@
   "level": 11,
   "description": "Встроенный уровень 11",
   "complications": [
-    "additional_colors",
-    "two_colors_blocks"
+    "unbreakable_blocks"
   ],
   "grid": [
     [
-      "Y",
+      "G",
       "R",
-      "2Y",
+      "B"
+    ],
+    [
       "R",
-      "P",
       "R",
-      "B",
       "G"
     ],
     [
-      "B",
-      "B",
-      "B",
-      "P",
-      "B",
-      "B",
       "R",
-      "O"
-    ],
-    [
       "G",
-      "G",
-      "P",
-      "B",
-      "2O",
-      "B",
-      "O",
       "R"
     ],
     [
-      "G",
-      "P",
       "R",
       "G",
-      "B",
-      "O",
-      "B",
-      "R"
-    ],
-    [
-      "P",
-      "R",
-      "R",
-      "G",
-      "O",
-      "G",
-      "2G",
       "B"
+    ],
+    [
+      "R",
+      "U",
+      "G"
+    ],
+    [
+      "R",
+      "G",
+      "R"
     ]
-  ]
+  ],
+   "startingBoosters": {
+    "bomb": 2
+  }
 }

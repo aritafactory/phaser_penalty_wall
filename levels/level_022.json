@@ -2,61 +2,38 @@
   "level": 22,
   "description": "Встроенный уровень 22",
   "complications": [
-    "additional_colors",
     "limited_shots",
-    "two_colors_blocks"
+    "flashing_blocks"
   ],
-  "maxShots": 10,
   "grid": [
     [
-      "Y",
-      "R",
-      "2B",
-      "R",
-      "P",
-      "R",
       "B",
+      "B",
+      "G",
+      "F:B:R:0",
       "G"
     ],
     [
-      "B",
-      "B",
-      "B",
-      "P",
-      "B",
-      "B",
+      "G",
+      "G",
       "R",
-      "O"
-    ],
-    [
-      "G",
-      "G",
-      "P",
       "B",
-      "2Y",
-      "B",
-      "O",
       "R"
     ],
     [
       "G",
-      "P",
+      "B",
       "R",
-      "G",
-      "B",
-      "O",
-      "B",
-      "R"
+      "R",
+      "F:R:B:0"
     ],
     [
-      "P",
       "R",
       "R",
       "G",
-      "O",
-      "G",
-      "2Y",
-      "B"
+      "B",
+      "G"
     ]
-  ]
+  ],
+  "maxShots": 20
 }

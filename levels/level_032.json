@@ -1,0 +1,46 @@
+{
+  "level": 32,
+  "description": "Встроенный уровень 32",
+  "complications": [
+    "limited_shots",
+    "flashing_blocks"
+  ],
+  "grid": [
+    [
+      "F:G:R:0",
+      "R",
+      "B",
+      "G",
+      "F:B:R:0"
+    ],
+    [
+      "R",
+      "F:R:B:0",
+      "R",
+      "B",
+      "R"
+    ],
+    [
+      "G",
+      "G",
+      "G",
+      "B",
+      "B"
+    ],
+    [
+      "R",
+      "G",
+      "G",
+      "R",
+      "R"
+    ],
+    [
+      "B",
+      "B",
+      "G",
+      "R",
+      "B"
+    ]
+  ],
+  "maxShots": 25
+}

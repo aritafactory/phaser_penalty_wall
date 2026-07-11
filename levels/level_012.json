@@ -1,60 +1,34 @@
 {
   "level": 12,
   "description": "Встроенный уровень 12",
-  "complications": [
-    "additional_colors",
-    "flashing_blocks"
-  ],
+  "complications": [],
   "grid": [
     [
-      "F:Y:R:0",
+      "G",
       "R",
+      "G",
+      "B"
+    ],
+    [
+      "R",
+      "R",
+      "G",
+      "B"
+    ],
+    [
+      "R",
+      "G",
       "B",
-      "R",
-      "P",
-      "R",
+      "R"
+    ],
+      [
+      "B",
+      "G",
       "B",
       "G"
-    ],
-    [
-      "B",
-      "B",
-      "B",
-      "P",
-      "B",
-      "B",
-      "R",
-      "O"
-    ],
-    [
-      "G",
-      "G",
-      "F:R:B:0",
-      "B",
-      "B",
-      "B",
-      "O",
-      "R"
-    ],
-    [
-      "G",
-      "P",
-      "R",
-      "G",
-      "B",
-      "O",
-      "B",
-      "R"
-    ],
-    [
-      "P",
-      "R",
-      "R",
-      "G",
-      "F:B:P:0",
-      "G",
-      "B",
-      "B"
     ]
-  ]
+  ],
+   "startingBoosters": {
+    "mix": 2
+  }
 }

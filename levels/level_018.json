@@ -1,62 +1,34 @@
 {
   "level": 18,
   "description": "Встроенный уровень 18",
-  "complications": [
-    "additional_colors",
-    "timer",
-    "two_colors_blocks"
-  ],
-  "timerSeconds": 83,
+  "complications": [],
   "grid": [
     [
-      "Y",
+      "G",
       "R",
-      "2G",
+      "G",
+      "B"
+    ],
+    [
       "R",
-      "P",
       "R",
+      "G",
+      "B"
+    ],
+    [
+      "R",
+      "G",
+      "B",
+      "R"
+    ],
+      [
+      "B",
+      "G",
       "B",
       "G"
-    ],
-    [
-      "B",
-      "B",
-      "B",
-      "P",
-      "B",
-      "B",
-      "R",
-      "O"
-    ],
-    [
-      "G",
-      "G",
-      "P",
-      "B",
-      "2G",
-      "B",
-      "O",
-      "R"
-    ],
-    [
-      "G",
-      "P",
-      "R",
-      "G",
-      "B",
-      "O",
-      "B",
-      "R"
-    ],
-    [
-      "P",
-      "R",
-      "R",
-      "G",
-      "O",
-      "G",
-      "2Y",
-      "B"
     ]
-  ]
+  ],
+   "startingBoosters": {
+    "rotator": 2
+  }
 }
