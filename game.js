@@ -1907,7 +1907,7 @@ function hideMenuScreens() {
 
 function renderLevelsScreen() {
   if (!ui.levelsGrid) return;
-  const totalSlots = 30;
+  const totalSlots = 100;
   const selectedLevel = Math.min(model.currentLevelIndex + 1, totalSlots);
   const unlockedThrough = Math.min(model.highestUnlockedLevel, model.levels.length || 0);
   ui.levelsGrid.innerHTML = '';

@@ -1,0 +1,68 @@
+{
+  "level": 66,
+  "description": "Встроенный уровень 66",
+  "complications": [
+    "limited_shots",
+    "additional_colors",
+    "two_colors_blocks"
+  ],
+  "grid": [
+    [
+      "R",
+      "G",
+      "Y",
+      "2B",
+      "Y",
+      "R"
+    ],
+    [
+      "G",
+      "O",
+      "P",
+      "G",
+      "Y",
+      "R"
+    ],
+    [
+      "O",
+      "B",
+      "R",
+      "Y",
+      "R",
+      "G"
+    ],
+    [
+      "G",
+      "B",
+      "G",
+      "2O",
+      "B",
+      "P"
+    ],
+    [
+      "R",
+      "G",
+      "B",
+      "R",
+      "R",
+      "B"
+    ],
+    [
+      "B",
+      "B",
+      "2R",
+      "P",
+      "R",
+      "G"
+    ],
+    [
+      "G",
+      "P",
+      "B",
+      "G",
+      "B",
+      "2G"
+    ]
+  ],
+  "maxShots": 46
+}

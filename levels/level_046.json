@@ -1,0 +1,54 @@
+{
+  "level": 46,
+  "description": "Встроенный уровень 46",
+  "complications": [
+    "limited_shots",
+    "additional_colors",
+    "flashing_blocks"
+  ],
+  "grid": [
+    [
+      "F:P:B:0",
+      "B",
+      "O",
+      "R",
+      "R"
+    ],
+    [
+      "G",
+      "O",
+      "B",
+      "P",
+      "B"
+    ],
+    [
+      "F:Y:G:0",
+      "G",
+      "Y",
+      "P",
+      "G"
+    ],
+    [
+      "G",
+      "R",
+      "R",
+      "G",
+      "B"
+    ],
+    [
+      "G",
+      "Y",
+      "B",
+      "R",
+      "R"
+    ],
+    [
+      "R",
+      "G",
+      "R",
+      "F:G:O:0",
+      "B"
+    ]
+  ],
+  "maxShots": 30
+}

@@ -1,0 +1,78 @@
+{
+  "level": 79,
+  "description": "Встроенный уровень 79",
+  "complications": [
+    "timer",
+    "limited_shots",
+    "additional_colors",
+    "flashing_blocks",
+    "two_colors_blocks"
+  ],
+  "grid": [
+    [
+      "Y",
+      "O",
+      "F:B:O:0",
+      "G",
+      "F:G:Y:0",
+      "G",
+      "R"
+    ],
+    [
+      "F:R:P:0",
+      "R",
+      "P",
+      "O",
+      "2B",
+      "R",
+      "O"
+    ],
+    [
+      "2B",
+      "G",
+      "G",
+      "G",
+      "R",
+      "R",
+      "R"
+    ],
+    [
+      "G",
+      "B",
+      "B",
+      "G",
+      "B",
+      "R",
+      "F:B:Y:0"
+    ],
+    [
+      "G",
+      "Y",
+      "B",
+      "B",
+      "B",
+      "P",
+      "R"
+    ],
+    [
+      "2G",
+      "P",
+      "R",
+      "Y",
+      "Y",
+      "B",
+      "R"
+    ],
+    [
+      "2O",
+      "B",
+      "B",
+      "G",
+      "G",
+      "2B",
+      "F:P:Y:0"
+    ]
+  ],
+  "timerSeconds": 108,
+  "maxShots": 54
+}

@@ -1,0 +1,54 @@
+{
+  "level": 47,
+  "description": "Встроенный уровень 47",
+  "complications": [
+    "timer",
+    "two_colors_blocks",
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "R",
+      "B",
+      "G",
+      "B",
+      "U"
+    ],
+    [
+      "G",
+      "R",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "G",
+      "B",
+      "R",
+      "R",
+      "R"
+    ],
+    [
+      "G",
+      "B",
+      "G",
+      "B",
+      "R"
+    ],
+    [
+      "B",
+      "2G",
+      "R",
+      "2G",
+      "B"
+    ],
+    [
+      "R",
+      "B",
+      "2R",
+      "G",
+      "U"
+    ]
+  ],
+  "timerSeconds": 62
+}

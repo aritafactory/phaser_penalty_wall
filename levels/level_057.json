@@ -1,0 +1,60 @@
+{
+  "level": 57,
+  "description": "Встроенный уровень 57",
+  "complications": [
+    "timer",
+    "flashing_blocks",
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "R",
+      "B",
+      "G",
+      "F:G:B:0",
+      "R",
+      "G"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "R",
+      "B",
+      "B"
+    ],
+    [
+      "R",
+      "B",
+      "B",
+      "G",
+      "R",
+      "R"
+    ],
+    [
+      "B",
+      "R",
+      "G",
+      "R",
+      "R",
+      "R"
+    ],
+    [
+      "G",
+      "F:G:B:0",
+      "B",
+      "B",
+      "B",
+      "G"
+    ],
+    [
+      "F:G:B:0",
+      "G",
+      "U",
+      "G",
+      "F:B:G:0",
+      "R"
+    ]
+  ],
+  "timerSeconds": 68
+}

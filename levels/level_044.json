@@ -1,0 +1,53 @@
+{
+  "level": 44,
+  "description": "Встроенный уровень 44",
+  "complications": [
+    "limited_shots",
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "R",
+      "R",
+      "R",
+      "R",
+      "G"
+    ],
+    [
+      "R",
+      "B",
+      "G",
+      "U",
+      "B"
+    ],
+    [
+      "G",
+      "B",
+      "U",
+      "R",
+      "R"
+    ],
+    [
+      "B",
+      "B",
+      "G",
+      "R",
+      "G"
+    ],
+    [
+      "G",
+      "G",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "G",
+      "B",
+      "B",
+      "B",
+      "B"
+    ]
+  ],
+  "maxShots": 28
+}
