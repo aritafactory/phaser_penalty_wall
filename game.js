@@ -54,6 +54,7 @@ const model = {
   levelBoosters: {},
   activeBooster: null,
   rainbowNextShot: false,
+  gameplayActive: false,
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -269,16 +270,70 @@ function combinations(arr, size) {
   return result;
 }
 
+function connectedClusterFromSeed(grid, seed, maxSize, reserved = new Set()) {
+  const cluster = [];
+  const queue = [seed];
+  const seen = new Set([seed.join(',')]);
+
+  while (queue.length && cluster.length < maxSize) {
+    const [r, c] = queue.shift();
+    const key = `${r},${c}`;
+    if (!reserved.has(key) && grid[r]?.[c] && grid[r][c] !== 'U') {
+      cluster.push([r, c]);
+    }
+
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr;
+      const nc = c + dc;
+      const nextKey = `${nr},${nc}`;
+      if (seen.has(nextKey)) continue;
+      if (!grid[nr] || typeof grid[nr][nc] === 'undefined') continue;
+      if (!grid[nr][nc] || grid[nr][nc] === 'U' || reserved.has(nextKey)) continue;
+      seen.add(nextKey);
+      queue.push([nr, nc]);
+    }
+  }
+
+  return cluster;
+}
+
 function withAdditionalColors(grid) {
   const next = cloneGrid(grid);
-  const points = pickRandomCoords(
-    next,
-    (cell) => Boolean(cell) && cell !== 'U',
-    COMPLICATION_RATIOS.additional_colors
-  );
-  points.forEach(([r, c], idx) => {
-    next[r][c] = ADDITIONAL_COLORS[idx % ADDITIONAL_COLORS.length];
+  const eligible = [];
+  for (let r = 0; r < next.length; r += 1) {
+    for (let c = 0; c < next[0].length; c += 1) {
+      if (next[r][c] && next[r][c] !== 'U') eligible.push([r, c]);
+    }
+  }
+
+  if (!eligible.length) return next;
+
+  for (let i = eligible.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+  }
+
+  const targetCount = Math.max(1, Math.round(eligible.length * COMPLICATION_RATIOS.additional_colors));
+  const colorCount = Math.min(ADDITIONAL_COLORS.length, targetCount);
+  const baseSize = Math.floor(targetCount / colorCount);
+  let remainder = targetCount % colorCount;
+  const reserved = new Set();
+
+  ADDITIONAL_COLORS.slice(0, colorCount).forEach((color) => {
+    const desiredSize = Math.max(1, baseSize + (remainder > 0 ? 1 : 0));
+    if (remainder > 0) remainder -= 1;
+    const seed = eligible.find(([r, c]) => !reserved.has(`${r},${c}`));
+    if (!seed) return;
+
+    const cluster = connectedClusterFromSeed(next, seed, desiredSize, reserved);
+
+    cluster.forEach(([r, c]) => {
+      next[r][c] = color;
+      reserved.add(`${r},${c}`);
+    });
   });
+
   return next;
 }
 
@@ -573,6 +628,7 @@ function startCustomBuilderLevel() {
   model.activeBooster = null;
   model.levelBoosters = {};
   model.rainbowNextShot = false;
+  model.gameplayActive = true;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
   closeFailModal();
@@ -747,12 +803,61 @@ function findShotRegion(startR, startC, targetColor) {
   };
 }
 
+function findColorComponentSize(startR, startC, color, ignored = new Set()) {
+  const queue = [[startR, startC]];
+  const seen = new Set([`${startR},${startC}`]);
+  let size = 0;
+
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    const key = `${r},${c}`;
+    const cell = model.grid[r]?.[c];
+    if (!cell || cell === 'U' || ignored.has(key) || visibleColor(cell) !== color) continue;
+    size += 1;
+
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+      const nr = r + dr;
+      const nc = c + dc;
+      const nextKey = `${nr},${nc}`;
+      if (!isInsideGrid(nr, nc) || seen.has(nextKey)) return;
+      seen.add(nextKey);
+      queue.push([nr, nc]);
+    });
+  }
+
+  return size;
+}
+
+function largestNeighboringGroupColor(row, col, fallbackColor, ignored = new Set()) {
+  let bestColor = null;
+  let bestSize = 0;
+  const checked = new Set();
+
+  [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+    const nr = row + dr;
+    const nc = col + dc;
+    const key = `${nr},${nc}`;
+    const cell = model.grid[nr]?.[nc];
+    if (!isInsideGrid(nr, nc) || !cell || cell === 'U' || ignored.has(key)) return;
+    const color = visibleColor(cell);
+    const componentKey = `${key}:${color}`;
+    if (checked.has(componentKey)) return;
+    checked.add(componentKey);
+    const size = findColorComponentSize(nr, nc, color, ignored);
+    if (size > bestSize) {
+      bestSize = size;
+      bestColor = color;
+    }
+  });
+
+  return bestColor || fallbackColor;
+}
+
 function repaintTwoColorCells(twoCells, shotColor) {
-  const palette = getBreakableColors(model.grid);
+  const ignored = new Set(twoCells.map(([r, c]) => `${r},${c}`));
   twoCells.forEach(([r, c]) => {
     const oldColor = visibleColor(model.grid[r][c]);
-    const newColor = randomColorDifferentFrom(oldColor, palette);
-    model.grid[r][c] = newColor;
+    model.grid[r][c] = largestNeighboringGroupColor(r, c, oldColor || shotColor, ignored);
   });
 }
 
@@ -915,7 +1020,18 @@ function buyBooster(boosterKey) {
   renderShopTable();
 }
 
+function cancelActiveGameplay() {
+  if (!model.gameplayActive) return;
+  model.gameplayActive = false;
+  model.gameOver = true;
+  model.timerLeft = Infinity;
+  model.activeBooster = null;
+  if (boardScene) boardScene.animating = false;
+  closeFailModal();
+}
+
 function openShop() {
+  cancelActiveGameplay();
   renderShopTable();
   refreshUI();
   ui.shopModal.classList.add('open');
@@ -1153,7 +1269,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   handlePointer(pointer) {
-    if (this.animating || model.gameOver) return;
+    if (this.animating || model.gameOver || !model.gameplayActive) return;
 
     const cols = model.grid[0].length;
     const rows = model.grid.length;
@@ -1192,6 +1308,11 @@ class BoardScene extends Phaser.Scene {
 
   completeAction(removedKeys, gravityMoves) {
     this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
+      if (!model.gameplayActive || model.gameOver) {
+        this.animating = false;
+        return;
+      }
+
       if (isWin()) {
         if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
           model.currentLayerIndex += 1;
@@ -1205,6 +1326,7 @@ class BoardScene extends Phaser.Scene {
           ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
         } else {
           model.gameOver = true;
+          model.gameplayActive = false;
           closeFailModal();
           ui.stateLabel.textContent = 'Статус: победа';
           openWinModal();
@@ -1677,6 +1799,11 @@ class BoardScene extends Phaser.Scene {
   }
 
   resolveHit(row, col) {
+    if (!model.gameplayActive || model.gameOver) {
+      this.animating = false;
+      return;
+    }
+
     const targetCode = model.grid[row][col];
     const shotColor = this.pendingShotColor || model.selectedShotColor;
     if (visibleColor(targetCode) !== shotColor) {
@@ -1711,12 +1838,11 @@ class BoardScene extends Phaser.Scene {
 
     if (!this.pendingShotUsedBooster) recordNormalShotOutcome(ordinaryGroup.length);
 
-    repaintTwoColorCells(twoColorGroup, shotColor);
-
     const removedKeys = ordinaryGroup.map(([r, c]) => this.key(r, c));
     ordinaryGroup.forEach(([r, c]) => {
       model.grid[r][c] = null;
     });
+    repaintTwoColorCells(twoColorGroup, shotColor);
     const earned = pointsForRemovedBlocks(ordinaryGroup.length);
     model.score += earned;
 
@@ -1799,7 +1925,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
-    if (model.gameOver) return;
+    if (model.gameOver || !model.gameplayActive) return;
 
     this.flashAccumulator += delta;
     if (this.flashAccumulator >= 800) {
@@ -1875,6 +2001,8 @@ function closeFailModal() {
 }
 
 function failLevel(message = 'Статус: поражение') {
+  if (!model.gameplayActive) return;
+  model.gameplayActive = false;
   model.gameOver = true;
   ui.stateLabel.textContent = message;
   refreshUI();
@@ -1887,12 +2015,14 @@ function retryCurrentLevel() {
 }
 
 function showStartScreen() {
+  cancelActiveGameplay();
   if (ui.levelsScreen) ui.levelsScreen.hidden = true;
   if (ui.startScreen) ui.startScreen.hidden = false;
   document.body.classList.add('start-active');
 }
 
 function showLevelsScreen() {
+  cancelActiveGameplay();
   if (ui.startScreen) ui.startScreen.hidden = true;
   if (ui.levelsScreen) ui.levelsScreen.hidden = false;
   document.body.classList.add('start-active');
@@ -1985,6 +2115,7 @@ function startLevelByIndex(index) {
   model.activeBooster = null;
   model.levelBoosters = { ...(level.startingBoosters || {}) };
   model.rainbowNextShot = false;
+  model.gameplayActive = true;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
   closeFailModal();
