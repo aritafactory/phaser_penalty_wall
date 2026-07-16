@@ -298,21 +298,145 @@ function connectedClusterFromSeed(grid, seed, maxSize, reserved = new Set()) {
   return cluster;
 }
 
-function withAdditionalColors(grid) {
-  const next = cloneGrid(grid);
-  const eligible = [];
-  for (let r = 0; r < next.length; r += 1) {
-    for (let c = 0; c < next[0].length; c += 1) {
-      if (next[r][c] && next[r][c] !== 'U') eligible.push([r, c]);
+function shuffleInPlace(items) {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+function visibleColorCells(grid, color) {
+  const cells = [];
+  for (let r = 0; r < grid.length; r += 1) {
+    for (let c = 0; c < grid[0].length; c += 1) {
+      if (visibleColor(grid[r][c]) === color) cells.push([r, c]);
+    }
+  }
+  return cells;
+}
+
+function areCellsOrthogonallyConnected(cells) {
+  if (cells.length <= 1) return true;
+  const targets = new Set(cells.map(([r, c]) => `${r},${c}`));
+  const queue = [cells[0]];
+  const seen = new Set([cells[0].join(',')]);
+
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+      const nr = r + dr;
+      const nc = c + dc;
+      const key = `${nr},${nc}`;
+      if (!targets.has(key) || seen.has(key)) return;
+      seen.add(key);
+      queue.push([nr, nc]);
+    });
+  }
+
+  return seen.size === cells.length;
+}
+
+function collectConnectedGroupsInGrid(grid, predicate = () => true) {
+  const groups = [];
+  const visited = new Set();
+
+  for (let r = 0; r < grid.length; r += 1) {
+    for (let c = 0; c < grid[0].length; c += 1) {
+      const cell = grid[r][c];
+      const key = `${r},${c}`;
+      if (!cell || cell === 'U' || visited.has(key) || !predicate(cell, r, c)) continue;
+
+      const color = visibleColor(cell);
+      const group = [];
+      const queue = [[r, c]];
+      visited.add(key);
+
+      while (queue.length) {
+        const [cr, cc] = queue.shift();
+        group.push([cr, cc]);
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+          const nr = cr + dr;
+          const nc = cc + dc;
+          const nextKey = `${nr},${nc}`;
+          const nextCell = grid[nr]?.[nc];
+          if (!nextCell || nextCell === 'U' || visited.has(nextKey) || !predicate(nextCell, nr, nc)) return;
+          if (visibleColor(nextCell) !== color) return;
+          visited.add(nextKey);
+          queue.push([nr, nc]);
+        });
+      }
+
+      groups.push(group);
     }
   }
 
-  if (!eligible.length) return next;
+  return groups;
+}
 
-  for (let i = eligible.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+function applyGravityToGrid(grid) {
+  const next = cloneGrid(grid);
+  const rows = next.length;
+  const cols = next[0].length;
+
+  for (let c = 0; c < cols; c += 1) {
+    const stack = [];
+    for (let r = rows - 1; r >= 0; r -= 1) {
+      if (next[r][c]) stack.push(next[r][c]);
+    }
+    for (let r = rows - 1; r >= 0; r -= 1) {
+      next[r][c] = stack[rows - 1 - r] || null;
+    }
   }
+
+  return next;
+}
+
+function simulateGroupRemovalWithGravity(grid, group) {
+  const next = cloneGrid(grid);
+  group.forEach(([r, c]) => {
+    next[r][c] = null;
+  });
+  return applyGravityToGrid(next);
+}
+
+function additionalColorCanConnectAfterOneRemoval(grid, color) {
+  const originalCells = visibleColorCells(grid, color);
+  if (originalCells.length <= 1) return true;
+
+  const removableGroups = collectConnectedGroupsInGrid(
+    grid,
+    (cell) => visibleColor(cell) !== color
+  );
+
+  return removableGroups.some((group) => {
+    const simulated = simulateGroupRemovalWithGravity(grid, group);
+    const remaining = visibleColorCells(simulated, color);
+    return remaining.length === originalCells.length && areCellsOrthogonallyConnected(remaining);
+  });
+}
+
+function validateAdditionalColorLayout(grid) {
+  return ADDITIONAL_COLORS.every((color) => {
+    const cells = visibleColorCells(grid, color);
+    return cells.length <= 1 || additionalColorCanConnectAfterOneRemoval(grid, color);
+  });
+}
+
+function eligibleAdditionalColorCells(grid) {
+  const cells = [];
+  for (let r = 0; r < grid.length; r += 1) {
+    for (let c = 0; c < grid[0].length; c += 1) {
+      if (grid[r][c] && grid[r][c] !== 'U') cells.push([r, c]);
+    }
+  }
+  return cells;
+}
+
+function paintAdditionalColorGroups(grid, useConnectedClusters) {
+  const next = cloneGrid(grid);
+  const eligible = shuffleInPlace(eligibleAdditionalColorCells(next));
+  if (!eligible.length) return next;
 
   const targetCount = Math.max(1, Math.round(eligible.length * COMPLICATION_RATIOS.additional_colors));
   const colorCount = Math.min(ADDITIONAL_COLORS.length, targetCount);
@@ -323,18 +447,33 @@ function withAdditionalColors(grid) {
   ADDITIONAL_COLORS.slice(0, colorCount).forEach((color) => {
     const desiredSize = Math.max(1, baseSize + (remainder > 0 ? 1 : 0));
     if (remainder > 0) remainder -= 1;
-    const seed = eligible.find(([r, c]) => !reserved.has(`${r},${c}`));
-    if (!seed) return;
+    const available = eligible.filter(([r, c]) => !reserved.has(`${r},${c}`));
+    if (!available.length) return;
+    const cells = useConnectedClusters
+      ? connectedClusterFromSeed(next, available[0], desiredSize, reserved)
+      : available.slice(0, desiredSize);
 
-    const cluster = connectedClusterFromSeed(next, seed, desiredSize, reserved);
-
-    cluster.forEach(([r, c]) => {
+    cells.forEach(([r, c]) => {
       next[r][c] = color;
       reserved.add(`${r},${c}`);
     });
   });
 
   return next;
+}
+
+function withAdditionalColors(grid) {
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const candidate = paintAdditionalColorGroups(grid, true);
+    if (validateAdditionalColorLayout(candidate)) return candidate;
+  }
+
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const candidate = paintAdditionalColorGroups(grid, false);
+    if (validateAdditionalColorLayout(candidate)) return candidate;
+  }
+
+  return paintAdditionalColorGroups(grid, true);
 }
 
 function pickRandomCoords(grid, predicate, ratio = 0.25) {
@@ -358,14 +497,13 @@ function getGridPalette(grid) {
   return palette.length ? palette : BASE_COLORS;
 }
 
-function regenerateRandomSpecialBlocks(grid, complications) {
-  let next = cloneGrid(grid);
+function normalizeRegenerableCells(grid, complications) {
   const shouldRegenerateAdditional = complications.includes('additional_colors');
   const shouldRegenerateUnbreakable = complications.includes('unbreakable_blocks');
   const shouldRegenerateTwoColor = complications.includes('two_colors_blocks');
   const shouldRegenerateFlashing = complications.includes('flashing_blocks');
 
-  next = next.map((row) =>
+  return grid.map((row) =>
     row.map((cell) => {
       if (shouldRegenerateUnbreakable && cell === 'U') return randomFrom(BASE_COLORS);
       if (shouldRegenerateAdditional && ADDITIONAL_COLORS.includes(visibleColor(cell))) return randomFrom(BASE_COLORS);
@@ -374,13 +512,21 @@ function regenerateRandomSpecialBlocks(grid, complications) {
       return cell;
     })
   );
+}
 
-  if (shouldRegenerateUnbreakable) next = withUnbreakableBlocks(next);
-  if (shouldRegenerateAdditional) next = withAdditionalColors(next);
-  if (shouldRegenerateTwoColor) next = withTwoColorBlocks(next);
-  if (shouldRegenerateFlashing) next = withFlashingBlocks(next);
-
+function applyRegenerableComplications(grid, complications) {
+  let next = cloneGrid(grid);
+  if (complications.includes('unbreakable_blocks')) next = withUnbreakableBlocks(next);
+  if (complications.includes('additional_colors')) next = withAdditionalColors(next);
+  if (complications.includes('two_colors_blocks')) next = withTwoColorBlocks(next);
+  if (complications.includes('flashing_blocks')) next = withFlashingBlocks(next);
   return next;
+}
+
+function regenerateRandomSpecialBlocks(grid, complications, shouldRandomizeLayout = false) {
+  let next = normalizeRegenerableCells(cloneGrid(grid), complications);
+  if (shouldRandomizeLayout) next = randomizeGridLayout(next);
+  return applyRegenerableComplications(next, complications);
 }
 
 function withUnbreakableBlocks(grid) {
@@ -400,10 +546,11 @@ function withTwoColorBlocks(grid) {
   const next = cloneGrid(grid);
   const points = pickRandomCoords(
     next,
-    (cell) => Boolean(cell) && cell !== 'U',
+    (cell) => Boolean(cell) && cell !== 'U' && !ADDITIONAL_COLORS.includes(visibleColor(cell)),
     COMPLICATION_RATIOS.two_colors_blocks
   );
-  const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
+  const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))]
+    .filter((color) => !ADDITIONAL_COLORS.includes(color));
   const palette = levelPalette.length ? levelPalette : ['R', 'G', 'B'];
   points.forEach(([r, c]) => {
     if (next[r] && next[r][c] && next[r][c] !== 'U') next[r][c] = `2${randomFrom(palette)}`;
@@ -415,10 +562,11 @@ function withFlashingBlocks(grid) {
   const next = cloneGrid(grid);
   const points = pickRandomCoords(
     next,
-    (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell),
+    (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell) && !ADDITIONAL_COLORS.includes(visibleColor(cell)),
     COMPLICATION_RATIOS.flashing_blocks
   );
-  const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))];
+  const levelPalette = [...new Set(next.flat().filter((c) => c && c !== 'U').map((c) => visibleColor(c)))]
+    .filter((color) => !ADDITIONAL_COLORS.includes(color));
   const fallback = ['R', 'G', 'B'];
   const palette = levelPalette.length ? levelPalette : fallback;
 
@@ -431,12 +579,7 @@ function withFlashingBlocks(grid) {
 }
 
 function applyComplicationsToGrid(baseGrid, complications) {
-  let grid = cloneGrid(baseGrid);
-  if (complications.includes('additional_colors')) grid = withAdditionalColors(grid);
-  if (complications.includes('unbreakable_blocks')) grid = withUnbreakableBlocks(grid);
-  if (complications.includes('two_colors_blocks')) grid = withTwoColorBlocks(grid);
-  if (complications.includes('flashing_blocks')) grid = withFlashingBlocks(grid);
-  return grid;
+  return applyRegenerableComplications(baseGrid, complications);
 }
 
 function buildBuiltinLevels() {
@@ -725,12 +868,12 @@ function generateBuilderGridFromInputs() {
     grid = withAdditionalColors(grid);
   }
 
-  const palette = getGridPalette(grid);
+  const palette = getGridPalette(grid).filter((color) => !ADDITIONAL_COLORS.includes(color));
 
   if (complications.includes('two_colors_blocks')) {
     pickRandomCoords(
       grid,
-      (cell) => Boolean(cell) && cell !== 'U',
+      (cell) => Boolean(cell) && cell !== 'U' && !ADDITIONAL_COLORS.includes(visibleColor(cell)),
       COMPLICATION_RATIOS.two_colors_blocks
     ).forEach(([r, c]) => {
       grid[r][c] = `2${randomFrom(palette)}`;
@@ -740,7 +883,7 @@ function generateBuilderGridFromInputs() {
   if (complications.includes('flashing_blocks')) {
     pickRandomCoords(
       grid,
-      (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell),
+      (cell) => Boolean(cell) && cell !== 'U' && !isTwoColor(cell) && !ADDITIONAL_COLORS.includes(visibleColor(cell)),
       COMPLICATION_RATIOS.flashing_blocks
     ).forEach(([r, c]) => {
       const c1 = randomFrom(palette);
@@ -1316,11 +1459,10 @@ class BoardScene extends Phaser.Scene {
       if (isWin()) {
         if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
           model.currentLayerIndex += 1;
-          model.grid = randomizeGridLayout(
-            regenerateRandomSpecialBlocks(
-              cloneGrid(model.currentLevel.layers[model.currentLayerIndex]),
-              model.currentLevel.complications || []
-            )
+          model.grid = regenerateRandomSpecialBlocks(
+            cloneGrid(model.currentLevel.layers[model.currentLayerIndex]),
+            model.currentLevel.complications || [],
+            true
           );
           this.renderGridStatic();
           ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
@@ -2110,7 +2252,7 @@ function startLevelByIndex(index) {
   const sourceGrid = cloneGrid(level.layers ? level.layers[0] : level.grid);
   model.grid = level.randomize === false
     ? sourceGrid
-    : randomizeGridLayout(regenerateRandomSpecialBlocks(sourceGrid, level.complications || []));
+    : regenerateRandomSpecialBlocks(sourceGrid, level.complications || [], true);
   model.score = 0;
   model.activeBooster = null;
   model.levelBoosters = { ...(level.startingBoosters || {}) };
