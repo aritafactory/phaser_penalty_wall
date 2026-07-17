@@ -498,10 +498,151 @@ function getGridPalette(grid) {
 }
 
 
+function findColorComponentSizeInGrid(grid, startR, startC, color, ignored = new Set()) {
+  const queue = [[startR, startC]];
+  const seen = new Set([`${startR},${startC}`]);
+  let size = 0;
+
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    const key = `${r},${c}`;
+    const cell = grid[r]?.[c];
+    if (!cell || cell === 'U' || ignored.has(key) || visibleColor(cell) !== color) continue;
+    size += 1;
+
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+      const nr = r + dr;
+      const nc = c + dc;
+      const nextKey = `${nr},${nc}`;
+      if (!grid[nr] || typeof grid[nr][nc] === 'undefined' || seen.has(nextKey)) return;
+      seen.add(nextKey);
+      queue.push([nr, nc]);
+    });
+  }
+
+  return size;
+}
+
+function largestNeighboringGroupColorInGrid(grid, row, col, fallbackColor, ignored = new Set()) {
+  let bestColor = null;
+  let bestSize = 0;
+
+  [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+    const nr = row + dr;
+    const nc = col + dc;
+    const key = `${nr},${nc}`;
+    const cell = grid[nr]?.[nc];
+    if (!cell || cell === 'U' || ignored.has(key)) return;
+    const color = visibleColor(cell);
+    const size = findColorComponentSizeInGrid(grid, nr, nc, color, ignored);
+    if (size > bestSize) {
+      bestSize = size;
+      bestColor = color;
+    }
+  });
+
+  return bestColor || fallbackColor;
+}
+
+function findShotRegionInGrid(grid, startR, startC, targetColor) {
+  const queue = [[startR, startC]];
+  const seen = new Set([`${startR},${startC}`]);
+  const ordinary = [];
+  const twos = [];
+
+  while (queue.length) {
+    const [r, c] = queue.shift();
+    const cell = grid[r]?.[c];
+    if (!cell || cell === 'U' || visibleColor(cell) !== targetColor) continue;
+
+    if (isTwoColor(cell)) twos.push([r, c]);
+    else if (isRemovableCell(cell)) ordinary.push([r, c]);
+
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
+      const nr = r + dr;
+      const nc = c + dc;
+      const key = `${nr},${nc}`;
+      if (!grid[nr] || typeof grid[nr][nc] === 'undefined' || seen.has(key)) return;
+      if (visibleColor(grid[nr][nc]) !== targetColor) return;
+      seen.add(key);
+      queue.push([nr, nc]);
+    });
+  }
+
+  return { ordinary, twos };
+}
+
+function connectedGroupCountInGrid(grid) {
+  return collectConnectedGroupsInGrid(grid).length;
+}
+
+function simulateMatchingShotInGrid(grid, row, col) {
+  const targetColor = visibleColor(grid[row]?.[col]);
+  if (!targetColor || targetColor === 'U') return cloneGrid(grid);
+
+  const next = cloneGrid(grid);
+  const region = findShotRegionInGrid(next, row, col, targetColor);
+  const ignoredTwos = new Set(region.twos.map(([r, c]) => `${r},${c}`));
+
+  region.ordinary.forEach(([r, c]) => {
+    next[r][c] = null;
+  });
+  region.twos.forEach(([r, c]) => {
+    const oldColor = visibleColor(next[r][c]);
+    next[r][c] = largestNeighboringGroupColorInGrid(next, r, c, oldColor || targetColor, ignoredTwos);
+  });
+
+  return region.ordinary.length > 0 ? applyGravityToGrid(next) : next;
+}
+
+function shotCandidatesForGrid(grid) {
+  return collectConnectedGroupsInGrid(grid)
+    .map((group) => {
+      const ordinaryCount = group.filter(([r, c]) => isRemovableCell(grid[r][c])).length;
+      const twoColorCount = group.filter(([r, c]) => isTwoColor(grid[r][c])).length;
+      return { group, ordinaryCount, twoColorCount, size: group.length };
+    })
+    .filter((candidate) => candidate.ordinaryCount > 0 || candidate.twoColorCount > 0);
+}
+
+function chooseBestSimulatedShot(grid) {
+  const candidates = shotCandidatesForGrid(grid);
+  if (!candidates.length) return null;
+
+  let best = null;
+  candidates.forEach((candidate) => {
+    const [row, col] = candidate.group[0];
+    const simulatedGrid = simulateMatchingShotInGrid(grid, row, col);
+    const remainingGroups = connectedGroupCountInGrid(simulatedGrid);
+    const result = { ...candidate, row, col, simulatedGrid, remainingGroups };
+
+    if (!best
+      || result.size > best.size
+      || (result.size === best.size && result.remainingGroups < best.remainingGroups)) {
+      best = result;
+    }
+  });
+
+  return best;
+}
+
+function estimateCompletionShotsForGrid(grid) {
+  let simulationGrid = cloneGrid(grid);
+  let shots = 0;
+  const maxSimulationShots = Math.max(1, grid.length * (grid[0]?.length || 1) * 3);
+
+  while (shots < maxSimulationShots) {
+    const nextShot = chooseBestSimulatedShot(simulationGrid);
+    if (!nextShot) break;
+    simulationGrid = nextShot.simulatedGrid;
+    shots += 1;
+  }
+
+  return shots;
+}
+
 function calculateRequiredShotsForGrid(grid) {
-  const colorGroups = collectConnectedGroupsInGrid(grid);
-  const twoColorCells = grid.flat().filter((cell) => isTwoColor(cell)).length;
-  return Math.max(1, colorGroups.length + twoColorCells);
+  return Math.max(1, estimateCompletionShotsForGrid(grid));
 }
 
 function calculateRequiredShotsForLevel(level, firstGrid = null) {
@@ -513,7 +654,7 @@ function calculateRequiredShotsForLevel(level, firstGrid = null) {
   return level.layers.reduce((total, layerGrid, idx) => {
     const grid = idx === 0 && firstGrid
       ? firstGrid
-      : regenerateRandomSpecialBlocks(cloneGrid(layerGrid), complications, false);
+      : regenerateRandomSpecialBlocks(cloneGrid(layerGrid), complications, true);
     return total + calculateRequiredShotsForGrid(grid);
   }, 0);
 }
