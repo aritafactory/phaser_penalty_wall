@@ -497,6 +497,43 @@ function getGridPalette(grid) {
   return palette.length ? palette : BASE_COLORS;
 }
 
+
+function calculateRequiredShotsForGrid(grid) {
+  const colorGroups = collectConnectedGroupsInGrid(grid);
+  const twoColorCells = grid.flat().filter((cell) => isTwoColor(cell)).length;
+  return Math.max(1, colorGroups.length + twoColorCells);
+}
+
+function calculateRequiredShotsForLevel(level, firstGrid = null) {
+  const complications = level.complications || [];
+  if (!Array.isArray(level.layers) || level.layers.length === 0) {
+    return calculateRequiredShotsForGrid(firstGrid || level.grid);
+  }
+
+  return level.layers.reduce((total, layerGrid, idx) => {
+    const grid = idx === 0 && firstGrid
+      ? firstGrid
+      : regenerateRandomSpecialBlocks(cloneGrid(layerGrid), complications, false);
+    return total + calculateRequiredShotsForGrid(grid);
+  }, 0);
+}
+
+function moveLimitForRequiredShots(requiredShots) {
+  return Math.max(1, Math.ceil(requiredShots * 1.1));
+}
+
+function timerLimitForRequiredShots(requiredShots) {
+  return Math.max(1, Math.ceil(requiredShots * 2 * 1.1));
+}
+
+function applyCalculatedLimitsToLevel(level, firstGrid = null) {
+  const complications = level.complications || [];
+  const requiredShots = calculateRequiredShotsForLevel(level, firstGrid);
+  if (complications.includes('limited_shots')) level.maxShots = moveLimitForRequiredShots(requiredShots);
+  if (complications.includes('timer')) level.timerSeconds = timerLimitForRequiredShots(requiredShots);
+  return level;
+}
+
 function normalizeRegenerableCells(grid, complications) {
   const shouldRegenerateAdditional = complications.includes('additional_colors');
   const shouldRegenerateUnbreakable = complications.includes('unbreakable_blocks');
@@ -594,8 +631,6 @@ function buildBuiltinLevels() {
       level: idx + 1,
       description: `Встроенный уровень ${idx + 1}`,
       complications,
-      maxShots: complications.includes('limited_shots') ? Math.max(10, 22 - idx) : undefined,
-      timerSeconds: complications.includes('timer') ? Math.max(50, 100 - idx) : undefined,
       grid: primaryGrid,
     };
 
@@ -616,7 +651,7 @@ function buildBuiltinLevels() {
       level.grid = level.layers[0];
     }
 
-    return level;
+    return applyCalculatedLimitsToLevel(level, primaryGrid);
   });
 }
 
@@ -750,14 +785,11 @@ function buildLevelFromBuilder() {
     grid: cloneGrid(baseGrid),
   };
 
-  if (ui.cTimer.checked) level.timerSeconds = Math.max(1, Number(ui.builderTimer.value) || 60);
-  if (ui.cLimitedShots.checked) level.maxShots = Math.max(1, Number(ui.builderShots.value) || 10);
-
   if (layersCount > 1) {
     level.layers = Array.from({ length: layersCount }, () => cloneGrid(baseGrid));
   }
 
-  return level;
+  return applyCalculatedLimitsToLevel(level, baseGrid);
 }
 
 function startCustomBuilderLevel() {
@@ -777,8 +809,9 @@ function startCustomBuilderLevel() {
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
-  model.shotsLeft = Number.isFinite(customLevel.maxShots) ? customLevel.maxShots : Infinity;
-  model.timerLeft = Number.isFinite(customLevel.timerSeconds) ? customLevel.timerSeconds : Infinity;
+  const customRequiredShots = calculateRequiredShotsForLevel(customLevel, model.grid);
+  model.shotsLeft = customLevel.complications.includes('limited_shots') ? moveLimitForRequiredShots(customRequiredShots) : Infinity;
+  model.timerLeft = customLevel.complications.includes('timer') ? timerLimitForRequiredShots(customRequiredShots) : Infinity;
   model.selectedShotColor = getBreakableColors(model.grid)[0] || 'R';
   pickNextShotColor();
   initPhaser(model.grid.length, model.grid[0].length);
@@ -2263,8 +2296,9 @@ function startLevelByIndex(index) {
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
-  model.shotsLeft = Number.isFinite(level.maxShots) ? level.maxShots : Infinity;
-  model.timerLeft = Number.isFinite(level.timerSeconds) ? level.timerSeconds : Infinity;
+  const requiredShots = calculateRequiredShotsForLevel(level, model.grid);
+  model.shotsLeft = (level.complications || []).includes('limited_shots') ? moveLimitForRequiredShots(requiredShots) : Infinity;
+  model.timerLeft = (level.complications || []).includes('timer') ? timerLimitForRequiredShots(requiredShots) : Infinity;
   model.selectedShotColor = getBreakableColors(model.grid)[0] || 'R';
   pickNextShotColor();
 
