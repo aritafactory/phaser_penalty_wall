@@ -44,6 +44,9 @@ const model = {
   timerLeft: Infinity,
   gameOver: false,
   levels: [],
+  mainLevels: [],
+  masterLevels: [],
+  activeLevelSet: 'main',
   currentLevel: null,
   currentLevelIndex: 0,
   highestUnlockedLevel: 1,
@@ -83,6 +86,8 @@ const ui = {
   levelsPlusBtn: document.getElementById('levelsPlusBtn'),
   levelsBalanceLabel: document.getElementById('levelsBalanceLabel'),
   levelsGrid: document.getElementById('levelsGrid'),
+  mainLevelsTab: document.getElementById('mainLevelsTab'),
+  masterLevelsTab: document.getElementById('masterLevelsTab'),
   gameHomeBtn: document.getElementById('gameHomeBtn'),
   gamePlusBtn: document.getElementById('gamePlusBtn'),
   gameBalanceLabel: document.getElementById('gameBalanceLabel'),
@@ -796,15 +801,15 @@ function buildBuiltinLevels() {
   });
 }
 
-async function loadBuiltinLevelsFromFiles() {
-  const manifestResponse = await fetch('levels/manifest.json');
+async function loadLevelsFromManifest(manifestUrl) {
+  const manifestResponse = await fetch(manifestUrl);
   if (!manifestResponse.ok) {
-    throw new Error('Failed to load levels manifest');
+    throw new Error(`Failed to load levels manifest: ${manifestUrl}`);
   }
 
   const levelFiles = await manifestResponse.json();
   if (!Array.isArray(levelFiles) || levelFiles.length === 0) {
-    throw new Error('Levels manifest is empty');
+    throw new Error(`Levels manifest is empty: ${manifestUrl}`);
   }
 
   const levels = await Promise.all(
@@ -815,6 +820,14 @@ async function loadBuiltinLevelsFromFiles() {
     })
   );
   return levels.sort((a, b) => Number(a.level) - Number(b.level));
+}
+
+async function loadBuiltinLevelsFromFiles() {
+  return loadLevelsFromManifest('levels/manifest.json');
+}
+
+async function loadMasterLevelsFromFiles() {
+  return loadLevelsFromManifest('levels/master_levels/manifest.json');
 }
 
 function populateLevelSelect() {
@@ -2279,7 +2292,9 @@ function openWinModal() {
   const totalAward = model.score + moveBonus;
   if (!model.winAwarded) {
     model.totalScore += totalAward;
-    model.highestUnlockedLevel = Math.max(model.highestUnlockedLevel, Math.min(model.currentLevelIndex + 2, model.levels.length));
+    if (model.activeLevelSet === 'main') {
+      model.highestUnlockedLevel = Math.max(model.highestUnlockedLevel, Math.min(model.currentLevelIndex + 2, model.mainLevels.length));
+    }
     model.winAwarded = true;
     savePersistentState();
   }
@@ -2330,6 +2345,14 @@ function retryCurrentLevel() {
   startLevelByIndex(model.currentLevelIndex || 0);
 }
 
+function setActiveLevelSet(levelSet) {
+  model.activeLevelSet = levelSet === 'master' ? 'master' : 'main';
+  model.levels = model.activeLevelSet === 'master' ? model.masterLevels : model.mainLevels;
+  model.currentLevelIndex = Math.min(model.currentLevelIndex, Math.max(0, model.levels.length - 1));
+  populateLevelSelect();
+  renderLevelsScreen();
+}
+
 function showStartScreen() {
   cancelActiveGameplay();
   if (ui.levelsScreen) ui.levelsScreen.hidden = true;
@@ -2353,9 +2376,20 @@ function hideMenuScreens() {
 
 function renderLevelsScreen() {
   if (!ui.levelsGrid) return;
-  const totalSlots = 100;
-  const selectedLevel = Math.min(model.currentLevelIndex + 1, totalSlots);
-  const unlockedThrough = Math.min(model.highestUnlockedLevel, model.levels.length || 0);
+  const isMaster = model.activeLevelSet === 'master';
+  const totalSlots = isMaster ? model.masterLevels.length : 100;
+  const selectedLevel = Math.min(model.currentLevelIndex + 1, Math.max(1, totalSlots));
+  const unlockedThrough = isMaster ? model.masterLevels.length : Math.min(model.highestUnlockedLevel, model.mainLevels.length || 0);
+
+  if (ui.mainLevelsTab) {
+    ui.mainLevelsTab.classList.toggle('active', !isMaster);
+    ui.mainLevelsTab.setAttribute('aria-selected', String(!isMaster));
+  }
+  if (ui.masterLevelsTab) {
+    ui.masterLevelsTab.classList.toggle('active', isMaster);
+    ui.masterLevelsTab.setAttribute('aria-selected', String(isMaster));
+  }
+
   ui.levelsGrid.innerHTML = '';
 
   for (let levelNumber = 1; levelNumber <= totalSlots; levelNumber += 1) {
@@ -2365,7 +2399,7 @@ function renderLevelsScreen() {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `level-card ${isUnlocked ? 'unlocked' : 'locked'}${isSelected ? ' selected' : ''}`;
-    card.setAttribute('aria-label', isUnlocked ? `Start level ${levelNumber}` : `Level ${levelNumber} locked`);
+    card.setAttribute('aria-label', isUnlocked ? `Start ${isMaster ? 'master ' : ''}level ${levelNumber}` : `Level ${levelNumber} locked`);
     card.disabled = !isUnlocked;
 
     const number = document.createElement('span');
@@ -2451,10 +2485,16 @@ function startLevelByIndex(index) {
 async function initApp() {
   loadPersistentState();
   try {
-    model.levels = await loadBuiltinLevelsFromFiles();
+    model.mainLevels = await loadBuiltinLevelsFromFiles();
   } catch {
-    model.levels = buildBuiltinLevels();
+    model.mainLevels = buildBuiltinLevels();
   }
+  try {
+    model.masterLevels = await loadMasterLevelsFromFiles();
+  } catch {
+    model.masterLevels = [];
+  }
+  model.levels = model.mainLevels;
   populateLevelSelect();
   if (ui.startBtn) ui.startBtn.onclick = () => startLevelByIndex(Number(ui.levelSelect.value));
   if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
@@ -2466,6 +2506,8 @@ async function initApp() {
   if (ui.startShopBtn) ui.startShopBtn.onclick = () => openShop();
   if (ui.startPlusBtn) ui.startPlusBtn.onclick = () => openShop();
   if (ui.levelsBackBtn) ui.levelsBackBtn.onclick = () => showStartScreen();
+  if (ui.mainLevelsTab) ui.mainLevelsTab.onclick = () => setActiveLevelSet('main');
+  if (ui.masterLevelsTab) ui.masterLevelsTab.onclick = () => setActiveLevelSet('master');
   if (ui.levelsShopBtn) ui.levelsShopBtn.onclick = () => openShop();
   if (ui.levelsPlusBtn) ui.levelsPlusBtn.onclick = () => openShop();
   if (ui.gameHomeBtn) ui.gameHomeBtn.onclick = () => showLevelsScreen();
