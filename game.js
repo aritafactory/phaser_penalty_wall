@@ -49,6 +49,7 @@ const model = {
   activeLevelSet: 'main',
   currentLevel: null,
   currentLevelIndex: 0,
+  levelsPage: 0,
   highestUnlockedLevel: 1,
   winAwarded: false,
   ineffectiveShotStreak: 0,
@@ -86,6 +87,7 @@ const ui = {
   levelsPlusBtn: document.getElementById('levelsPlusBtn'),
   levelsBalanceLabel: document.getElementById('levelsBalanceLabel'),
   levelsGrid: document.getElementById('levelsGrid'),
+  levelsDots: document.getElementById('levelsDots'),
   mainLevelsTab: document.getElementById('mainLevelsTab'),
   masterLevelsTab: document.getElementById('masterLevelsTab'),
   gameHomeBtn: document.getElementById('gameHomeBtn'),
@@ -2349,6 +2351,7 @@ function setActiveLevelSet(levelSet) {
   model.activeLevelSet = levelSet === 'master' ? 'master' : 'main';
   model.levels = model.activeLevelSet === 'master' ? model.masterLevels : model.mainLevels;
   model.currentLevelIndex = Math.min(model.currentLevelIndex, Math.max(0, model.levels.length - 1));
+  model.levelsPage = 0;
   populateLevelSelect();
   renderLevelsScreen();
 }
@@ -2362,6 +2365,7 @@ function showStartScreen() {
 
 function showLevelsScreen() {
   cancelActiveGameplay();
+  model.levelsPage = Math.floor(Math.max(0, model.currentLevelIndex) / LEVELS_PER_PAGE);
   if (ui.startScreen) ui.startScreen.hidden = true;
   if (ui.levelsScreen) ui.levelsScreen.hidden = false;
   document.body.classList.add('start-active');
@@ -2374,12 +2378,37 @@ function hideMenuScreens() {
   document.body.classList.remove('start-active');
 }
 
+const LEVELS_PER_PAGE = 40;
+
+function renderLevelPagination(pageCount) {
+  if (!ui.levelsDots) return;
+  ui.levelsDots.innerHTML = '';
+  if (pageCount <= 1) return;
+
+  for (let page = 0; page < pageCount; page += 1) {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = `levels-dot${page === model.levelsPage ? ' active' : ''}`;
+    dot.setAttribute('aria-label', `Show levels page ${page + 1}`);
+    dot.setAttribute('aria-current', page === model.levelsPage ? 'page' : 'false');
+    dot.onclick = () => {
+      model.levelsPage = page;
+      renderLevelsScreen();
+    };
+    ui.levelsDots.appendChild(dot);
+  }
+}
+
 function renderLevelsScreen() {
   if (!ui.levelsGrid) return;
   const isMaster = model.activeLevelSet === 'master';
   const totalSlots = isMaster ? model.masterLevels.length : 100;
+  const pageCount = Math.max(1, Math.ceil(totalSlots / LEVELS_PER_PAGE));
+  model.levelsPage = Math.min(Math.max(0, model.levelsPage || 0), pageCount - 1);
   const selectedLevel = Math.min(model.currentLevelIndex + 1, Math.max(1, totalSlots));
   const unlockedThrough = isMaster ? model.masterLevels.length : Math.min(model.highestUnlockedLevel, model.mainLevels.length || 0);
+  const pageStart = model.levelsPage * LEVELS_PER_PAGE + 1;
+  const pageEnd = Math.min(totalSlots, pageStart + LEVELS_PER_PAGE - 1);
 
   if (ui.mainLevelsTab) {
     ui.mainLevelsTab.classList.toggle('active', !isMaster);
@@ -2392,7 +2421,7 @@ function renderLevelsScreen() {
 
   ui.levelsGrid.innerHTML = '';
 
-  for (let levelNumber = 1; levelNumber <= totalSlots; levelNumber += 1) {
+  for (let levelNumber = pageStart; levelNumber <= pageEnd; levelNumber += 1) {
     const isAvailable = levelNumber <= model.levels.length;
     const isUnlocked = isAvailable && levelNumber <= unlockedThrough;
     const isSelected = levelNumber === selectedLevel && isUnlocked;
@@ -2410,7 +2439,7 @@ function renderLevelsScreen() {
     const meta = document.createElement('span');
     if (isUnlocked) {
       meta.className = 'level-stars';
-      meta.textContent = isSelected ? '★★★' : '★★★';
+      meta.textContent = '★★★';
     } else {
       meta.className = 'level-lock';
       meta.textContent = '🔒';
@@ -2427,6 +2456,8 @@ function renderLevelsScreen() {
 
     ui.levelsGrid.appendChild(card);
   }
+
+  renderLevelPagination(pageCount);
 }
 
 function initPhaser(rows, cols) {

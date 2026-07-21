@@ -47,27 +47,47 @@
       .floating-block { position:absolute; width: 120px; height: 120px; border-radius: 14px; transform: rotate(var(--rot)); background: var(--color); box-shadow: inset 0 4px 9px rgba(255,255,255,.22), inset 0 -7px 8px rgba(0,0,0,.28), 0 14px 22px rgba(0,0,0,.65), 0 0 38px var(--glow); }
       .b1{--rot:20deg;--color:#d92721;--glow:rgba(217,39,33,.45);left:14%;top:13%}.b2{--rot:18deg;--color:#0872c9;--glow:rgba(8,114,201,.45);left:5%;top:34%}.b3{--rot:-12deg;--color:#e4b900;--glow:rgba(228,185,0,.45);left:11%;top:56%}.b4{--rot:20deg;--color:#555;--glow:rgba(255,255,255,.12);left:7%;bottom:7%}.b5{--rot:-15deg;--color:#07913a;--glow:rgba(7,145,58,.45);right:16%;top:18%}.b6{--rot:-15deg;--color:#76209b;--glow:rgba(118,32,155,.45);right:6%;top:38%}.b7{--rot:16deg;--color:#df7000;--glow:rgba(223,112,0,.45);right:10%;top:61%}.b8{--rot:-15deg;--color:#4a4a4a;--glow:rgba(255,255,255,.12);right:8%;bottom:7%}
 
-      .levels-screen { position: fixed; inset: 0; z-index: 55; min-height: 100vh; overflow: auto; padding: 28px 24px; background: radial-gradient(circle at 50% 12%, rgba(57, 72, 84, .22), transparent 28%), linear-gradient(180deg, #0d1318, #070b0f); }
+      .levels-screen { position: fixed; inset: 0; z-index: 55; min-height: 100vh; overflow: auto; padding: 24px 32px 18px; background:
+          radial-gradient(circle at 14% 18%, rgba(30, 89, 190, .22), transparent 18%),
+          radial-gradient(circle at 88% 80%, rgba(110, 43, 180, .26), transparent 18%),
+          radial-gradient(circle at 50% 8%, rgba(26, 146, 255, .12), transparent 28%),
+          linear-gradient(180deg, #081434 0%, #031128 52%, #041833 100%); }
       .levels-screen[hidden] { display: none; }
-      .levels-panel { min-height: min(880px, calc(100vh - 56px)); border-radius: 16px; border: 1px solid rgba(166, 181, 199, .2); background: linear-gradient(180deg, rgba(24,31,38,.9), rgba(10,15,19,.94)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 20px 50px rgba(0,0,0,.55); overflow: hidden; }
-      .levels-header { height: 122px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 28px; border-bottom: 1px solid rgba(255,255,255,.12); box-shadow: 0 6px 22px rgba(0,0,0,.35); }
-      .levels-tabs { justify-self: center; display: flex; gap: 12px; padding: 8px; border: 1px solid rgba(166,181,199,.22); border-radius: 14px; background: rgba(7,11,15,.45); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
-      .levels-tab { min-width: 220px; height: 72px; border-radius: 10px; border: 2px solid rgba(166,181,199,.2); background: linear-gradient(180deg, rgba(42,48,55,.96), rgba(13,17,22,.96)); color: #d8dde5; font-size: clamp(20px, 2vw, 30px); font-weight: 900; letter-spacing: .04em; text-shadow: 0 3px 5px #000; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 8px 18px rgba(0,0,0,.36); }
-      .levels-tab.active { color: #fff; border-color: #16a9ff; background: linear-gradient(180deg, #158ee7, #075f9d); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 18px rgba(22,169,255,.45); }
-      .levels-actions { justify-self: end; display: flex; align-items: center; gap: 64px; }
-      .shop-pill { height: 74px; min-width: 170px; border-radius: 11px; font-size: 30px; font-weight: 900; border: 2px solid var(--panel-border); background: linear-gradient(180deg, rgba(42,48,55,.96), rgba(13,17,22,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 22px rgba(0,0,0,.45); }
-      .levels-grid { display: grid; grid-template-columns: repeat(10, minmax(88px, 1fr)); gap: 24px 18px; padding: 50px 52px 34px; }
-      .level-card { height: 178px; border-radius: 10px; border: 2px solid rgba(166,181,199,.2); background: linear-gradient(145deg, rgba(36,43,50,.86), rgba(10,15,19,.94)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 16px rgba(0,0,0,.42); color: #cfd2d7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; cursor: pointer; }
-      .level-card.selected { border-color: #16a9ff; box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 0 0 1px rgba(22,169,255,.65), 0 0 18px rgba(22,169,255,.55); }
-      .level-card.locked { cursor: not-allowed; opacity: .78; }
-      .level-number { font-size: clamp(34px, 3.1vw, 55px); line-height: .9; font-weight: 900; text-shadow: 0 3px 0 #0a0d10, 0 6px 8px #000; }
-      .level-card.unlocked .level-number { color: #68db6b; } .level-card.selected .level-number { color: #45bdff; } .level-card.locked .level-number { color: #d6d7db; }
-      .level-stars { min-height: 30px; font-size: 31px; letter-spacing: 1px; line-height: 1; color: #ffc600; text-shadow: 0 2px 2px #000; }
-      .level-card.selected .level-stars { color: #384049; }
-      .level-lock { font-size: 38px; filter: grayscale(1) drop-shadow(0 3px 3px #000); opacity: .8; }
-      .levels-dots { display: flex; justify-content: center; gap: 22px; padding: 18px 0 48px; }
-      .levels-dot { width: 20px; height: 20px; border-radius: 50%; background: #30363c; border: 1px solid rgba(255,255,255,.16); box-shadow: inset 0 2px 3px rgba(255,255,255,.08), 0 3px 6px rgba(0,0,0,.4); }
-      .levels-dot.active { background: #1da2ff; box-shadow: 0 0 10px rgba(29,162,255,.65); }
+      .levels-screen::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.24; background-image:
+          radial-gradient(circle at 11% 15%, rgba(64,107,255,.55) 0 38px, transparent 39px),
+          radial-gradient(circle at 82% 18%, rgba(80,104,255,.32) 0 32px, transparent 33px),
+          radial-gradient(circle at 5% 83%, rgba(0,154,255,.42) 0 54px, transparent 55px),
+          radial-gradient(circle at 95% 76%, rgba(128,45,214,.5) 0 58px, transparent 59px); filter: blur(2px); }
+      .levels-panel { position:relative; z-index:1; min-height: calc(100vh - 42px); background: transparent; border: 0; box-shadow:none; overflow: visible; display:flex; flex-direction:column; }
+      .levels-header { min-height: 92px; display: grid; grid-template-columns: 160px 1fr minmax(420px, auto); align-items: start; gap: 22px; padding: 0; border: 0; box-shadow: none; }
+      .levels-logo { justify-self:center; display:flex; align-items:center; gap:18px; filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
+      .levels-logo-mark { display:grid; grid-template-columns:repeat(2, 30px); gap:5px; transform: rotate(-3deg); }
+      .levels-logo-mark span { width:30px; height:30px; border-radius:5px; box-shadow: inset 0 3px 4px rgba(255,255,255,.34), inset 0 -4px 5px rgba(0,0,0,.28), 0 4px 8px rgba(0,0,0,.45); }
+      .levels-logo-mark span:nth-child(1){background:#ef4444}.levels-logo-mark span:nth-child(2){background:#22c55e}.levels-logo-mark span:nth-child(3){background:#0ea5e9}.levels-logo-mark span:nth-child(4){background:#fbbf24}
+      .levels-logo-text { display:grid; line-height:.9; font-weight:900; letter-spacing:.04em; text-shadow:0 4px 0 rgba(0,0,0,.35), 0 7px 10px rgba(0,0,0,.55); }
+      .levels-logo-color { font-size:42px; color:#fff; }
+      .levels-logo-breaker { font-size:32px; color:#31d8ff; }
+      .levels-header .icon-btn { width:92px; height:86px; border-color:#1e6dcc; border-radius:18px; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#a9eeff; font-size:66px; line-height:1; }
+      .levels-actions { justify-self:end; display:flex; align-items:center; gap:28px; }
+      .shop-pill { height:82px; min-width:164px; border-radius:17px; font-size:28px; font-weight:900; border:2px solid rgba(195,89,255,.75); background: linear-gradient(180deg, #a548e6, #5e1ac1); box-shadow: inset 0 2px 0 rgba(255,255,255,.25), inset 0 -5px 0 rgba(0,0,0,.18), 0 8px 18px rgba(0,0,0,.45), 0 0 18px rgba(178,76,255,.28); color:#fff; text-shadow:0 3px 4px #000; }
+      .levels-actions .currency-pill { height:82px; min-width:240px; border-color:#234e91; border-radius:17px; background:linear-gradient(180deg, rgba(15,42,86,.96), rgba(3,18,48,.96)); font-size:32px; }
+      .levels-actions .plus-btn { display:none; }
+      .levels-tabs { align-self:center; justify-self:center; display:flex; gap:16px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; margin: 4px 0 4px; }
+      .levels-tab { position:relative; min-width:360px; height:78px; border-radius:17px; border:2px solid rgba(57,100,168,.75); background:linear-gradient(180deg, rgba(18,50,98,.94), rgba(6,25,61,.96)); color:#a7b4cf; font-size:30px; font-weight:900; letter-spacing:.04em; text-shadow:0 3px 5px #000; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 18px rgba(0,0,0,.35); }
+      .levels-tab.active { color:#fff; border-color:#28c7ff; background:linear-gradient(180deg, #118ff0, #076cc6); box-shadow: inset 0 2px 0 rgba(255,255,255,.28), inset 0 -5px 0 rgba(0,0,0,.12), 0 0 20px rgba(20,190,255,.62); }
+      .levels-tab.active::after { content:''; position:absolute; left:50%; bottom:-14px; transform:translateX(-50%); border-left:24px solid transparent; border-right:24px solid transparent; border-top:14px solid #10aef2; filter:drop-shadow(0 0 8px rgba(20,190,255,.8)); }
+      .levels-board { margin: 0 auto; width:min(1540px, 100%); border-radius:28px; border:2px solid rgba(48,104,181,.58); background:linear-gradient(180deg, rgba(18,45,91,.76), rgba(5,21,52,.82)); box-shadow: inset 0 1px 0 rgba(255,255,255,.11), inset 0 0 44px rgba(54,130,244,.13), 0 20px 42px rgba(0,0,0,.45); }
+      .levels-grid { display:grid; grid-template-columns: repeat(10, minmax(92px, 1fr)); gap:16px; padding:36px 34px; }
+      .level-card { height:134px; border-radius:12px; border:2px solid rgba(75,122,196,.7); background:linear-gradient(145deg, rgba(28,65,124,.88), rgba(9,31,71,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 15px rgba(0,0,0,.38); color:#edf4ff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; cursor:pointer; }
+      .level-card.selected { border-color:#34d7ff; background:radial-gradient(circle at 34% 30%, rgba(45,186,255,.55), transparent 52%), linear-gradient(145deg, rgba(13,124,215,.98), rgba(6,47,108,.98)); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 2px rgba(37,206,255,.7), 0 0 24px rgba(37,206,255,.68); }
+      .level-card.locked { cursor:not-allowed; opacity:.58; filter:saturate(.75); }
+      .level-number { font-size:52px; line-height:.9; font-weight:900; color:#f4f8ff; text-shadow:0 3px 0 #6f7f9d, 0 7px 10px #000; }
+      .level-card.locked .level-number { color:#9ca8c2; text-shadow:0 3px 0 #38445d, 0 7px 10px #000; }
+      .level-stars { min-height:28px; font-size:28px; letter-spacing:0; line-height:1; color:#ffd338; text-shadow:0 2px 0 #9f6500, 0 4px 6px #000; }
+      .level-lock { font-size:30px; filter:grayscale(.5) drop-shadow(0 3px 3px #000); opacity:.9; }
+      .levels-dots { display:flex; justify-content:center; gap:22px; padding:15px 24px 0; margin-top:auto; }
+      .levels-dot { width:22px; height:22px; border-radius:50%; border:1px solid rgba(255,255,255,.18); background:#3d4658; cursor:pointer; box-shadow: inset 0 2px 3px rgba(255,255,255,.1), 0 4px 8px rgba(0,0,0,.45); }
+      .levels-dot.active { background:#25baff; box-shadow:0 0 14px rgba(37,186,255,.72); }
 
       .app { max-width: none; min-height: 100vh; margin: 0; padding: 0 28px 32px; background: radial-gradient(circle at 50% 10%, rgba(54,67,79,.25), transparent 35%), linear-gradient(180deg, #10161b, #060a0d); }
       .game-topbar { height: 118px; margin: 0 -28px 24px; padding: 0 28px; display: grid; grid-template-columns: auto minmax(150px, 220px) 1px minmax(220px, 1fr) 1px minmax(160px, 240px) minmax(150px, 220px) minmax(260px, auto); gap: 28px; align-items: center; border-bottom: 1px solid rgba(255,255,255,.16); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
@@ -138,7 +158,11 @@
       .shop-buy { width:78px; height:34px; border-radius:6px; border:1px solid rgba(126, 255, 78, .7); background:linear-gradient(180deg, #70d237, #16861d); color:#fff; font-size:17px; font-weight:900; text-shadow:0 2px 3px #000; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 5px 9px rgba(0,0,0,.38), 0 0 8px rgba(84,218,52,.25); }
 
       @media (max-width: 1400px) {
-        .levels-grid { grid-template-columns: repeat(5, minmax(96px, 1fr)); }
+        .levels-grid { grid-template-columns: repeat(10, minmax(70px, 1fr)); gap: 14px; padding: 28px 26px; }
+        .level-card { height: 118px; }
+        .level-number { font-size: 44px; }
+        .level-stars { font-size: 23px; }
+        .levels-tab { min-width: 300px; }
         .game-topbar { height: auto; min-height: 118px; padding-top: 14px; padding-bottom: 14px; grid-template-columns: auto minmax(120px, 180px) 1px minmax(180px, 1fr) 1px minmax(130px, 180px) minmax(130px, 180px); gap: 18px; }
         .game-currency { grid-column: 1 / -1; justify-self: end; margin-top: 0; }
         .game-board-layout { grid-template-columns: 1fr; justify-items: center; }
@@ -155,12 +179,23 @@
         .swatch { width:22px; height:22px; }
         .menu-btn { height:78px; }
         .levels-screen { padding: 12px; }
-        .levels-header { height: auto; min-height: 96px; grid-template-columns: auto 1fr; gap: 12px; padding: 14px; }
-        .levels-tabs { grid-column: 2; justify-self: end; gap: 6px; padding: 5px; }
-        .levels-tab { min-width: 0; width: 142px; height: 58px; font-size: 16px; }
+        .levels-header { min-height: 0; grid-template-columns: auto 1fr; gap: 12px; }
+        .levels-logo { justify-self:end; gap:10px; }
+        .levels-logo-mark { grid-template-columns:repeat(2, 20px); gap:4px; }
+        .levels-logo-mark span { width:20px; height:20px; }
+        .levels-logo-color { font-size:28px; }
+        .levels-logo-breaker { font-size:20px; }
+        .levels-header .icon-btn { width:58px; height:58px; border-radius:12px; font-size:42px; }
+        .levels-tabs { align-self:stretch; justify-self:stretch; gap: 8px; margin:16px 0 12px; }
+        .levels-tab { min-width: 0; width: 50%; height: 58px; font-size: 16px; }
         .levels-actions { grid-column: 1 / -1; justify-self: stretch; justify-content: space-between; gap: 12px; }
-        .levels-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); gap: 14px; padding: 24px 18px; }
-        .level-card { height: 132px; }
+        .levels-actions .currency-pill { min-width: 168px; height:58px; font-size:24px; }
+        .shop-pill { min-width: 138px; height:58px; font-size:20px; }
+        .levels-board { border-radius:18px; }
+        .levels-grid { grid-template-columns: repeat(4, minmax(62px, 1fr)); gap: 12px; padding: 18px 14px; }
+        .level-card { height: 96px; gap:8px; }
+        .level-number { font-size:34px; }
+        .level-stars { font-size:18px; }
         .app { padding: 0 12px 24px; }
         .game-topbar { margin: 0 -12px 18px; padding: 12px; height: auto; min-height: 0; grid-template-columns: auto 1fr 1fr; gap: 12px; }
         .game-divider { display:none; }
@@ -204,17 +239,23 @@
       <div class="levels-panel">
         <header class="levels-header">
           <button id="levelsBackBtn" class="icon-btn" type="button" aria-label="Back">‹</button>
-          <div class="levels-tabs" role="tablist" aria-label="Level groups">
-            <button id="mainLevelsTab" class="levels-tab active" type="button" role="tab" aria-selected="true">MAIN LEVELS</button>
-            <button id="masterLevelsTab" class="levels-tab" type="button" role="tab" aria-selected="false">MASTER LEVELS</button>
+          <div class="levels-logo" aria-label="Color Block Breaker">
+            <span class="levels-logo-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+            <span class="levels-logo-text"><span class="levels-logo-color">COLOR</span><span class="levels-logo-breaker">BLOCK BREAKER</span></span>
           </div>
           <div class="levels-actions">
             <button id="levelsShopBtn" class="shop-pill" type="button">🛒 &nbsp; SHOP</button>
             <div class="currency-pill" aria-label="Total score"><span class="gem">💎</span><span id="levelsBalanceLabel">0</span><button class="plus-btn" id="levelsPlusBtn" type="button" aria-label="Open shop">+</button></div>
           </div>
         </header>
-        <div id="levelsGrid" class="levels-grid" aria-label="Level list"></div>
-        <div class="levels-dots" aria-hidden="true"><span class="levels-dot active"></span><span class="levels-dot"></span><span class="levels-dot"></span><span class="levels-dot"></span><span class="levels-dot"></span><span class="levels-dot"></span></div>
+        <div class="levels-tabs" role="tablist" aria-label="Level groups">
+          <button id="mainLevelsTab" class="levels-tab active" type="button" role="tab" aria-selected="true">★ &nbsp; MAIN LEVELS</button>
+          <button id="masterLevelsTab" class="levels-tab" type="button" role="tab" aria-selected="false">♛ &nbsp; MASTER LEVELS</button>
+        </div>
+        <div class="levels-board">
+          <div id="levelsGrid" class="levels-grid" aria-label="Level list"></div>
+        </div>
+        <div id="levelsDots" class="levels-dots" aria-label="Level pages"></div>
       </div>
     </section>
     <div class="app">
