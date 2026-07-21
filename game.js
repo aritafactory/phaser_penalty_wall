@@ -1288,10 +1288,10 @@ function renderBoosterInventory() {
     if (BOOSTER_CATALOG.some((item) => item.key === booster.key)) {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const disabled = owned <= 0 ? 'disabled' : '';
-      const armedStyle = model.activeBooster === booster.key ? 'style="border:1px solid #22c55e;"' : '';
-      const amountLabel = IS_BUILDER_PAGE ? '∞' : `x${owned}`;
+      li.classList.toggle('armed', model.activeBooster === booster.key);
+      const amountLabel = IS_BUILDER_PAGE ? '∞' : String(owned);
       const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' };
-      li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} ${armedStyle}>${label.toUpperCase()}</button>`;
+      li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
         if (owned <= 0) return;
