@@ -99,15 +99,15 @@
           radial-gradient(circle at 95% 78%, rgba(128,45,214,.48) 0 58px, transparent 59px),
           radial-gradient(circle at 16% 22%, rgba(64,107,255,.36) 0 34px, transparent 35px),
           radial-gradient(circle at 82% 23%, rgba(80,104,255,.28) 0 30px, transparent 31px); filter:blur(2px); }
-      .game-topbar { position:relative; z-index:1; height:86px; margin:0 0 40px; padding:0 0 0 112px; display:grid; grid-template-columns: minmax(200px, 250px) 1px minmax(280px, 1fr) 1px minmax(190px, 230px) 1px minmax(190px, 230px) minmax(250px, auto) 64px 88px; gap:24px; align-items:center; border:2px solid rgba(31,85,166,.5); border-radius:18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 14px 28px rgba(0,0,0,.38); }
-      .home-btn { position:absolute; left:-112px; top:-2px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:52px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; text-shadow:0 4px 8px #001432; }
-      .settings-btn { width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:46px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; }
-      .game-title { font-size:44px; font-weight:900; letter-spacing:.04em; color:#f6fbff; text-shadow:0 4px 0 #53698e, 0 9px 13px #000; }
-      .game-stat { font-size:28px; font-weight:900; letter-spacing:.04em; color:#f7fbff; text-shadow:0 4px 8px #000; }
-      .game-stat strong, .game-goal strong { color:#ffd83e; font-weight:900; text-shadow:0 2px 0 #8a5d00, 0 5px 8px #000; }
-      .game-goal { justify-self:center; font-size:24px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; }
-      .game-divider { width:1px; height:54px; background:rgba(71,112,183,.52); box-shadow:0 0 8px rgba(92,158,255,.18); }
-      .game-currency { justify-self:end; display:flex; align-items:center; gap:10px; }
+      .game-topbar { position:relative; z-index:1; min-height:86px; margin:0 0 40px; padding:0; display:flex; align-items:center; gap:24px; }
+      .home-btn { flex:0 0 86px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:52px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; text-shadow:0 4px 8px #001432; }
+      .settings-btn { flex:0 0 86px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:46px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; }
+      .game-title { flex:0 0 250px; height:86px; display:flex; align-items:center; padding:0 22px; border:2px solid rgba(31,85,166,.5); border-right:0; border-radius:18px 0 0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); font-size:44px; font-weight:900; letter-spacing:.04em; color:#f6fbff; text-shadow:0 4px 0 #53698e, 0 9px 13px #000; white-space:nowrap; }
+      .game-stat { flex:0 0 auto; height:86px; display:flex; align-items:center; min-width:160px; padding:0 20px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:28px; font-weight:900; letter-spacing:.04em; color:#f7fbff; text-shadow:0 4px 8px #000; white-space:nowrap; }
+      .game-stat strong, .game-goal strong { color:#ffd83e; font-weight:900; text-shadow:0 2px 0 #8a5d00, 0 5px 8px #000; margin-right:8px; }
+      .game-goal { flex:1 1 320px; height:86px; display:flex; align-items:center; min-width:260px; padding:0 28px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:24px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
+      .game-divider { flex:0 0 1px; width:1px; height:54px; margin:0 -12px; background:rgba(71,112,183,.52); box-shadow:0 0 8px rgba(92,158,255,.18); z-index:2; }
+      .game-currency { flex:0 0 auto; height:86px; display:flex; align-items:center; gap:10px; padding-left:20px; border:2px solid rgba(31,85,166,.5); border-left:0; border-radius:0 18px 18px 0; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); }
       .game-currency .currency-pill { height:68px; min-width:244px; border-color:#234e91; border-radius:12px; background:linear-gradient(180deg, rgba(15,42,86,.96), rgba(3,18,48,.96)); font-size:28px; }
       .game-currency .plus-btn { width:60px; height:60px; border-radius:12px; border:2px solid rgba(195,89,255,.75); background:linear-gradient(180deg, #a548e6, #5e1ac1); color:#fff; font-size:32px; box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 8px 18px rgba(0,0,0,.45); }
       .game-board-layout { position:relative; z-index:1; width:min(1180px, 100%); margin:0 auto; display:grid; grid-template-columns: minmax(0, 526px) 456px; gap: clamp(38px, 7vw, 130px); align-items:start; justify-content:center; }
@@ -124,7 +124,7 @@
       .booster-name { display:none; }
       .booster-count { position:absolute; right:8px; top:8px; min-width:32px; height:32px; padding:1px 7px; border-radius:10px; border:2px solid rgba(103,137,200,.8); background:rgba(6,13,35,.82); color:#fff; display:grid; place-items:center; font-size:22px; font-weight:900; text-shadow:0 2px 3px #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.16); }
       .inventory button { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:0; background:transparent; color:transparent; font-size:0; cursor:pointer; box-shadow:none; }
-      .inventory button:disabled { cursor:not-allowed; background:rgba(2,8,23,.28); }
+      .inventory button:disabled { cursor:not-allowed; background:transparent; }
       .app > .controls, .app > .status { display:none; }
 
       select { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
@@ -177,13 +177,15 @@
         .level-number { font-size: 44px; }
         .level-stars { font-size: 23px; }
         .levels-tab { min-width: 300px; }
-        .game-topbar { padding-left:96px; grid-template-columns:minmax(160px, 210px) 1px minmax(230px, 1fr) 1px minmax(145px, 180px) 1px minmax(145px, 180px) minmax(210px, auto) 58px 76px; gap:14px; }
-        .home-btn { left:-96px; width:76px; height:76px; font-size:46px; }
-        .settings-btn { width:76px; height:76px; font-size:40px; }
-        .game-title { font-size:36px; }
-        .game-stat { font-size:24px; }
-        .game-goal { font-size:21px; }
-        .game-currency .currency-pill { min-width:210px; }
+        .game-topbar { gap:14px; }
+        .home-btn { flex-basis:76px; width:76px; height:76px; font-size:46px; }
+        .settings-btn { flex-basis:76px; width:76px; height:76px; font-size:40px; }
+        .game-title { flex-basis:210px; height:76px; font-size:36px; }
+        .game-stat { height:76px; min-width:140px; padding:0 16px; font-size:24px; }
+        .game-goal { height:76px; min-width:230px; padding:0 20px; font-size:21px; }
+        .game-divider { margin:0 -7px; }
+        .game-currency { height:76px; padding-left:16px; }
+        .game-currency .currency-pill { min-width:210px; height:60px; }
         .game-board-layout { width:min(960px, 100%); grid-template-columns:minmax(0, 500px) 420px; gap:40px; }
         .inventory { width:420px; }
         .inventory li { height:132px; }
@@ -217,15 +219,15 @@
         .level-number { font-size:34px; }
         .level-stars { font-size:18px; }
         .app { padding: 12px 12px 24px; overflow:auto; }
-        .game-topbar { margin: 0 0 18px; padding: 72px 12px 12px; height: auto; min-height: 0; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .home-btn { left:0; top:0; width:58px; height:58px; border-radius:12px; font-size:36px; }
-        .settings-btn { position:absolute; right:0; top:0; width:58px; height:58px; border-radius:12px; font-size:32px; }
-        .game-title { grid-column:1 / -1; font-size:32px; }
+        .game-topbar { margin:0 0 18px; padding:0; min-height:0; gap:10px; flex-wrap:wrap; }
+        .home-btn { flex:0 0 58px; width:58px; height:58px; border-radius:12px; font-size:36px; }
+        .settings-btn { flex:0 0 58px; width:58px; height:58px; border-radius:12px; font-size:32px; }
+        .game-title { order:3; flex:1 1 100%; height:58px; border-radius:14px; border-right:2px solid rgba(31,85,166,.5); font-size:32px; }
         .game-divider { display:none; }
-        .game-goal { grid-column: 1 / -1; justify-self: start; font-size:18px; }
-        .game-stat { font-size:19px; }
-        .game-currency { grid-column: 1 / -1; justify-self: stretch; justify-content: flex-end; margin-top: 0; flex-wrap: wrap; }
-        .game-currency .currency-pill { min-width: 0; height:58px; font-size:22px; }
+        .game-goal { order:4; flex:1 1 100%; height:52px; min-width:0; border:2px solid rgba(31,85,166,.5); border-radius:12px; font-size:18px; }
+        .game-stat { order:5; flex:1 1 calc(50% - 5px); height:52px; min-width:0; border:2px solid rgba(31,85,166,.5); border-radius:12px; font-size:19px; }
+        .game-currency { order:2; flex:1 1 calc(100% - 136px); height:58px; min-width:0; padding-left:0; border:0; background:transparent; justify-content:flex-end; }
+        .game-currency .currency-pill { min-width:0; height:58px; font-size:22px; }
         .game-currency .plus-btn { width:52px; height:52px; font-size:26px; }
         .game-board-layout { width:100%; grid-template-columns:1fr; gap:22px; justify-items:center; }
         .inventory { width:min(420px, 100%); padding-top:12px; }
