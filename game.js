@@ -1900,25 +1900,14 @@ class BoardScene extends Phaser.Scene {
     const count = boosterCount('compressor');
     if (count <= 0) return;
     const cols = model.grid[0].length;
-    const mid = Math.floor(cols / 2);
 
     model.grid = model.grid.map((row) => {
+      const blocks = row.filter(Boolean);
       const next = Array(cols).fill(null);
-      const left = row.slice(0, mid).filter(Boolean);
-      const rightStart = cols % 2 === 0 ? mid : mid + 1;
-      const right = row.slice(rightStart).filter(Boolean);
-
-      if (cols % 2 === 1) next[mid] = row[mid] || null;
-      let leftWrite = mid - 1;
-      for (let i = left.length - 1; i >= 0; i -= 1) {
-        next[leftWrite] = left[i];
-        leftWrite -= 1;
-      }
-      let rightWrite = rightStart;
-      for (let i = 0; i < right.length; i += 1) {
-        next[rightWrite] = right[i];
-        rightWrite += 1;
-      }
+      const start = Math.floor((cols - blocks.length) / 2);
+      blocks.forEach((cell, index) => {
+        next[start + index] = cell;
+      });
       return next;
     });
 
