@@ -1642,38 +1642,41 @@ class BoardScene extends Phaser.Scene {
     this.shootToCell(row, col);
   }
 
-  completeAction(removedKeys, gravityMoves) {
-    this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
-      if (!model.gameplayActive || model.gameOver) {
-        this.animating = false;
-        return;
-      }
+  finishResolvedBoardAction() {
+    if (!model.gameplayActive || model.gameOver) return;
 
-      if (isWin()) {
-        if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
-          model.currentLayerIndex += 1;
-          model.grid = regenerateRandomSpecialBlocks(
-            cloneGrid(model.currentLevel.layers[model.currentLayerIndex]),
-            model.currentLevel.complications || [],
-            true
-          );
-          this.renderGridStatic();
-          ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
-        } else {
-          model.gameOver = true;
-          model.gameplayActive = false;
-          closeFailModal();
-          ui.stateLabel.textContent = 'Статус: победа';
-          openWinModal();
-        }
-      } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-        failLevel('Статус: поражение (кончились выстрелы)');
+    if (isWin()) {
+      if (model.currentLevel?.layers && model.currentLayerIndex < model.currentLevel.layers.length - 1) {
+        model.currentLayerIndex += 1;
+        model.grid = regenerateRandomSpecialBlocks(
+          cloneGrid(model.currentLevel.layers[model.currentLayerIndex]),
+          model.currentLevel.complications || [],
+          true
+        );
+        this.renderGridStatic();
+        ui.stateLabel.textContent = `Статус: слой ${model.currentLayerIndex + 1}/${model.currentLevel.layers.length}`;
+      } else {
+        model.gameOver = true;
+        model.gameplayActive = false;
+        closeFailModal();
+        ui.stateLabel.textContent = 'Статус: победа';
+        openWinModal();
       }
+    } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+      failLevel('Статус: поражение (кончились выстрелы)');
+    }
 
+    if (!model.gameOver) {
       pickNextShotColor();
       model.rainbowNextShot = false;
       this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      refreshUI();
+    }
+    refreshUI();
+  }
+
+  completeAction(removedKeys, gravityMoves) {
+    this.animateRemovalAndFall(removedKeys, gravityMoves, () => {
+      this.finishResolvedBoardAction();
       this.animating = false;
     });
   }
@@ -1748,9 +1751,7 @@ class BoardScene extends Phaser.Scene {
 
     savePersistentState();
     this.renderGridStatic();
-    pickNextShotColor();
-    this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-    refreshUI();
+    this.finishResolvedBoardAction();
     this.animating = false;
   }
 
@@ -1866,9 +1867,7 @@ class BoardScene extends Phaser.Scene {
 
       if (uniqueOrdinary.length === 0) {
         this.renderGridStatic();
-        pickNextShotColor();
-        this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-        refreshUI();
+        this.finishResolvedBoardAction();
         this.animating = false;
         return;
       }
@@ -1915,10 +1914,8 @@ class BoardScene extends Phaser.Scene {
     model.activeBooster = null;
     savePersistentState();
     this.renderGridStatic();
-    pickNextShotColor();
-    this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
     renderBoosterInventory();
-    refreshUI();
+    this.finishResolvedBoardAction();
   }
 
   useRotator(row, col) {
@@ -1945,10 +1942,8 @@ class BoardScene extends Phaser.Scene {
     savePersistentState();
     const gravityMoves = applyGravityAndGetMoves();
     this.animateRemovalAndFall([], gravityMoves, () => {
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
       renderBoosterInventory();
-      refreshUI();
+      this.finishResolvedBoardAction();
       this.animating = false;
     });
   }
@@ -2162,9 +2157,7 @@ class BoardScene extends Phaser.Scene {
     if (ordinaryGroup.length === 0) {
       // Кластер состоял только из 2Color: поле не падает, просто перерисовываем.
       this.renderGridStatic();
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      refreshUI();
+      this.finishResolvedBoardAction();
       this.animating = false;
       return;
     }
