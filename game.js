@@ -1303,6 +1303,10 @@ function renderBoosterInventory() {
           boardScene.useCompressor();
           return;
         }
+        if (booster.key === 'minusOneColor' && boardScene) {
+          boardScene.useMinusOneColor();
+          return;
+        }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
         renderBoosterInventory();
         refreshUI();
@@ -1964,30 +1968,29 @@ class BoardScene extends Phaser.Scene {
     const count = boosterCount('minusOneColor');
     if (count <= 0) return;
 
-    const palette = getBreakableColors(model.grid).filter((c) => c !== 'U');
-    if (palette.length === 0) return;
-    const chosenColor = randomFrom(palette);
-
-    this.animating = true;
-    consumeBooster('minusOneColor');
-    model.activeBooster = null;
-    renderBoosterInventory();
+    const chosenColor = model.selectedShotColor;
+    if (!chosenColor) return;
 
     const removed = [];
     for (let r = 0; r < model.grid.length; r += 1) {
       for (let c = 0; c < model.grid[0].length; c += 1) {
         const cell = model.grid[r][c];
         if (!cell || cell === 'U') continue;
-        if (visibleColor(cell) !== chosenColor) continue;
-
-        if (isTwoColor(cell)) {
-          // 2Color подходит по цвету -> становится обычным блоком другого цвета.
-          model.grid[r][c] = randomColorDifferentFrom(chosenColor, palette);
-        } else {
-          removed.push([r, c]); // Обычные и flashing удаляем.
-        }
+        if (visibleColor(cell) === chosenColor) removed.push([r, c]);
       }
     }
+    if (removed.length === 0) {
+      model.activeBooster = null;
+      ui.stateLabel.textContent = `Статус: на поле нет блоков цвета ${chosenColor}`;
+      renderBoosterInventory();
+      refreshUI();
+      return;
+    }
+
+    this.animating = true;
+    consumeBooster('minusOneColor');
+    model.activeBooster = null;
+    renderBoosterInventory();
 
     const removedKeys = removed.map(([r, c]) => this.key(r, c));
     removed.forEach(([r, c]) => {
@@ -1997,17 +2000,7 @@ class BoardScene extends Phaser.Scene {
     const earned = pointsForRemovedBlocks(removed.length);
     model.score += earned;
 
-    ui.stateLabel.textContent = `Статус: -1 color выбрал ${chosenColor}`;
-
-    if (removed.length === 0) {
-      this.renderGridStatic();
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      refreshUI();
-      this.animating = false;
-      return;
-    }
-
+    ui.stateLabel.textContent = `Статус: -1 color удалил ${chosenColor}`;
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
   }
