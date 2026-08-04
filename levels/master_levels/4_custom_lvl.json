@@ -1,45 +1,43 @@
 {
-  "level": 2,
-  "description": "Кастомный уровень 2",
-  "complications": ["unbreakable_blocks"],
+  "level": "4",
+  "description": "Кастомный уровень 4",
+  "complications": [
+    "unbreakable_blocks"
+  ],
   "grid": [
     [
+      "B",
+      "R",
+      "R",
       "U",
-      "B",
-      "B",
-      "U"
+      "B"
     ],
     [
-      "R",
-      "B",
       "G",
-      "U"
-    ],
-    [
-      "R",
-      "R",
-      "G",
-      "U"
-    ],
-    [
       "U",
+      "U",
+      "U",
+      "G"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "R",
+      "R"
+    ],
+    [
+      "R",
       "B",
-      "G",
-      "U"
+      "B",
+      "B",
+      "B"
     ]
   ],
-  "randomize": false,
+    "randomize": false,
   "shapeGoal": {
     "type": "move_unbreakable_to_zone",
     "cells": [
-      [
-        3,
-        0
-      ],
-      [
-        2,
-        0
-      ],
       [
         2,
         1
@@ -53,13 +51,14 @@
         3
       ],
       [
-        3,
-        3
+        1,
+        2
       ]
     ]
   },
   "startingBoosters": {
-    "rotator": 2,
+    "compressor": 2,
+    "minusOneColor": 2,
     "rainbow": 10
   }
 }

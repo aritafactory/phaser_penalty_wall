@@ -1,0 +1,57 @@
+{
+  "level": "6",
+  "description": "Кастомный уровень 6",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid":
+  [
+    [
+      "B",
+      "B",
+      "R"
+    ],
+    [
+      "B",
+      "G",
+      "G"
+    ],
+    [
+      "G",
+      "G",
+      "R"
+    ],
+    [
+      "B",
+      "G",
+      "G"
+    ],
+    [
+      "U",
+      "U",
+      "U"
+    ]
+  ],
+    "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "rotator": 10,
+    "rainbow": 10
+  }
+}

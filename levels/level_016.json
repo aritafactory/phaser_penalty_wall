@@ -1,7 +1,7 @@
 {
   "level": 16,
   "description": "Встроенный уровень 16",
-  "complications": [],
+  "complications": ["timer"],
   "grid": [
     [
       "G",
@@ -31,5 +31,5 @@
    "startingBoosters": {
     "plusTenSeconds": 2
   },
-   "timerSeconds": 20
+   "timerSeconds": 10
 }
