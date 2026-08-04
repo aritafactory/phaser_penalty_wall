@@ -676,10 +676,34 @@ function timerLimitForRequiredShots(requiredShots) {
 
 function applyCalculatedLimitsToLevel(level, firstGrid = null) {
   const complications = level.complications || [];
+  const needsMoveLimit = complications.includes('limited_shots') && level.maxShots === undefined;
+  const needsTimerLimit = complications.includes('timer') && level.timerSeconds === undefined;
+  if (!needsMoveLimit && !needsTimerLimit) return level;
+
   const requiredShots = calculateRequiredShotsForLevel(level, firstGrid);
-  if (complications.includes('limited_shots')) level.maxShots = moveLimitForRequiredShots(requiredShots);
-  if (complications.includes('timer')) level.timerSeconds = timerLimitForRequiredShots(requiredShots);
+  if (needsMoveLimit) level.maxShots = moveLimitForRequiredShots(requiredShots);
+  if (needsTimerLimit) level.timerSeconds = timerLimitForRequiredShots(requiredShots);
   return level;
+}
+
+function resolveLevelLimits(level, firstGrid = null) {
+  const complications = level.complications || [];
+  const hasMoveLimit = complications.includes('limited_shots');
+  const hasTimerLimit = complications.includes('timer');
+  const needsMoveCalculation = hasMoveLimit && level.maxShots === undefined;
+  const needsTimerCalculation = hasTimerLimit && level.timerSeconds === undefined;
+  const requiredShots = needsMoveCalculation || needsTimerCalculation
+    ? calculateRequiredShotsForLevel(level, firstGrid)
+    : null;
+
+  return {
+    maxShots: hasMoveLimit
+      ? (needsMoveCalculation ? moveLimitForRequiredShots(requiredShots) : level.maxShots)
+      : Infinity,
+    timerSeconds: hasTimerLimit
+      ? (needsTimerCalculation ? timerLimitForRequiredShots(requiredShots) : level.timerSeconds)
+      : Infinity,
+  };
 }
 
 function normalizeRegenerableCells(grid, complications) {
@@ -965,9 +989,9 @@ function startCustomBuilderLevel() {
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
-  const customRequiredShots = calculateRequiredShotsForLevel(customLevel, model.grid);
-  model.shotsLeft = customLevel.complications.includes('limited_shots') ? moveLimitForRequiredShots(customRequiredShots) : Infinity;
-  model.timerLeft = customLevel.complications.includes('timer') ? timerLimitForRequiredShots(customRequiredShots) : Infinity;
+  const customLimits = resolveLevelLimits(customLevel, model.grid);
+  model.shotsLeft = customLimits.maxShots;
+  model.timerLeft = customLimits.timerSeconds;
   model.selectedShotColor = getBreakableColors(model.grid)[0] || 'R';
   pickNextShotColor();
   initPhaser(model.grid.length, model.grid[0].length);
@@ -2477,9 +2501,9 @@ function startLevelByIndex(index) {
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
-  const requiredShots = calculateRequiredShotsForLevel(level, model.grid);
-  model.shotsLeft = (level.complications || []).includes('limited_shots') ? moveLimitForRequiredShots(requiredShots) : Infinity;
-  model.timerLeft = (level.complications || []).includes('timer') ? timerLimitForRequiredShots(requiredShots) : Infinity;
+  const limits = resolveLevelLimits(level, model.grid);
+  model.shotsLeft = limits.maxShots;
+  model.timerLeft = limits.timerSeconds;
   model.selectedShotColor = getBreakableColors(model.grid)[0] || 'R';
   pickNextShotColor();
 

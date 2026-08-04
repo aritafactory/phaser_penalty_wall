@@ -17,6 +17,57 @@ const splitRequired = calculateRequiredShotsForLevel(level, splitLayout);
 assert.notStrictEqual(compactRequired, splitRequired, 'different final layouts should produce different required-shot estimates');
 assert.strictEqual(moveLimitForRequiredShots(compactRequired), Math.ceil(compactRequired * 1.1));
 assert.strictEqual(timerLimitForRequiredShots(splitRequired), Math.ceil(splitRequired * 2 * 1.1));
+
+const explicitLimits = resolveLevelLimits({
+  complications: ['limited_shots', 'timer'],
+  grid: compactLayout,
+  maxShots: 7,
+  timerSeconds: 19,
+}, compactLayout);
+assert.deepStrictEqual(explicitLimits, { maxShots: 7, timerSeconds: 19 });
+
+const independentLimits = resolveLevelLimits({
+  complications: ['limited_shots', 'timer'],
+  grid: compactLayout,
+  maxShots: 8,
+}, compactLayout);
+assert.strictEqual(independentLimits.maxShots, 8, 'explicit move limit should be preserved');
+assert.strictEqual(
+  independentLimits.timerSeconds,
+  timerLimitForRequiredShots(compactRequired),
+  'missing timer should still be calculated independently'
+);
+
+const independentlyCalculatedMoves = resolveLevelLimits({
+  complications: ['limited_shots', 'timer'],
+  grid: compactLayout,
+  timerSeconds: 24,
+}, compactLayout);
+assert.strictEqual(
+  independentlyCalculatedMoves.maxShots,
+  moveLimitForRequiredShots(compactRequired),
+  'missing move limit should still be calculated independently'
+);
+assert.strictEqual(independentlyCalculatedMoves.timerSeconds, 24, 'explicit timer should be preserved');
+
+const ignoredLimits = resolveLevelLimits({
+  complications: [],
+  grid: compactLayout,
+  maxShots: 1,
+  timerSeconds: 1,
+}, compactLayout);
+assert.strictEqual(ignoredLimits.maxShots, Infinity, 'maxShots should be ignored without limited_shots');
+assert.strictEqual(ignoredLimits.timerSeconds, Infinity, 'timerSeconds should be ignored without timer');
+
+const explicitLevel = {
+  complications: ['limited_shots', 'timer'],
+  grid: compactLayout,
+  maxShots: 9,
+  timerSeconds: 21,
+};
+applyCalculatedLimitsToLevel(explicitLevel, compactLayout);
+assert.strictEqual(explicitLevel.maxShots, 9, 'automatic balancing must not overwrite JSON maxShots');
+assert.strictEqual(explicitLevel.timerSeconds, 21, 'automatic balancing must not overwrite JSON timerSeconds');
 console.log('layout-sensitive limit calculation ok', { compactRequired, splitRequired });
 `;
 
