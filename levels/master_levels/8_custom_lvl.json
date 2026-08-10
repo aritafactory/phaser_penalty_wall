@@ -1,41 +1,39 @@
 {
-  "level": 2,
-  "description": "Кастомный уровень 2",
-  "complications": ["unbreakable_blocks"],
-  "grid": [
+  "level": "8",
+  "description": "Кастомный уровень 8",
+  "complications": [
+    "unbreakable_blocks",
+    "limited_shots"
+  ],
+  "grid":
+  [
     [
       "U",
-      "B",
-      "B",
-      "U"
-    ],
-    [
-      "R",
-      "B",
-      "G",
-      "U"
-    ],
-    [
-      "R",
-      "R",
-      "G",
-      "U"
-    ],
-    [
       "U",
+      "U",
+      "U",
+      "B"
+    ],
+    [
+      "G",
       "B",
+      "U",
       "G",
       "U"
+    ],
+    [
+      "B",
+      "R",
+      "B",
+      "R",
+      "B"
     ]
   ],
+  "maxShots": 1,
   "randomize": false,
   "shapeGoal": {
     "type": "move_unbreakable_to_zone",
     "cells": [
-      [
-        3,
-        0
-      ],
       [
         2,
         0
@@ -49,17 +47,22 @@
         2
       ],
       [
+        1,
+        2
+      ],
+      [
         2,
         3
       ],
       [
-        3,
-        3
+        2,
+        4
       ]
     ]
   },
   "startingBoosters": {
-    "rotator": 2,
+    "minusOneColor": 3,
+    "plusFiveShots": 1,
     "rainbow": 10
   }
 }

@@ -1,7 +1,7 @@
 {
   "level": 15,
   "description": "Встроенный уровень 15",
-  "complications": [],
+  "complications": ["limited_shots"],
   "grid": [
     [
       "G",
@@ -28,8 +28,8 @@
       "G"
     ]
   ],
+  "maxShots": 3,
    "startingBoosters": {
     "plusFiveShots": 2
-  },
-  "maxShots": 12
+  }
 }

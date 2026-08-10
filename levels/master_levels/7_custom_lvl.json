@@ -1,65 +1,58 @@
 {
-  "level": 2,
-  "description": "Кастомный уровень 2",
-  "complications": ["unbreakable_blocks"],
-  "grid": [
+  "level": "7",
+  "description": "Кастомный уровень 7",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid":
+  [
     [
+      "R",
       "U",
       "B",
-      "B",
-      "U"
-    ],
-    [
-      "R",
-      "B",
       "G",
       "U"
     ],
     [
+      "G",
       "R",
       "R",
       "G",
-      "U"
+      "B"
     ],
     [
+      "R",
       "U",
       "B",
       "G",
       "U"
     ]
   ],
-  "randomize": false,
+    "randomize": false,
   "shapeGoal": {
     "type": "move_unbreakable_to_zone",
     "cells": [
       [
-        3,
-        0
-      ],
-      [
-        2,
-        0
-      ],
-      [
-        2,
+        1,
         1
+      ],
+      [
+        0,
+        2
       ],
       [
         2,
         2
       ],
       [
-        2,
-        3
-      ],
-      [
-        3,
+        1,
         3
       ]
     ]
   },
   "startingBoosters": {
     "rotator": 2,
+    "compressor": 2,
     "rainbow": 10
   }
 }
