@@ -1,0 +1,73 @@
+{
+  "level": 11,
+  "description": "Кастомный уровень 11",
+  "complications": ["unbreakable_blocks", "timer"],
+  "grid": [
+    [
+      "U",
+      "R",
+      "U",
+      "B",
+      "U"
+    ],
+    [
+      "R",
+      "U",
+      "R",
+      "U",
+      "G"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "G",
+      "G"
+    ],
+    [
+      "R",
+      "R",
+      "B",
+      "R",
+      "B"
+    ],
+    [
+      "R",
+      "B",
+      "R",
+      "G",
+      "G"
+    ]
+  ],
+  "timerSeconds": 10,
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        4,
+        0
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        0,
+        4
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "plusTenSeconds": 2,
+    "rainbow": 10
+  }
+}

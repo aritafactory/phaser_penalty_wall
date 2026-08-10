@@ -1,0 +1,58 @@
+{
+  "level": 17,
+  "description": "Кастомный уровень 17",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid":
+  [
+    [
+      "R",
+      "U",
+      "B",
+      "G",
+      "U"
+    ],
+    [
+      "G",
+      "R",
+      "R",
+      "G",
+      "B"
+    ],
+    [
+      "R",
+      "U",
+      "B",
+      "G",
+      "U"
+    ]
+  ],
+    "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        1,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        1,
+        3
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "rotator": 2,
+    "compressor": 2,
+    "rainbow": 10
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "level": 18,
+  "description": "Кастомный уровень 18",
+  "complications": [
+    "unbreakable_blocks",
+    "limited_shots"
+  ],
+  "grid":
+  [
+    [
+      "U",
+      "U",
+      "U",
+      "U",
+      "B"
+    ],
+    [
+      "G",
+      "B",
+      "U",
+      "G",
+      "U"
+    ],
+    [
+      "B",
+      "R",
+      "B",
+      "R",
+      "B"
+    ]
+  ],
+  "maxShots": 1,
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        2,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        4
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "minusOneColor": 3,
+    "plusFiveShots": 1,
+    "rainbow": 10
+  }
+}

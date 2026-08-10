@@ -1,0 +1,59 @@
+{
+  "level": 13,
+  "description": "Кастомный уровень 13",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "U",
+      "G",
+      "B",
+      "B"
+    ],
+    [
+      "U",
+      "G",
+      "B",
+      "R"
+    ],
+    [
+      "B",
+      "B",
+      "B",
+      "U"
+    ],
+    [
+      "R",
+      "R",
+      "B",
+      "U"
+    ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        2
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "compressor": 2,
+    "rainbow": 10
+  }
+}
