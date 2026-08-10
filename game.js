@@ -935,7 +935,7 @@ function renderBuilderGrid(grid) {
   ui.builderRows.value = grid.length;
   ui.builderCols.value = grid[0].length;
   ui.builderGrid.innerHTML = '';
-  ui.builderGrid.style.gridTemplateColumns = `repeat(${grid[0].length}, minmax(48px, 1fr))`;
+  ui.builderGrid.style.gridTemplateColumns = `repeat(${grid[0].length}, minmax(36px, 1fr))`;
 
   for (let r = 0; r < grid.length; r += 1) {
     for (let c = 0; c < grid[0].length; c += 1) {
@@ -1499,22 +1499,48 @@ function recordNormalShotOutcome(ordinaryRemoved) {
   }
 }
 
-class BoardScene extends Phaser.Scene {
-  constructor() {
-    super('board');
-    const rows = model.grid.length || 1;
-    const cols = model.grid[0]?.length || 1;
-    const viewportWidth = window.innerWidth || 1200;
-    const viewportHeight = window.innerHeight || 800;
+function boardLayoutMetrics(rows, cols) {
+  const viewportWidth = window.innerWidth || 1200;
+  const viewportHeight = window.innerHeight || 800;
+  if (!IS_BUILDER_PAGE) {
     const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
     const maxBoardHeight = Math.max(260, viewportHeight - 300);
     const fitByWidth = Math.floor(maxBoardWidth / cols);
     const fitByHeight = Math.floor(maxBoardHeight / rows);
     const minCell = viewportWidth < 600 ? 28 : 40;
-    this.cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
+    const cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
+    return {
+      cell,
+      width: cols * cell + 24,
+      height: Math.max(360, 24 + rows * cell + 150),
+    };
+  }
+
+  const builderPreview = document.querySelector?.('.right');
+  const availableBuilderWidth = builderPreview?.clientWidth || viewportWidth - 32;
+  const maxBoardWidth = Math.max(180, availableBuilderWidth - 4);
+  const maxBoardHeight = Math.max(220, viewportHeight - 250);
+  const fitByWidth = Math.floor((maxBoardWidth - 24) / cols);
+  const fitByHeight = Math.floor((maxBoardHeight - 174) / rows);
+  const cell = Math.max(12, Math.min(104, fitByWidth, fitByHeight));
+
+  return {
+    cell,
+    width: cols * cell + 24,
+    height: Math.max(300, 24 + rows * cell + 150),
+  };
+}
+
+class BoardScene extends Phaser.Scene {
+  constructor() {
+    super('board');
+    const rows = model.grid.length || 1;
+    const cols = model.grid[0]?.length || 1;
+    const layout = boardLayoutMetrics(rows, cols);
+    this.cell = layout.cell;
     this.gridX = 12;
     this.gridY = 12;
-    this.playAreaHeight = Math.max(360, this.gridY * 2 + rows * this.cell + 150);
+    this.playAreaHeight = layout.height;
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -2461,16 +2487,7 @@ function renderLevelsScreen() {
 
 function initPhaser(rows, cols) {
   if (phaserGame) phaserGame.destroy(true);
-  const viewportWidth = window.innerWidth || 1200;
-  const viewportHeight = window.innerHeight || 800;
-  const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
-  const maxBoardHeight = Math.max(260, viewportHeight - 300);
-  const fitByWidth = Math.floor(maxBoardWidth / cols);
-  const fitByHeight = Math.floor(maxBoardHeight / rows);
-  const minCell = viewportWidth < 600 ? 28 : 40;
-  const cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
-  const width = cols * cell + 24;
-  const height = Math.max(360, 24 + rows * cell + 150);
+  const { width, height } = boardLayoutMetrics(rows, cols);
   boardScene = new BoardScene();
 
   phaserGame = new Phaser.Game({

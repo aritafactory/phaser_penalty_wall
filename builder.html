@@ -6,26 +6,42 @@
     <title>Level Builder</title>
     <style>
       body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
-      .app { max-width: 1440px; margin: 0 auto; padding: 16px; }
-      .builder-layout { display:flex; gap:20px; align-items:flex-start; }
-      .left { width: 48%; min-width: 420px; background: #18181b; border:1px solid #334155; border-radius: 12px; padding: 16px; }
-      .right { width: 52%; min-width: 640px; }
+      .app { width:100%; max-width: 1920px; margin: 0 auto; padding: 12px clamp(12px, 2vw, 32px); box-sizing:border-box; }
+      .builder-layout { display:grid; grid-template-columns:minmax(540px, 600px) minmax(0, 1fr); gap:clamp(14px, 2vw, 28px); align-items:flex-start; }
+      .left { min-width:0; background: #18181b; border:1px solid #334155; border-radius: 12px; padding: 14px; }
+      .right { min-width:0; width:100%; }
       .row { display:flex; gap:10px; align-items:center; margin-bottom: 10px; flex-wrap: wrap; }
       .builder-grid { display:grid; gap:4px; margin: 12px 0; }
-      .builder-grid select { padding:4px 6px; border-radius: 4px; border:1px solid #334155; background:#1e293b; color:#e2e8f0; }
+      .builder-grid select { width:100%; min-width:0; box-sizing:border-box; padding:4px 3px; border-radius:4px; border:1px solid #334155; background:#1e293b; color:#e2e8f0; }
       .group { margin-top: 14px; }
-      .settings-row { display:flex; gap:16px; align-items:flex-start; }
-      .settings-row .group { flex:1; }
+      .settings-row { display:grid; grid-template-columns:minmax(0, 1fr) 160px; gap:12px; align-items:start; }
+      .settings-row .group { min-width:0; }
       .check { display:flex; align-items:center; gap:8px; margin-bottom: 8px; }
       select, button, input { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
       .controls { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; margin-bottom: 12px; }
-      #game { border: 1px solid #334155; border-radius: 10px; overflow: hidden; }
+      #game { width:fit-content; max-width:100%; border: 1px solid #334155; border-radius: 10px; overflow: visible; }
+      #game canvas { display:block; max-width:100%; height:auto !important; border-radius:9px; }
       .status { display:flex; gap: 12px; flex-wrap: wrap; }
       .badge { background:#1e293b; border:1px solid #334155; padding: 6px 10px; border-radius: 999px; }
-      .play-layout { display: flex; gap: 12px; align-items: stretch; }
-      .inventory { width: 300px; min-width: 260px; border: 1px solid #334155; border-radius: 10px; padding: 10px; background: #07153b; }
-      .inventory ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
-      .inventory li { border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; background: #102044; display:flex; justify-content:space-between; }
+      .play-layout { display:flex; width:100%; gap:12px; align-items:flex-start; }
+      .inventory { width:100%; min-width:0; box-sizing:border-box; border:1px solid #334155; border-radius:8px; padding:5px; background:#07153b; }
+      .inventory ul { list-style:none; padding:0; margin:0; display:grid; gap:4px; }
+      .inventory li { position:relative; min-height:30px; box-sizing:border-box; border:1px solid #334155; border-radius:6px; padding:3px 4px; background:#102044; display:grid; grid-template-columns:22px minmax(0, 1fr) 34px; gap:3px; align-items:center; }
+      .inventory .booster-icon { font-size:16px; line-height:1; text-align:center; }
+      .inventory .booster-name { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:11px; }
+      .inventory .booster-count { display:none; }
+      .inventory button { min-width:0; padding:3px 4px; border-radius:5px; font-size:9px; }
+      @media (max-width: 1180px) {
+        .builder-layout { grid-template-columns:1fr; }
+        .left, .right { width:100%; box-sizing:border-box; }
+        .settings-row { grid-template-columns:minmax(0, 1fr) 170px; }
+      }
+      @media (max-width: 680px) {
+        .app { padding:8px; }
+        .settings-row { grid-template-columns:1fr; }
+        .inventory ul { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+        .builder-grid { overflow-x:auto; }
+      }
       .modal-backdrop { display:none; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
