@@ -2,56 +2,69 @@
   "level": 16,
   "description": "Кастомный уровень 16",
   "complications": [
+    "timer",
     "unbreakable_blocks"
   ],
   "grid":
   [
     [
-      "B",
-      "B",
-      "R"
-    ],
-    [
-      "B",
-      "G",
-      "G"
-    ],
-    [
-      "G",
-      "G",
-      "R"
-    ],
-    [
-      "B",
-      "G",
-      "G"
-    ],
-    [
       "U",
+      "R",
       "U",
+      "R",
       "U"
+    ],
+    [
+      "B",
+      "R",
+      "B",
+      "R",
+      "B"
+    ],
+    [
+      "R",
+      "B",
+      "B",
+      "R",
+      "B"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "B",
+      "R"
+    ],
+    [
+      "B",
+      "B",
+      "G",
+      "B",
+      "B"
     ]
   ],
-    "randomize": false,
+  "timerSeconds": 10,
+  "randomize": false,
   "shapeGoal": {
     "type": "move_unbreakable_to_zone",
     "cells": [
       [
-        0,
+        4,
         0
       ],
       [
-        0,
-        1
+        3,
+        2
       ],
       [
-        0,
-        2
+        4,
+        4
       ]
     ]
   },
   "startingBoosters": {
-    "rotator": 10,
+    "fractions": 3,
+    "plusTenSeconds": 3,
     "rainbow": 10
   }
 }

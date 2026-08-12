@@ -1,0 +1,79 @@
+{
+  "level": 33,
+  "description": "Кастомный уровень 33",
+  "complications": [
+    "unbreakable_blocks",
+    "additional_colors"
+  ],
+  "grid": [
+    [
+      "G",
+      "Y",
+      "B",
+      "G",
+      "P",
+      "B"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "Y",
+      "B",
+      "O"
+    ],
+    [
+      "G",
+      "U",
+      "U",
+      "B",
+      "P",
+      "B"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "U",
+      "O",
+      "G"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "Y",
+      "P",
+      "O"
+    ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        4,
+        3
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "compressor": 1
+  }
+}

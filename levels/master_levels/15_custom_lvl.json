@@ -7,32 +7,31 @@
   "grid":
   [
     [
-      "B",
       "U",
+      "B",
       "R",
+      "G",
+      "U",
       "U",
       "U"
     ],
     [
-      "B",
-      "G",
       "U",
       "B",
-      "G"
-    ],
-    [
       "G",
       "G",
       "R",
       "G",
-      "G"
+      "U"
     ],
     [
       "U",
       "B",
+      "B",
       "R",
-      "G",
-      "G"
+      "R",
+      "R",
+      "U"
     ]
   ],
     "randomize": false,
@@ -40,12 +39,8 @@
     "type": "move_unbreakable_to_zone",
     "cells": [
       [
-        3,
-        0
-      ],
-      [
-        2,
-        1
+        0,
+        2
       ],
       [
         1,
@@ -53,16 +48,34 @@
       ],
       [
         2,
+        2
+      ],
+      [
+        0,
         3
       ],
       [
-        3,
+        2,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        2,
         4
       ]
     ]
   },
   "startingBoosters": {
-    "fractions": 2,
+    "bomb": 2,
+    "compressor": 2,
+    "rotator": 2,
     "rainbow": 10
   }
 }

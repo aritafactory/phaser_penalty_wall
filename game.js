@@ -2427,7 +2427,7 @@ function renderLevelPagination(pageCount) {
 function renderLevelsScreen() {
   if (!ui.levelsGrid) return;
   const isMaster = model.activeLevelSet === 'master';
-  const totalSlots = isMaster ? model.masterLevels.length : 100;
+  const totalSlots = isMaster ? model.masterLevels.length : 200;
   const pageCount = Math.max(1, Math.ceil(totalSlots / LEVELS_PER_PAGE));
   model.levelsPage = Math.min(Math.max(0, model.levelsPage || 0), pageCount - 1);
   const selectedLevel = Math.min(model.currentLevelIndex + 1, Math.max(1, totalSlots));

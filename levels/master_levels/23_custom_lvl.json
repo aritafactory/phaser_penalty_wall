@@ -1,0 +1,91 @@
+{
+  "level": 23,
+  "description": "Кастомный уровень 23",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "G",
+      "B",
+      "G",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "B",
+      "U",
+      "B",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "G",
+      "U",
+      "U",
+      "U",
+      "G",
+      "B"
+    ],
+    [
+      "B",
+      "G",
+      "B",
+      "U",
+      "B",
+      "G"
+    ],
+    [
+      "G",
+      "B",
+      "G",
+      "B",
+      "U",
+      "B"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "G",
+      "B",
+      "G"
+    ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        3
+      ],
+      [
+        4,
+        4
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "compressor": 1,
+    "rotator": 1
+  }
+}

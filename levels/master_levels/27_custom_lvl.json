@@ -1,0 +1,82 @@
+{
+  "level": 27,
+  "description": "Кастомный уровень 27",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "G",
+      "B",
+      "G",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "B",
+      "U",
+      "U",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "G",
+      "B",
+      "U",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "U",
+      "U",
+      "B"
+    ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        4,
+        3
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "rotator": 1
+  }
+}

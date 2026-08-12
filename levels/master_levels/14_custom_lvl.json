@@ -2,63 +2,76 @@
   "level": 14,
   "description": "Кастомный уровень 14",
   "complications": [
-    "unbreakable_blocks"
+    "unbreakable_blocks", "limited_shots"
   ],
   "grid": [
     [
-      "B",
-      "R",
-      "R",
+      "G",
+      "G",
+      "R"
+    ],
+    [
       "U",
-      "B"
+      "U",
+      "U"
     ],
     [
       "G",
-      "U",
-      "U",
+      "R",
+      "G"
+    ],
+    [
+      "B",
+      "R",
+      "G"
+    ],
+    [
+      "G",
+      "R",
+      "B"
+    ],
+    [
+      "R",
       "U",
       "G"
     ],
     [
-      "R",
-      "R",
-      "R",
-      "R",
+      "G",
+      "U",
       "R"
-    ],
-    [
-      "R",
-      "B",
-      "B",
-      "B",
-      "B"
     ]
   ],
-    "randomize": false,
+  "maxShots": 3,
+  "randomize": false,
   "shapeGoal": {
     "type": "move_unbreakable_to_zone",
     "cells": [
       [
-        2,
-        1
+        6,
+        0
       ],
       [
-        2,
+        6,
         2
       ],
       [
-        2,
-        3
+        5,
+        1
       ],
       [
-        1,
+        4,
+        0
+      ],
+      [
+        4,
         2
       ]
     ]
   },
   "startingBoosters": {
-    "compressor": 2,
-    "minusOneColor": 2,
+    "bomb": 1,
+    "rotator": 1,
+    "plusFiveShots": 2,
     "rainbow": 10
   }
 }

@@ -1,0 +1,79 @@
+{
+  "level": 32,
+  "description": "Кастомный уровень 32",
+  "complications": [
+    "unbreakable_blocks",
+    "flashing_blocks"
+  ],
+  "grid": [
+    [
+      "G",
+      "F:B:R:0",
+      "G",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "G",
+      "U",
+      "U",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "U",
+      "B",
+      "G"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "F:G:B:0",
+      "B",
+      "G"
+    ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        4,
+        2
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "rotator": 1
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "level": 26,
+  "description": "Кастомный уровень 26",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "G",
+      "B",
+      "G",
+      "U",
+      "U"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "G",
+      "B"
+    ],
+    [
+      "G",
+      "U",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "U",
+      "G",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "B",
+      "G"
+    ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        4,
+        0
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "compressor": 1
+  }
+}

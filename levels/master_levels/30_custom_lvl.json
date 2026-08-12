@@ -1,0 +1,118 @@
+{
+  "level": 30,
+  "description": "Кастомный уровень 30",
+  "complications": [
+    "unbreakable_blocks"
+  ],
+  "grid": [
+    [
+      "G",
+      "B",
+      "G",
+      "B",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "B",
+      "G",
+      "B",
+      "U",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "G",
+      "B",
+      "U",
+      "B",
+      "G",
+      "B",
+      "G"
+    ],
+    [
+      "B",
+      "U",
+      "U",
+      "G",
+      "U",
+      "G",
+      "B"
+    ],
+    [
+      "G",
+      "B",
+      "G",
+      "B",
+      "U",
+      "U",
+      "G"
+    ],
+    [
+      "B",
+      "G",
+      "U",
+      "G",
+      "B",
+      "G",
+      "B"
+    ],
+    [
+      "R",
+      "R",
+      "R",
+      "R",
+      "U",
+      "B",
+      "G"
+    ]
+  ],
+  "randomize": false,
+  "shapeGoal": {
+    "type": "move_unbreakable_to_zone",
+    "cells": [
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        1
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        4,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        5,
+        3
+      ],
+      [
+        6,
+        3
+      ]
+    ]
+  },
+  "startingBoosters": {
+    "compressor": 1,
+    "rotator": 2
+  }
+}
