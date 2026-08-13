@@ -1332,7 +1332,7 @@ function renderBoosterInventory() {
           return;
         }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
-        if (boardScene) boardScene.syncBombTargeting();
+        if (boardScene) boardScene.syncBoosterTargeting();
         renderBoosterInventory();
         refreshUI();
       };
@@ -1391,6 +1391,7 @@ function cancelActiveGameplay() {
     boardScene.animating = false;
     boardScene.destroyBombPreview();
     boardScene.destroyFractionsEffects();
+    boardScene.destroyRotatorPreview();
   }
   closeFailModal();
 }
@@ -1559,6 +1560,7 @@ class BoardScene extends Phaser.Scene {
     this.bombPointerMoveHandler = null;
     this.bombPointerDownHandler = null;
     this.fractionsEffects = new Set();
+    this.rotatorPreview = null;
   }
 
   key(r, c) {
@@ -1589,6 +1591,7 @@ class BoardScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroyBombPreview(true);
       this.destroyFractionsEffects();
+      this.destroyRotatorPreview(true);
     });
   }
 
@@ -1677,8 +1680,9 @@ class BoardScene extends Phaser.Scene {
     return { row, col };
   }
 
-  syncBombTargeting() {
+  syncBoosterTargeting() {
     if (model.activeBooster !== 'bomb') this.destroyBombPreview();
+    if (model.activeBooster !== 'rotator') this.destroyRotatorPreview();
   }
 
   bombAreaFor(row, col) {
@@ -1736,9 +1740,11 @@ class BoardScene extends Phaser.Scene {
   }
 
   handleBombPointerMove(pointer) {
-    if (model.activeBooster !== 'bomb' || this.isTouchPointer(pointer)) return;
+    if (this.isTouchPointer(pointer)) return;
     const cell = this.pointerToGrid(pointer);
-    if (cell) this.showBombPreview(cell.row, cell.col);
+    if (!cell) return;
+    if (model.activeBooster === 'bomb') this.showBombPreview(cell.row, cell.col);
+    if (model.activeBooster === 'rotator') this.showRotatorPreview(cell.row, cell.col);
   }
 
   isTouchPointer(pointer) {
@@ -1830,6 +1836,80 @@ class BoardScene extends Phaser.Scene {
     });
   }
 
+  showRotatorPreview(row, col) {
+    if (model.activeBooster !== 'rotator' || this.animating) return;
+    const valid = row > 0 && col > 0 && row < model.grid.length - 1 && col < model.grid[0].length - 1;
+    if (!valid) {
+      this.destroyRotatorPreview();
+      return;
+    }
+    if (this.rotatorPreview?.row === row && this.rotatorPreview?.col === col) return;
+    this.destroyRotatorPreview(true);
+
+    const ring = [
+      [-1, -1, '→', 1, 0], [-1, 0, '→', 1, 0], [-1, 1, '↓', 0, 1], [0, 1, '↓', 0, 1],
+      [1, 1, '←', -1, 0], [1, 0, '←', -1, 0], [1, -1, '↑', 0, -1], [0, -1, '↑', 0, -1],
+    ];
+    const arrows = ring.map(([dr, dc, glyph, moveX, moveY]) => {
+      const point = this.gridToPixel(row + dr, col + dc);
+      const arrow = this.add.text(point.x, point.y, glyph, {
+        fontFamily: 'Arial, sans-serif', fontSize: `${Math.max(24, Math.round(this.cell * 0.48))}px`,
+        fontStyle: 'bold', color: '#d8d8d8', stroke: '#111111', strokeThickness: 5,
+      }).setOrigin(0.5).setDepth(210).setAlpha(0);
+      return { arrow, x: point.x, y: point.y, moveX, moveY };
+    });
+    const center = this.gridToPixel(row, col);
+    const centerX = this.add.text(center.x, center.y, 'X', {
+      fontFamily: 'Arial, sans-serif', fontSize: `${Math.max(25, Math.round(this.cell * 0.5))}px`,
+      fontStyle: 'bold', color: '#ffffff', stroke: '#111111', strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(211).setAlpha(0);
+    this.rotatorPreview = { row, col, arrows, centerX, timers: [], generation: Symbol('rotator') };
+    this.tweens.add({ targets: [centerX, ...arrows.map(({ arrow }) => arrow)], alpha: 0.82, duration: 125 });
+    this.scheduleRotatorWave(this.rotatorPreview);
+  }
+
+  scheduleRotatorWave(preview) {
+    if (this.rotatorPreview !== preview || model.activeBooster !== 'rotator') return;
+    preview.arrows.forEach(({ arrow, x, y, moveX, moveY }, index) => {
+      const timer = this.time.delayedCall(125 + index * 125, () => {
+        if (this.rotatorPreview !== preview) return;
+        arrow.setColor('#ffffff');
+        this.tweens.add({
+          targets: arrow,
+          x: x + moveX * 5,
+          y: y + moveY * 5,
+          scale: 1.15,
+          alpha: 1,
+          duration: 115,
+          yoyo: true,
+          ease: 'Sine.easeInOut',
+          onComplete: () => arrow.setColor('#d8d8d8'),
+        });
+      });
+      preview.timers.push(timer);
+    });
+    preview.timers.push(this.time.delayedCall(1250, () => this.scheduleRotatorWave(preview)));
+  }
+
+  destroyRotatorPreview(immediate = false) {
+    const preview = this.rotatorPreview;
+    if (!preview) return;
+    this.rotatorPreview = null;
+    preview.timers.forEach((timer) => timer.remove(false));
+    const indicators = [preview.centerX, ...preview.arrows.map(({ arrow }) => arrow)];
+    indicators.forEach((indicator) => this.tweens.killTweensOf(indicator));
+    if (immediate || !this.sys?.isActive()) {
+      indicators.forEach((indicator) => indicator.destroy());
+      return;
+    }
+    this.tweens.add({
+      targets: indicators,
+      alpha: 0,
+      duration: 125,
+      onComplete: () => indicators.forEach((indicator) => indicator.destroy()),
+    });
+  }
+
   handlePointer(pointer) {
     if (this.animating || model.gameOver || !model.gameplayActive) return;
 
@@ -1888,6 +1968,7 @@ class BoardScene extends Phaser.Scene {
         model.gameplayActive = false;
         this.destroyBombPreview();
         this.destroyFractionsEffects();
+        this.destroyRotatorPreview();
         closeFailModal();
         ui.stateLabel.textContent = 'Статус: победа';
         openWinModal();
@@ -2227,6 +2308,7 @@ class BoardScene extends Phaser.Scene {
     });
 
     this.animating = true;
+    this.destroyRotatorPreview();
     consumeBooster('rotator');
     model.activeBooster = null;
     savePersistentState();
@@ -2607,6 +2689,7 @@ function failLevel(message = 'Статус: поражение') {
   if (boardScene) {
     boardScene.destroyBombPreview();
     boardScene.destroyFractionsEffects();
+    boardScene.destroyRotatorPreview();
   }
   ui.stateLabel.textContent = message;
   refreshUI();
