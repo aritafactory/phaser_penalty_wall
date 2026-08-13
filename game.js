@@ -1332,6 +1332,7 @@ function renderBoosterInventory() {
           return;
         }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
+        if (boardScene) boardScene.syncBombTargeting();
         renderBoosterInventory();
         refreshUI();
       };
@@ -1386,7 +1387,10 @@ function cancelActiveGameplay() {
   model.gameOver = true;
   model.timerLeft = Infinity;
   model.activeBooster = null;
-  if (boardScene) boardScene.animating = false;
+  if (boardScene) {
+    boardScene.animating = false;
+    boardScene.destroyBombPreview();
+  }
   closeFailModal();
 }
 
@@ -1550,6 +1554,9 @@ class BoardScene extends Phaser.Scene {
     this.pendingShotColor = null;
     this.pendingShotUsedBooster = false;
     this.targetZoneGraphics = null;
+    this.bombPreview = null;
+    this.bombPointerMoveHandler = null;
+    this.bombPointerDownHandler = null;
   }
 
   key(r, c) {
@@ -1573,7 +1580,11 @@ class BoardScene extends Phaser.Scene {
 
     this.renderGridStatic();
 
-    this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
+    this.bombPointerMoveHandler = (pointer) => this.handleBombPointerMove(pointer);
+    this.bombPointerDownHandler = (pointer) => this.handlePointer(pointer);
+    this.input.on('pointermove', this.bombPointerMoveHandler);
+    this.input.on('pointerdown', this.bombPointerDownHandler);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyBombPreview(true));
   }
 
   drawBoardFrame() {
@@ -1654,18 +1665,180 @@ class BoardScene extends Phaser.Scene {
     return rect;
   }
 
+  pointerToGrid(pointer) {
+    const col = Math.floor((pointer.x - this.gridX) / this.cell);
+    const row = Math.floor((pointer.y - this.gridY) / this.cell);
+    if (row < 0 || col < 0 || row >= model.grid.length || col >= model.grid[0].length) return null;
+    return { row, col };
+  }
+
+  syncBombTargeting() {
+    if (model.activeBooster !== 'bomb') this.destroyBombPreview();
+  }
+
+  bombAreaFor(row, col) {
+    const minRow = Math.max(0, row - 1);
+    const maxRow = Math.min(model.grid.length - 1, row + 1);
+    const minCol = Math.max(0, col - 1);
+    const maxCol = Math.min(model.grid[0].length - 1, col + 1);
+    return { minRow, maxRow, minCol, maxCol };
+  }
+
+  buildFusePath(area) {
+    const inset = 5;
+    const left = this.gridX + area.minCol * this.cell + inset;
+    const top = this.gridY + area.minRow * this.cell + inset;
+    const right = this.gridX + (area.maxCol + 1) * this.cell - inset;
+    const bottom = this.gridY + (area.maxRow + 1) * this.cell - inset;
+    const points = [];
+    const addEdge = (x1, y1, x2, y2) => {
+      const length = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+      const steps = Math.max(2, Math.ceil(length / 11));
+      for (let i = points.length ? 1 : 0; i <= steps; i += 1) {
+        const t = i / steps;
+        const wave = Math.sin(t * Math.PI * steps) * 2.2;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const magnitude = Math.max(1, Math.hypot(dx, dy));
+        points.push({ x: x1 + dx * t - (dy / magnitude) * wave, y: y1 + dy * t + (dx / magnitude) * wave });
+      }
+    };
+    addEdge(left, top, right, top);
+    addEdge(right, top, right, bottom);
+    addEdge(right, bottom, left, bottom);
+    addEdge(left, bottom, left, top);
+    return points;
+  }
+
+  showBombPreview(row, col, touchSelected = false) {
+    if (model.activeBooster !== 'bomb' || this.animating) return;
+    if (this.bombPreview?.row === row && this.bombPreview?.col === col) {
+      this.bombPreview.touchSelected ||= touchSelected;
+      return;
+    }
+    this.destroyBombPreview();
+    const path = this.buildFusePath(this.bombAreaFor(row, col));
+    const fuse = this.add.graphics().setDepth(200);
+    fuse.lineStyle(8, 0xffffff, 0.34);
+    fuse.strokePoints(path, true);
+    fuse.lineStyle(5.5, 0x17120f, 1);
+    fuse.strokePoints(path, true);
+    fuse.lineStyle(1.5, 0x665044, 0.9);
+    fuse.strokePoints(path, true);
+    const sparkGlow = this.add.circle(path[0].x, path[0].y, 9, 0xff7a00, 0.28).setDepth(202);
+    const spark = this.add.circle(path[0].x, path[0].y, 4, 0xfff0a3, 1).setStrokeStyle(2, 0xff5a00).setDepth(203);
+    this.bombPreview = { row, col, path, fuse, spark, sparkGlow, elapsed: 0, particles: [], touchSelected };
+  }
+
+  handleBombPointerMove(pointer) {
+    if (model.activeBooster !== 'bomb' || this.isTouchPointer(pointer)) return;
+    const cell = this.pointerToGrid(pointer);
+    if (cell) this.showBombPreview(cell.row, cell.col);
+  }
+
+  isTouchPointer(pointer) {
+    return pointer.pointerType === 'touch' || pointer.event?.pointerType === 'touch' || pointer.wasTouch === true;
+  }
+
+  spawnFuseParticle(x, y, kind) {
+    if (!this.bombPreview) return;
+    const smoke = kind === 'smoke';
+    const particle = this.add.circle(x, y, smoke ? 3.5 : 2, smoke ? 0x777777 : (kind === 'ember' ? 0xff6a00 : 0xffc233), smoke ? 0.42 : 0.95).setDepth(201);
+    this.bombPreview.particles.push(particle);
+    this.tweens.add({
+      targets: particle,
+      x: x + Phaser.Math.Between(-7, 7),
+      y: y - Phaser.Math.Between(smoke ? 12 : 4, smoke ? 23 : 12),
+      alpha: 0,
+      scale: smoke ? 2 : 0.25,
+      duration: smoke ? 650 : 330,
+      onComplete: () => {
+        particle.destroy();
+        if (this.bombPreview) this.bombPreview.particles = this.bombPreview.particles.filter((item) => item !== particle);
+      },
+    });
+  }
+
+  updateBombPreview(delta) {
+    const preview = this.bombPreview;
+    if (!preview || model.activeBooster !== 'bomb' || this.animating) return;
+    preview.elapsed = (preview.elapsed + delta) % 1500;
+    const scaled = (preview.elapsed / 1500) * preview.path.length;
+    const index = Math.floor(scaled) % preview.path.length;
+    const next = (index + 1) % preview.path.length;
+    const t = scaled - Math.floor(scaled);
+    const x = Phaser.Math.Linear(preview.path[index].x, preview.path[next].x, t);
+    const y = Phaser.Math.Linear(preview.path[index].y, preview.path[next].y, t);
+    preview.spark.setPosition(x, y);
+    preview.sparkGlow.setPosition(x, y).setAlpha(0.2 + Math.random() * 0.25).setScale(0.8 + Math.random() * 0.5);
+    if (Math.random() < delta / 45) this.spawnFuseParticle(x, y, 'fire');
+    if (Math.random() < delta / 85) this.spawnFuseParticle(x, y, 'ember');
+    if (Math.random() < delta / 120) this.spawnFuseParticle(x, y, 'smoke');
+  }
+
+  destroyBombPreview(removeListeners = false) {
+    const preview = this.bombPreview;
+    if (preview) {
+      [preview.fuse, preview.spark, preview.sparkGlow, ...preview.particles].forEach((object) => {
+        if (object?.active) {
+          this.tweens.killTweensOf(object);
+          object.destroy();
+        }
+      });
+    }
+    this.bombPreview = null;
+    if (removeListeners && this.input) {
+      this.input.off('pointermove', this.bombPointerMoveHandler);
+      this.input.off('pointerdown', this.bombPointerDownHandler);
+    }
+  }
+
+  confirmBombTarget(row, col) {
+    const preview = this.bombPreview;
+    if (!preview || preview.row !== row || preview.col !== col) this.showBombPreview(row, col);
+    this.animating = true;
+    const active = this.bombPreview;
+    if (!active) return;
+    const finish = { progress: active.elapsed / 1500 };
+    this.tweens.add({
+      targets: finish,
+      progress: 1,
+      duration: 180,
+      ease: 'Quad.easeIn',
+      onUpdate: () => {
+        if (!this.bombPreview) return;
+        const scaled = finish.progress * active.path.length;
+        const index = Math.min(active.path.length - 1, Math.floor(scaled));
+        const next = (index + 1) % active.path.length;
+        const t = scaled - Math.floor(scaled);
+        const x = Phaser.Math.Linear(active.path[index].x, active.path[next].x, t);
+        const y = Phaser.Math.Linear(active.path[index].y, active.path[next].y, t);
+        active.spark.setPosition(x, y).setScale(1 + finish.progress);
+        active.sparkGlow.setPosition(x, y).setScale(1.2 + finish.progress);
+        if (Math.random() < 0.55) this.spawnFuseParticle(x, y, Math.random() < 0.25 ? 'smoke' : 'fire');
+      },
+      onComplete: () => {
+        this.destroyBombPreview();
+        this.animating = false;
+        this.useBombAt(row, col);
+      },
+    });
+  }
+
   handlePointer(pointer) {
     if (this.animating || model.gameOver || !model.gameplayActive) return;
 
-    const cols = model.grid[0].length;
-    const rows = model.grid.length;
-    const col = Math.floor((pointer.x - this.gridX) / this.cell);
-    const row = Math.floor((pointer.y - this.gridY) / this.cell);
-
-    if (col < 0 || row < 0 || col >= cols || row >= rows) return;
+    const cell = this.pointerToGrid(pointer);
+    if (!cell) return;
+    const { row, col } = cell;
 
     if (model.activeBooster === 'bomb') {
-      this.useBombAt(row, col);
+      const isTouch = this.isTouchPointer(pointer);
+      if (isTouch && (!this.bombPreview || this.bombPreview.row !== row || this.bombPreview.col !== col || !this.bombPreview.touchSelected)) {
+        this.showBombPreview(row, col, true);
+        return;
+      }
+      this.confirmBombTarget(row, col);
       return;
     }
     if (model.activeBooster === 'mix') {
@@ -1708,6 +1881,7 @@ class BoardScene extends Phaser.Scene {
       } else {
         model.gameOver = true;
         model.gameplayActive = false;
+        this.destroyBombPreview();
         closeFailModal();
         ui.stateLabel.textContent = 'Статус: победа';
         openWinModal();
@@ -1738,6 +1912,7 @@ class BoardScene extends Phaser.Scene {
     this.animating = true;
     consumeBooster('bomb');
     model.activeBooster = null;
+    this.destroyBombPreview();
     savePersistentState();
     renderBoosterInventory();
 
@@ -2281,6 +2456,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
+    this.updateBombPreview(delta);
     if (model.gameOver || !model.gameplayActive) return;
 
     this.flashAccumulator += delta;
@@ -2362,6 +2538,8 @@ function failLevel(message = 'Статус: поражение') {
   if (!model.gameplayActive) return;
   model.gameplayActive = false;
   model.gameOver = true;
+  model.activeBooster = null;
+  if (boardScene) boardScene.destroyBombPreview();
   ui.stateLabel.textContent = message;
   refreshUI();
   openFailModal();
