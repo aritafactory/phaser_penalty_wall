@@ -1389,6 +1389,7 @@ function cancelActiveGameplay() {
     boardScene.destroyFractionsEffects();
     boardScene.destroyRotatorPreview();
     boardScene.destroyCompressorPreview();
+    boardScene.syncRainbowBallVisual();
   }
   closeFailModal();
 }
@@ -1559,6 +1560,7 @@ class BoardScene extends Phaser.Scene {
     this.fractionsEffects = new Set();
     this.rotatorPreview = null;
     this.compressorPreview = null;
+    this.rainbowShooterPreview = null;
   }
 
   key(r, c) {
@@ -1591,6 +1593,7 @@ class BoardScene extends Phaser.Scene {
       this.destroyFractionsEffects();
       this.destroyRotatorPreview(true);
       this.destroyCompressorPreview(true);
+      if (this.rainbowShooterPreview) this.rainbowShooterPreview.destroy();
     });
   }
 
@@ -1684,6 +1687,34 @@ class BoardScene extends Phaser.Scene {
     if (model.activeBooster !== 'rotator') this.destroyRotatorPreview();
     if (model.activeBooster === 'compressor') this.showCompressorPreview();
     else this.destroyCompressorPreview();
+    this.syncRainbowBallVisual();
+  }
+
+  createRainbowBall(x, y, radius, depth = 100) {
+    const graphics = this.add.graphics().setPosition(x, y).setDepth(depth);
+    const colors = [0xe74c3c, 0xe67e22, 0xf1c40f, 0x27ae60, 0x3498db, 0x9b59b6];
+    const stripeHeight = (radius * 2) / colors.length;
+    for (let scanY = -radius; scanY < radius; scanY += 1) {
+      const colorIndex = Math.min(colors.length - 1, Math.floor((scanY + radius) / stripeHeight));
+      const halfWidth = Math.sqrt(Math.max(0, radius * radius - (scanY + 0.5) * (scanY + 0.5)));
+      const color = colors[colorIndex];
+      graphics.fillStyle(color, 1);
+      graphics.fillRect(-halfWidth, scanY, halfWidth * 2, 1.2);
+    }
+    graphics.lineStyle(2, 0xffffff, 1);
+    graphics.strokeCircle(0, 0, radius);
+    return graphics;
+  }
+
+  syncRainbowBallVisual() {
+    const shouldShow = model.activeBooster === 'rainbow' && !model.gameOver && model.gameplayActive;
+    if (shouldShow && !this.rainbowShooterPreview) {
+      this.rainbowShooterPreview = this.createRainbowBall(this.shooterX, this.shooterY, 18, 105);
+    } else if (!shouldShow && this.rainbowShooterPreview) {
+      this.rainbowShooterPreview.destroy();
+      this.rainbowShooterPreview = null;
+    }
+    if (this.shooter) this.shooter.setVisible(!shouldShow);
   }
 
   bombAreaFor(row, col) {
@@ -2505,6 +2536,7 @@ class BoardScene extends Phaser.Scene {
         consumeBooster('rainbow');
         model.activeBooster = null;
         model.rainbowNextShot = true;
+        this.syncRainbowBallVisual();
         savePersistentState();
         renderBoosterInventory();
       }
@@ -2519,7 +2551,9 @@ class BoardScene extends Phaser.Scene {
       if (model.shotsLeft < 0) model.shotsLeft = 0;
     }
 
-    const projectile = this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor]).setStrokeStyle(2, 0xffffff);
+    const projectile = this.pendingShotUsedBooster
+      ? this.createRainbowBall(this.shooterX, this.shooterY, 14, 110)
+      : this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor]).setStrokeStyle(2, 0xffffff);
     const target = this.gridToPixel(row, col);
 
     this.animating = true;
@@ -2766,6 +2800,7 @@ function failLevel(message = 'Статус: поражение') {
     boardScene.destroyFractionsEffects();
     boardScene.destroyRotatorPreview();
     boardScene.destroyCompressorPreview();
+    boardScene.syncRainbowBallVisual();
   }
   ui.stateLabel.textContent = message;
   refreshUI();
