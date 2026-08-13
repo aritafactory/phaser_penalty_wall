@@ -1390,6 +1390,7 @@ function cancelActiveGameplay() {
   if (boardScene) {
     boardScene.animating = false;
     boardScene.destroyBombPreview();
+    boardScene.destroyFractionsEffects();
   }
   closeFailModal();
 }
@@ -1557,6 +1558,7 @@ class BoardScene extends Phaser.Scene {
     this.bombPreview = null;
     this.bombPointerMoveHandler = null;
     this.bombPointerDownHandler = null;
+    this.fractionsEffects = new Set();
   }
 
   key(r, c) {
@@ -1584,7 +1586,10 @@ class BoardScene extends Phaser.Scene {
     this.bombPointerDownHandler = (pointer) => this.handlePointer(pointer);
     this.input.on('pointermove', this.bombPointerMoveHandler);
     this.input.on('pointerdown', this.bombPointerDownHandler);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyBombPreview(true));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.destroyBombPreview(true);
+      this.destroyFractionsEffects();
+    });
   }
 
   drawBoardFrame() {
@@ -1882,6 +1887,7 @@ class BoardScene extends Phaser.Scene {
         model.gameOver = true;
         model.gameplayActive = false;
         this.destroyBombPreview();
+        this.destroyFractionsEffects();
         closeFailModal();
         ui.stateLabel.textContent = 'Статус: победа';
         openWinModal();
@@ -1981,45 +1987,99 @@ class BoardScene extends Phaser.Scene {
   }
 
 
-  animateFractionsSplit(row, col, selectedRegions, color, done) {
-    const origin = this.gridToPixel(row, col);
-    const regionAnchors = selectedRegions
-      .map((region) => region.ordinary[0] || region.twos[0])
-      .filter(Boolean)
-      .map(([r, c]) => this.gridToPixel(r, c));
-    const fallbackOffsets = [
-      { x: -this.cell, y: -this.cell * 0.7 },
-      { x: this.cell, y: -this.cell * 0.7 },
-      { x: 0, y: this.cell },
-    ];
-    const destinations = Array.from({ length: 3 }, (_, idx) => {
-      const anchor = regionAnchors[idx] || regionAnchors[regionAnchors.length - 1] || origin;
-      if (anchor === origin || (anchor.x === origin.x && anchor.y === origin.y)) {
-        const offset = fallbackOffsets[idx];
-        return { x: origin.x + offset.x, y: origin.y + offset.y };
-      }
-      return anchor;
-    });
+  trackFractionsEffect(object) {
+    this.fractionsEffects.add(object);
+    return object;
+  }
 
+  discardFractionsEffect(object) {
+    this.fractionsEffects.delete(object);
+    if (object?.active) object.destroy();
+  }
+
+  destroyFractionsEffects() {
+    this.fractionsEffects.forEach((object) => {
+      this.tweens.killTweensOf(object);
+      if (object?.active) object.destroy();
+    });
+    this.fractionsEffects.clear();
+  }
+
+  playFractionsImpact(x, y) {
+    const impact = this.trackFractionsEffect(
+      this.add.circle(x, y, 8, 0xffffff, 0.9).setStrokeStyle(3, 0xffb21a).setDepth(122)
+    );
+    this.tweens.add({
+      targets: impact,
+      scale: 2.8,
+      alpha: 0,
+      duration: 170,
+      ease: 'Quad.easeOut',
+      onComplete: () => this.discardFractionsEffect(impact),
+    });
+  }
+
+  animateFractionsProjectiles(selectedRegions, color, onRegionImpact, done) {
+    const origin = { x: this.shooterX, y: this.shooterY };
+    const assignments = Array.from({ length: 3 }, (_, index) => ({
+      region: selectedRegions[index] || selectedRegions[index % selectedRegions.length],
+      regionIndex: index < selectedRegions.length ? index : index % selectedRegions.length,
+    }));
     let finished = 0;
-    destinations.forEach((target, idx) => {
-      const ball = this.add.circle(origin.x, origin.y, 13, COLOR_MAP[color] || 0xffffff)
-        .setStrokeStyle(2, 0xffffff)
-        .setDepth(100);
+
+    assignments.forEach(({ region, regionIndex }, projectileIndex) => {
+      const [targetRow, targetCol] = region.ordinary[0] || region.twos[0];
+      const target = this.gridToPixel(targetRow, targetCol);
+      const dx = target.x - origin.x;
+      const dy = target.y - origin.y;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const curve = (projectileIndex - 1) * Math.min(55, this.cell * 0.65);
+      const control = {
+        x: (origin.x + target.x) / 2 - (dy / length) * curve,
+        y: (origin.y + target.y) / 2 + (dx / length) * curve,
+      };
+      const ball = this.trackFractionsEffect(
+        this.add.circle(origin.x, origin.y, 13, COLOR_MAP[color] || 0xffffff)
+          .setStrokeStyle(2, 0xffffff)
+          .setDepth(121)
+      );
+      const flight = this.trackFractionsEffect({ progress: 0 });
+      let lastTrailProgress = -1;
       this.tweens.add({
-        targets: ball,
-        x: target.x,
-        y: target.y,
-        scaleX: 1.25,
-        scaleY: 1.25,
-        alpha: 0.25,
-        delay: idx * 70,
-        duration: 360,
-        ease: 'Cubic.easeOut',
+        targets: flight,
+        progress: 1,
+        delay: projectileIndex * 45,
+        duration: 430,
+        ease: 'Sine.easeInOut',
+        onUpdate: () => {
+          const t = flight.progress;
+          const inverse = 1 - t;
+          ball.setPosition(
+            inverse * inverse * origin.x + 2 * inverse * t * control.x + t * t * target.x,
+            inverse * inverse * origin.y + 2 * inverse * t * control.y + t * t * target.y
+          );
+          if (t - lastTrailProgress >= 0.08) {
+            lastTrailProgress = t;
+            const trail = this.trackFractionsEffect(
+              this.add.circle(ball.x, ball.y, 5, COLOR_MAP[color] || 0xffffff, 0.55).setDepth(120)
+            );
+            this.tweens.add({
+              targets: trail,
+              alpha: 0,
+              scale: 0.25,
+              duration: 180,
+              onComplete: () => this.discardFractionsEffect(trail),
+            });
+          }
+        },
         onComplete: () => {
-          ball.destroy();
+          this.fractionsEffects.delete(flight);
+          this.discardFractionsEffect(ball);
+          if (!model.gameplayActive || model.gameOver) return;
+          this.playFractionsImpact(target.x, target.y);
+          onRegionImpact(region, regionIndex);
           finished += 1;
-          if (finished === destinations.length) done();
+          if (finished === assignments.length) done();
         },
       });
     });
@@ -2068,29 +2128,34 @@ class BoardScene extends Phaser.Scene {
       others.splice(idx, 1);
     }
 
-    const allOrdinary = [];
-    const allTwos = [];
-    selectedRegions.forEach((region) => {
-      allOrdinary.push(...region.ordinary);
-      allTwos.push(...region.twos);
-    });
-
-    const uniqueOrdinary = [...new Set(allOrdinary.map(([r, c]) => `${r},${c}`))].map((k) =>
-      k.split(',').map(Number)
-    );
-
-    this.animateFractionsSplit(row, col, selectedRegions, targetColor, () => {
-      repaintTwoColorCells(allTwos, targetColor);
-
-      const removedKeys = uniqueOrdinary.map(([r, c]) => this.key(r, c));
-      uniqueOrdinary.forEach(([r, c]) => {
-        model.grid[r][c] = null;
+    const resolvedRegions = new Set();
+    const removedKeys = [];
+    this.animateFractionsProjectiles(selectedRegions, targetColor, (region, regionIndex) => {
+      if (resolvedRegions.has(regionIndex)) return;
+      resolvedRegions.add(regionIndex);
+      repaintTwoColorCells(region.twos, targetColor);
+      region.twos.forEach(([r, c]) => {
+        const block = this.blocks.get(this.key(r, c));
+        if (block) block.setFillStyle(COLOR_MAP[visibleColor(model.grid[r][c])] || 0xffffff);
       });
-
-      const earned = pointsForRemovedBlocks(uniqueOrdinary.length);
-      model.score += earned;
-
-      if (uniqueOrdinary.length === 0) {
+      region.ordinary.forEach(([r, c]) => {
+        const key = this.key(r, c);
+        removedKeys.push(key);
+        model.grid[r][c] = null;
+        const block = this.blocks.get(key);
+        if (!block) return;
+        this.blocks.delete(key);
+        this.tweens.add({
+          targets: block,
+          alpha: 0,
+          scale: 0.55,
+          duration: 140,
+          onComplete: () => block.destroy(),
+        });
+      });
+      model.score += pointsForRemovedBlocks(region.ordinary.length);
+    }, () => {
+      if (removedKeys.length === 0) {
         this.renderGridStatic();
         this.finishResolvedBoardAction();
         this.animating = false;
@@ -2539,7 +2604,10 @@ function failLevel(message = 'Статус: поражение') {
   model.gameplayActive = false;
   model.gameOver = true;
   model.activeBooster = null;
-  if (boardScene) boardScene.destroyBombPreview();
+  if (boardScene) {
+    boardScene.destroyBombPreview();
+    boardScene.destroyFractionsEffects();
+  }
   ui.stateLabel.textContent = message;
   refreshUI();
   openFailModal();
