@@ -1323,10 +1323,6 @@ function renderBoosterInventory() {
           boardScene.usePlusTenSeconds();
           return;
         }
-        if (booster.key === 'compressor' && boardScene) {
-          boardScene.useCompressor();
-          return;
-        }
         if (booster.key === 'minusOneColor' && boardScene) {
           boardScene.useMinusOneColor();
           return;
@@ -1392,6 +1388,7 @@ function cancelActiveGameplay() {
     boardScene.destroyBombPreview();
     boardScene.destroyFractionsEffects();
     boardScene.destroyRotatorPreview();
+    boardScene.destroyCompressorPreview();
   }
   closeFailModal();
 }
@@ -1561,6 +1558,7 @@ class BoardScene extends Phaser.Scene {
     this.bombPointerDownHandler = null;
     this.fractionsEffects = new Set();
     this.rotatorPreview = null;
+    this.compressorPreview = null;
   }
 
   key(r, c) {
@@ -1592,6 +1590,7 @@ class BoardScene extends Phaser.Scene {
       this.destroyBombPreview(true);
       this.destroyFractionsEffects();
       this.destroyRotatorPreview(true);
+      this.destroyCompressorPreview(true);
     });
   }
 
@@ -1683,6 +1682,8 @@ class BoardScene extends Phaser.Scene {
   syncBoosterTargeting() {
     if (model.activeBooster !== 'bomb') this.destroyBombPreview();
     if (model.activeBooster !== 'rotator') this.destroyRotatorPreview();
+    if (model.activeBooster === 'compressor') this.showCompressorPreview();
+    else this.destroyCompressorPreview();
   }
 
   bombAreaFor(row, col) {
@@ -1910,6 +1911,74 @@ class BoardScene extends Phaser.Scene {
     });
   }
 
+  showCompressorPreview() {
+    if (this.compressorPreview || model.activeBooster !== 'compressor' || this.animating) return;
+    const width = model.grid[0].length * this.cell;
+    const height = model.grid.length * this.cell;
+    const centerX = this.gridX + width / 2;
+    const centerY = this.gridY + height / 2;
+    const plateColor = 0xd5dde3;
+    const plates = [
+      { object: this.add.rectangle(this.gridX + 3, centerY, 7, Math.min(70, height * 0.34), plateColor), dx: 6, dy: 0 },
+      { object: this.add.rectangle(this.gridX + width - 3, centerY, 7, Math.min(70, height * 0.34), plateColor), dx: -6, dy: 0 },
+      { object: this.add.rectangle(centerX, this.gridY + 3, Math.min(70, width * 0.34), 7, plateColor), dx: 0, dy: 6 },
+      { object: this.add.rectangle(centerX, this.gridY + height - 3, Math.min(70, width * 0.34), 7, plateColor), dx: 0, dy: -6 },
+    ];
+    plates.forEach(({ object }) => object.setStrokeStyle(2, 0x26323a).setDepth(215).setAlpha(0));
+    const waves = [
+      this.add.rectangle(this.gridX, centerY, 5, height - 10, 0xffffff, 0.22).setOrigin(0, 0.5),
+      this.add.rectangle(this.gridX + width, centerY, 5, height - 10, 0xffffff, 0.22).setOrigin(1, 0.5),
+      this.add.rectangle(centerX, this.gridY, width - 10, 5, 0xffffff, 0.18).setOrigin(0.5, 0),
+      this.add.rectangle(centerX, this.gridY + height, width - 10, 5, 0xffffff, 0.18).setOrigin(0.5, 1),
+    ];
+    waves.forEach((wave) => wave.setDepth(214).setAlpha(0));
+    this.compressorPreview = { plates, waves, timers: [], width, height, centerX, centerY };
+    this.tweens.add({ targets: plates.map(({ object }) => object), alpha: 0.9, duration: 125 });
+    this.scheduleCompressorPulse(this.compressorPreview);
+  }
+
+  scheduleCompressorPulse(preview) {
+    if (this.compressorPreview !== preview || model.activeBooster !== 'compressor') return;
+    preview.timers.push(this.time.delayedCall(160, () => {
+      if (this.compressorPreview !== preview) return;
+      preview.plates.forEach(({ object, dx, dy }) => this.tweens.add({
+        targets: object, x: object.x + dx, y: object.y + dy, duration: 190,
+        yoyo: true, hold: 90, ease: 'Cubic.easeInOut',
+      }));
+      for (const block of this.blocks.values()) {
+        this.tweens.add({ targets: block, scaleX: 0.9, duration: 190, yoyo: true, hold: 90, ease: 'Cubic.easeInOut' });
+      }
+      const [left, right, top, bottom] = preview.waves;
+      [left, right].forEach((wave, index) => {
+        wave.setPosition(index ? this.gridX + preview.width : this.gridX, preview.centerY).setAlpha(0.25);
+        this.tweens.add({ targets: wave, x: preview.centerX, alpha: 0, duration: 430, ease: 'Sine.easeIn' });
+      });
+      [top, bottom].forEach((wave, index) => {
+        wave.setPosition(preview.centerX, index ? this.gridY + preview.height : this.gridY).setAlpha(0.2);
+        this.tweens.add({ targets: wave, y: preview.centerY, alpha: 0, duration: 430, ease: 'Sine.easeIn' });
+      });
+    }));
+    preview.timers.push(this.time.delayedCall(1250, () => this.scheduleCompressorPulse(preview)));
+  }
+
+  destroyCompressorPreview(immediate = false) {
+    const preview = this.compressorPreview;
+    if (!preview) return;
+    this.compressorPreview = null;
+    preview.timers.forEach((timer) => timer.remove(false));
+    const indicators = [...preview.plates.map(({ object }) => object), ...preview.waves];
+    indicators.forEach((object) => this.tweens.killTweensOf(object));
+    for (const block of this.blocks.values()) {
+      this.tweens.killTweensOf(block);
+      block.setScale(1);
+    }
+    if (immediate || !this.sys?.isActive()) {
+      indicators.forEach((object) => object.destroy());
+      return;
+    }
+    this.tweens.add({ targets: indicators, alpha: 0, duration: 125, onComplete: () => indicators.forEach((object) => object.destroy()) });
+  }
+
   handlePointer(pointer) {
     if (this.animating || model.gameOver || !model.gameplayActive) return;
 
@@ -1942,6 +2011,10 @@ class BoardScene extends Phaser.Scene {
       this.usePlusFiveShots();
       return;
     }
+    if (model.activeBooster === 'compressor') {
+      this.useCompressor();
+      return;
+    }
     if (model.activeBooster === 'rotator') {
       this.useRotator(row, col);
       return;
@@ -1969,6 +2042,7 @@ class BoardScene extends Phaser.Scene {
         this.destroyBombPreview();
         this.destroyFractionsEffects();
         this.destroyRotatorPreview();
+        this.destroyCompressorPreview();
         closeFailModal();
         ui.stateLabel.textContent = 'Статус: победа';
         openWinModal();
@@ -2270,6 +2344,7 @@ class BoardScene extends Phaser.Scene {
     const count = boosterCount('compressor');
     if (count <= 0) return;
     const cols = model.grid[0].length;
+    this.destroyCompressorPreview();
 
     model.grid = model.grid.map((row) => {
       const blocks = row.filter(Boolean);
@@ -2690,6 +2765,7 @@ function failLevel(message = 'Статус: поражение') {
     boardScene.destroyBombPreview();
     boardScene.destroyFractionsEffects();
     boardScene.destroyRotatorPreview();
+    boardScene.destroyCompressorPreview();
   }
   ui.stateLabel.textContent = message;
   refreshUI();
