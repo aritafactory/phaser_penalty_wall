@@ -1946,68 +1946,58 @@ class BoardScene extends Phaser.Scene {
     if (this.compressorPreview || model.activeBooster !== 'compressor' || this.animating) return;
     const width = model.grid[0].length * this.cell;
     const height = model.grid.length * this.cell;
-    const centerX = this.gridX + width / 2;
     const centerY = this.gridY + height / 2;
-    const plateColor = 0xd5dde3;
-    const plates = [
-      { object: this.add.rectangle(this.gridX + 3, centerY, 7, Math.min(70, height * 0.34), plateColor), dx: 6, dy: 0 },
-      { object: this.add.rectangle(this.gridX + width - 3, centerY, 7, Math.min(70, height * 0.34), plateColor), dx: -6, dy: 0 },
-      { object: this.add.rectangle(centerX, this.gridY + 3, Math.min(70, width * 0.34), 7, plateColor), dx: 0, dy: 6 },
-      { object: this.add.rectangle(centerX, this.gridY + height - 3, Math.min(70, width * 0.34), 7, plateColor), dx: 0, dy: -6 },
-    ];
-    plates.forEach(({ object }) => object.setStrokeStyle(2, 0x26323a).setDepth(215).setAlpha(0));
-    const waves = [
-      this.add.rectangle(this.gridX, centerY, 5, height - 10, 0xffffff, 0.22).setOrigin(0, 0.5),
-      this.add.rectangle(this.gridX + width, centerY, 5, height - 10, 0xffffff, 0.22).setOrigin(1, 0.5),
-      this.add.rectangle(centerX, this.gridY, width - 10, 5, 0xffffff, 0.18).setOrigin(0.5, 0),
-      this.add.rectangle(centerX, this.gridY + height, width - 10, 5, 0xffffff, 0.18).setOrigin(0.5, 1),
-    ];
-    waves.forEach((wave) => wave.setDepth(214).setAlpha(0));
-    this.compressorPreview = { plates, waves, timers: [], width, height, centerX, centerY };
-    this.tweens.add({ targets: plates.map(({ object }) => object), alpha: 0.9, duration: 125 });
-    this.scheduleCompressorPulse(this.compressorPreview);
-  }
-
-  scheduleCompressorPulse(preview) {
-    if (this.compressorPreview !== preview || model.activeBooster !== 'compressor') return;
-    preview.timers.push(this.time.delayedCall(160, () => {
-      if (this.compressorPreview !== preview) return;
-      preview.plates.forEach(({ object, dx, dy }) => this.tweens.add({
-        targets: object, x: object.x + dx, y: object.y + dy, duration: 190,
-        yoyo: true, hold: 90, ease: 'Cubic.easeInOut',
-      }));
-      for (const block of this.blocks.values()) {
-        this.tweens.add({ targets: block, scaleX: 0.9, duration: 190, yoyo: true, hold: 90, ease: 'Cubic.easeInOut' });
+    const panelWidth = Math.max(20, Math.min(30, this.cell * 0.38));
+    const panelHeight = Math.max(80, height - 8);
+    const createPanel = (x) => {
+      const panel = this.add.graphics().setPosition(x, centerY - panelHeight / 2).setDepth(215);
+      panel.fillStyle(0x24282b, 1);
+      panel.fillRoundedRect(-panelWidth / 2, 0, panelWidth, panelHeight, 3);
+      const stripeHeight = 13;
+      for (let y = 5 - panelWidth; y < panelHeight; y += stripeHeight * 2) {
+        const top = Math.max(5, y);
+        const bottom = Math.min(panelHeight - 5, y + stripeHeight);
+        if (bottom <= top) continue;
+        panel.fillStyle(0xf2c21b, 1);
+        panel.fillPoints([
+          { x: -panelWidth / 2 + 3, y: top },
+          { x: panelWidth / 2 - 3, y: Math.min(panelHeight - 5, top + panelWidth * 0.55) },
+          { x: panelWidth / 2 - 3, y: Math.min(panelHeight - 5, bottom + panelWidth * 0.55) },
+          { x: -panelWidth / 2 + 3, y: bottom },
+        ], true);
       }
-      const [left, right, top, bottom] = preview.waves;
-      [left, right].forEach((wave, index) => {
-        wave.setPosition(index ? this.gridX + preview.width : this.gridX, preview.centerY).setAlpha(0.25);
-        this.tweens.add({ targets: wave, x: preview.centerX, alpha: 0, duration: 430, ease: 'Sine.easeIn' });
-      });
-      [top, bottom].forEach((wave, index) => {
-        wave.setPosition(preview.centerX, index ? this.gridY + preview.height : this.gridY).setAlpha(0.2);
-        this.tweens.add({ targets: wave, y: preview.centerY, alpha: 0, duration: 430, ease: 'Sine.easeIn' });
-      });
-    }));
-    preview.timers.push(this.time.delayedCall(1250, () => this.scheduleCompressorPulse(preview)));
+      panel.lineStyle(3, 0x0c0e10, 1);
+      panel.strokeRoundedRect(-panelWidth / 2, 0, panelWidth, panelHeight, 3);
+      return panel;
+    };
+    const left = createPanel(-panelWidth);
+    const right = createPanel(this.scale.width + panelWidth);
+    const leftTarget = this.gridX + panelWidth / 2 - 2;
+    const rightTarget = this.gridX + width - panelWidth / 2 + 2;
+    this.compressorPreview = { left, right, panelWidth };
+    this.tweens.add({
+      targets: left, x: leftTarget, duration: 250, ease: 'Cubic.easeOut',
+    });
+    this.tweens.add({
+      targets: right, x: rightTarget, duration: 250, ease: 'Cubic.easeOut',
+    });
   }
 
   destroyCompressorPreview(immediate = false) {
     const preview = this.compressorPreview;
     if (!preview) return;
     this.compressorPreview = null;
-    preview.timers.forEach((timer) => timer.remove(false));
-    const indicators = [...preview.plates.map(({ object }) => object), ...preview.waves];
-    indicators.forEach((object) => this.tweens.killTweensOf(object));
-    for (const block of this.blocks.values()) {
-      this.tweens.killTweensOf(block);
-      block.setScale(1);
-    }
+    const panels = [preview.left, preview.right];
+    panels.forEach((panel) => this.tweens.killTweensOf(panel));
     if (immediate || !this.sys?.isActive()) {
-      indicators.forEach((object) => object.destroy());
+      panels.forEach((panel) => panel.destroy());
       return;
     }
-    this.tweens.add({ targets: indicators, alpha: 0, duration: 125, onComplete: () => indicators.forEach((object) => object.destroy()) });
+    const finish = (panel) => {
+      panel.destroy();
+    };
+    this.tweens.add({ targets: preview.left, x: -preview.panelWidth, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.left) });
+    this.tweens.add({ targets: preview.right, x: this.scale.width + preview.panelWidth, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.right) });
   }
 
   handlePointer(pointer) {
