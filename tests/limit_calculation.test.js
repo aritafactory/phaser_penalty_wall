@@ -68,6 +68,22 @@ const explicitLevel = {
 applyCalculatedLimitsToLevel(explicitLevel, compactLayout);
 assert.strictEqual(explicitLevel.maxShots, 9, 'automatic balancing must not overwrite JSON maxShots');
 assert.strictEqual(explicitLevel.timerSeconds, 21, 'automatic balancing must not overwrite JSON timerSeconds');
+assert.strictEqual(ratingForRemainingResource(4), 3, 'more than three remaining earns three stars');
+assert.strictEqual(ratingForRemainingResource(3), 2, 'two or three remaining earns two stars');
+assert.strictEqual(ratingForRemainingResource(1), 1, 'zero or one remaining earns one star');
+assert.strictEqual(starLabel(0), '☆☆☆');
+assert.strictEqual(starLabel(2), '★★☆');
+model.shotsLeft = 5;
+model.timerLeft = 2.9;
+assert.strictEqual(calculateCurrentLevelStars(), 2, 'levels with both limits use the lower rating');
+model.levelStars = { main: {}, master: {} };
+assert.strictEqual(recordBestLevelStars('master', 0, 3), 3);
+assert.strictEqual(recordBestLevelStars('master', 0, 1), 3, 'a replay cannot reduce the saved best rating');
+const smallBoardMetrics = boardLayoutMetrics(3, 3);
+const largeBoardMetrics = boardLayoutMetrics(10, 12);
+assert.strictEqual(smallBoardMetrics.cell, 140, 'small boards should grow to the desktop cell cap');
+assert.ok(largeBoardMetrics.cell < smallBoardMetrics.cell, 'large boards should fit the available viewport height');
+assert.strictEqual(largeBoardMetrics.width, largeBoardMetrics.cell * 12 + 24);
 console.log('layout-sensitive limit calculation ok', { compactRequired, splitRequired });
 `;
 
