@@ -1685,8 +1685,7 @@ class BoardScene extends Phaser.Scene {
   syncBoosterTargeting() {
     if (model.activeBooster !== 'bomb') this.destroyBombPreview();
     if (model.activeBooster !== 'rotator') this.destroyRotatorPreview();
-    if (model.activeBooster === 'compressor') this.showCompressorPreview();
-    else this.destroyCompressorPreview();
+    if (model.activeBooster !== 'compressor') this.destroyCompressorPreview();
     this.syncRainbowBallVisual();
   }
 
@@ -1942,8 +1941,8 @@ class BoardScene extends Phaser.Scene {
     });
   }
 
-  showCompressorPreview() {
-    if (this.compressorPreview || model.activeBooster !== 'compressor' || this.animating) return;
+  showCompressorPreview(forActivation = false) {
+    if (this.compressorPreview || (!forActivation && model.activeBooster !== 'compressor')) return;
     const width = model.grid[0].length * this.cell;
     const height = model.grid.length * this.cell;
     const centerY = this.gridY + height / 2;
@@ -1970,20 +1969,18 @@ class BoardScene extends Phaser.Scene {
       panel.strokeRoundedRect(-panelWidth / 2, 0, panelWidth, panelHeight, 3);
       return panel;
     };
-    const left = createPanel(-panelWidth);
-    const right = createPanel(this.scale.width + panelWidth);
     const leftTarget = this.gridX + panelWidth / 2 - 2;
     const rightTarget = this.gridX + width - panelWidth / 2 + 2;
+    const left = createPanel(forActivation ? leftTarget : -panelWidth);
+    const right = createPanel(forActivation ? rightTarget : this.scale.width + panelWidth);
     this.compressorPreview = { left, right, panelWidth };
-    this.tweens.add({
-      targets: left, x: leftTarget, duration: 250, ease: 'Cubic.easeOut',
-    });
-    this.tweens.add({
-      targets: right, x: rightTarget, duration: 250, ease: 'Cubic.easeOut',
-    });
+    if (!forActivation) {
+      this.tweens.add({ targets: left, x: leftTarget, duration: 250, ease: 'Cubic.easeOut' });
+      this.tweens.add({ targets: right, x: rightTarget, duration: 250, ease: 'Cubic.easeOut' });
+    }
   }
 
-  destroyCompressorPreview(immediate = false) {
+  destroyCompressorPreview(immediate = false, onComplete = null) {
     const preview = this.compressorPreview;
     if (!preview) return;
     this.compressorPreview = null;
@@ -1991,13 +1988,17 @@ class BoardScene extends Phaser.Scene {
     panels.forEach((panel) => this.tweens.killTweensOf(panel));
     if (immediate || !this.sys?.isActive()) {
       panels.forEach((panel) => panel.destroy());
+      if (onComplete) onComplete();
       return;
     }
+    let remaining = panels.length;
     const finish = (panel) => {
       panel.destroy();
+      remaining -= 1;
+      if (remaining === 0 && onComplete) onComplete();
     };
-    this.tweens.add({ targets: preview.left, x: -preview.panelWidth, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.left) });
-    this.tweens.add({ targets: preview.right, x: this.scale.width + preview.panelWidth, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.right) });
+    this.tweens.add({ targets: preview.left, x: -preview.panelWidth, alpha: 0, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.left) });
+    this.tweens.add({ targets: preview.right, x: this.scale.width + preview.panelWidth, alpha: 0, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.right) });
   }
 
   handlePointer(pointer) {
@@ -2363,26 +2364,67 @@ class BoardScene extends Phaser.Scene {
 
   useCompressor() {
     const count = boosterCount('compressor');
-    if (count <= 0) return;
+    if (count <= 0 || this.animating || model.gameOver || !model.gameplayActive) return;
     const cols = model.grid[0].length;
-    this.destroyCompressorPreview();
-
-    model.grid = model.grid.map((row) => {
-      const blocks = row.filter(Boolean);
+    const moves = [];
+    const nextGrid = model.grid.map((row, rowIndex) => {
+      const blocks = row.map((cell, col) => ({ cell, col })).filter(({ cell }) => Boolean(cell));
       const next = Array(cols).fill(null);
       const start = Math.floor((cols - blocks.length) / 2);
-      blocks.forEach((cell, index) => {
-        next[start + index] = cell;
+      blocks.forEach(({ cell, col }, index) => {
+        const targetCol = start + index;
+        next[targetCol] = cell;
+        if (targetCol !== col) moves.push({ row: rowIndex, fromCol: col, toCol: targetCol });
       });
       return next;
     });
 
+    this.animating = true;
+    model.grid = nextGrid;
     consumeBooster('compressor');
     model.activeBooster = null;
     savePersistentState();
-    this.renderGridStatic();
     renderBoosterInventory();
-    this.finishResolvedBoardAction();
+    this.showCompressorPreview(true);
+    const preview = this.compressorPreview;
+    if (preview) {
+      this.tweens.add({ targets: preview.left, x: preview.left.x + 6, duration: 220, ease: 'Cubic.easeIn' });
+      this.tweens.add({ targets: preview.right, x: preview.right.x - 6, duration: 220, ease: 'Cubic.easeIn' });
+    }
+
+    const finishCompression = () => {
+      if (!model.gameplayActive || model.gameOver) return;
+      this.renderGridStatic();
+      this.destroyCompressorPreview(false, () => {
+        this.finishResolvedBoardAction();
+        this.animating = false;
+        refreshUI();
+      });
+    };
+    if (moves.length === 0) {
+      this.time.delayedCall(220, finishCompression);
+      return;
+    }
+    let finished = 0;
+    moves.forEach(({ row, fromCol, toCol }) => {
+      const block = this.blocks.get(this.key(row, fromCol));
+      if (!block) {
+        finished += 1;
+        if (finished === moves.length) finishCompression();
+        return;
+      }
+      const target = this.gridToPixel(row, toCol);
+      this.tweens.add({
+        targets: block,
+        x: target.x,
+        duration: 220,
+        ease: 'Cubic.easeIn',
+        onComplete: () => {
+          finished += 1;
+          if (finished === moves.length) finishCompression();
+        },
+      });
+    });
   }
 
   useRotator(row, col) {
