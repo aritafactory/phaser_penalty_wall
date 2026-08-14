@@ -1323,6 +1323,10 @@ function renderBoosterInventory() {
           boardScene.usePlusTenSeconds();
           return;
         }
+        if (booster.key === 'compressor') {
+          if (boardScene) boardScene.useCompressor();
+          return;
+        }
         if (booster.key === 'minusOneColor' && boardScene) {
           boardScene.useMinusOneColor();
           return;
