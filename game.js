@@ -2037,6 +2037,10 @@ class BoardScene extends Phaser.Scene {
       this.usePlusFiveShots();
       return;
     }
+    if (model.activeBooster === 'compressor') {
+      this.useCompressor();
+      return;
+    }
     if (model.activeBooster === 'rotator') {
       this.useRotator(row, col);
       return;
