@@ -51,6 +51,8 @@ const model = {
   currentLevelIndex: 0,
   levelsPage: 0,
   highestUnlockedLevel: 1,
+  highestUnlockedMasterLevel: 1,
+  levelStars: { main: {}, master: {} },
   winAwarded: false,
   ineffectiveShotStreak: 0,
   currentLayerIndex: 0,
@@ -105,6 +107,7 @@ const ui = {
   winLevelLabel: document.getElementById('winLevelLabel'),
   winMovesLabel: document.getElementById('winMovesLabel'),
   winRewardLabel: document.getElementById('winRewardLabel'),
+  winStars: document.getElementById('winStars'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -131,6 +134,8 @@ const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
   boosters: 'cbb_boosters',
   highestUnlockedLevel: 'cbb_highest_unlocked_level',
+  highestUnlockedMasterLevel: 'cbb_highest_unlocked_master_level',
+  levelStars: 'cbb_level_stars',
 };
 
 const BOOSTER_CATALOG = [
@@ -234,6 +239,7 @@ function loadPersistentState() {
   if (IS_BUILDER_PAGE) {
     model.totalScore = 0;
     model.highestUnlockedLevel = Number.MAX_SAFE_INTEGER;
+    model.highestUnlockedMasterLevel = Number.MAX_SAFE_INTEGER;
     BOOSTER_CATALOG.forEach((b) => {
       model.boosters[b.key] = Number.MAX_SAFE_INTEGER;
     });
@@ -243,6 +249,10 @@ function loadPersistentState() {
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
   const savedUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedLevel) || '1');
   model.highestUnlockedLevel = Number.isFinite(savedUnlocked) && savedUnlocked > 0 ? Math.floor(savedUnlocked) : 1;
+  const savedMasterUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedMasterLevel) || '1');
+  model.highestUnlockedMasterLevel = Number.isFinite(savedMasterUnlocked) && savedMasterUnlocked > 0
+    ? Math.floor(savedMasterUnlocked)
+    : 1;
 
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.boosters) || '{}');
@@ -250,13 +260,24 @@ function loadPersistentState() {
   } catch {
     model.boosters = {};
   }
+  try {
+    const parsedStars = JSON.parse(localStorage.getItem(STORAGE_KEYS.levelStars) || '{}');
+    model.levelStars = {
+      main: parsedStars?.main && typeof parsedStars.main === 'object' ? parsedStars.main : {},
+      master: parsedStars?.master && typeof parsedStars.master === 'object' ? parsedStars.master : {},
+    };
+  } catch {
+    model.levelStars = { main: {}, master: {} };
+  }
 }
 
 function savePersistentState() {
   if (IS_BUILDER_PAGE) return;
   localStorage.setItem(STORAGE_KEYS.totalScore, String(model.totalScore));
   localStorage.setItem(STORAGE_KEYS.highestUnlockedLevel, String(model.highestUnlockedLevel));
+  localStorage.setItem(STORAGE_KEYS.highestUnlockedMasterLevel, String(model.highestUnlockedMasterLevel));
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
+  localStorage.setItem(STORAGE_KEYS.levelStars, JSON.stringify(model.levelStars));
 }
 
 function combinations(arr, size) {
@@ -1327,6 +1348,10 @@ function renderBoosterInventory() {
           if (boardScene) boardScene.useCompressor();
           return;
         }
+        if (booster.key === 'plusFiveShots') {
+          if (boardScene) boardScene.usePlusFiveShots();
+          return;
+        }
         if (booster.key === 'minusOneColor' && boardScene) {
           boardScene.useMinusOneColor();
           return;
@@ -2033,14 +2058,6 @@ class BoardScene extends Phaser.Scene {
       this.useMinusOneColor();
       return;
     }
-    if (model.activeBooster === 'plusFiveShots') {
-      this.usePlusFiveShots();
-      return;
-    }
-    if (model.activeBooster === 'compressor') {
-      this.useCompressor();
-      return;
-    }
     if (model.activeBooster === 'rotator') {
       this.useRotator(row, col);
       return;
@@ -2459,10 +2476,38 @@ class BoardScene extends Phaser.Scene {
     model.activeBooster = null;
     savePersistentState();
     const gravityMoves = applyGravityAndGetMoves();
-    this.animateRemovalAndFall([], gravityMoves, () => {
-      renderBoosterInventory();
-      this.finishResolvedBoardAction();
-      this.animating = false;
+    const ringSprites = ring.map(([r, c]) => this.blocks.get(this.key(r, c)) || null);
+    let completed = 0;
+    const finishRotation = () => {
+      completed += 1;
+      if (completed !== ring.length) return;
+      ring.forEach(([r, c]) => this.blocks.delete(this.key(r, c)));
+      ringSprites.forEach((block, index) => {
+        if (!block) return;
+        const [targetRow, targetCol] = ring[(index + 1) % ring.length];
+        this.blocks.set(this.key(targetRow, targetCol), block);
+      });
+      this.animateRemovalAndFall([], gravityMoves, () => {
+        renderBoosterInventory();
+        this.finishResolvedBoardAction();
+        this.animating = false;
+      });
+    };
+    ringSprites.forEach((block, index) => {
+      if (!block) {
+        finishRotation();
+        return;
+      }
+      const [targetRow, targetCol] = ring[(index + 1) % ring.length];
+      const target = this.gridToPixel(targetRow, targetCol);
+      this.tweens.add({
+        targets: block,
+        x: target.x,
+        y: target.y,
+        duration: 360,
+        ease: 'Sine.easeInOut',
+        onComplete: finishRotation,
+      });
     });
   }
 
@@ -2784,22 +2829,56 @@ class BoardScene extends Phaser.Scene {
 
 
 
+function ratingForRemainingResource(remaining) {
+  const value = Math.max(0, Math.floor(remaining));
+  if (value > 3) return 3;
+  if (value >= 2) return 2;
+  return 1;
+}
+
+function calculateCurrentLevelStars() {
+  const ratings = [];
+  if (Number.isFinite(model.shotsLeft)) ratings.push(ratingForRemainingResource(model.shotsLeft));
+  if (Number.isFinite(model.timerLeft)) ratings.push(ratingForRemainingResource(model.timerLeft));
+  return ratings.length ? Math.min(...ratings) : 3;
+}
+
+function starLabel(stars) {
+  const count = Math.max(0, Math.min(3, Number(stars) || 0));
+  return `${'★'.repeat(count)}${'☆'.repeat(3 - count)}`;
+}
+
+function recordBestLevelStars(levelSet, levelIndex, stars) {
+  const results = model.levelStars[levelSet];
+  const levelKey = String(levelIndex + 1);
+  results[levelKey] = Math.max(Number(results[levelKey] || 0), stars);
+  return results[levelKey];
+}
+
 function openWinModal() {
   if (!ui.winModal) return;
   const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
   const moveBonus = movesLeft * 10;
   const totalAward = model.score + moveBonus;
+  const stars = calculateCurrentLevelStars();
   if (!model.winAwarded) {
     model.totalScore += totalAward;
     if (model.activeLevelSet === 'main') {
       model.highestUnlockedLevel = Math.max(model.highestUnlockedLevel, Math.min(model.currentLevelIndex + 2, model.mainLevels.length));
+    } else {
+      model.highestUnlockedMasterLevel = Math.max(
+        model.highestUnlockedMasterLevel,
+        Math.min(model.currentLevelIndex + 2, model.masterLevels.length)
+      );
     }
+    recordBestLevelStars(model.activeLevelSet, model.currentLevelIndex, stars);
     model.winAwarded = true;
     savePersistentState();
   }
   if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
   if (ui.winMovesLabel) ui.winMovesLabel.textContent = `Moves Left: ${movesLeft}`;
   if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
+  if (ui.winStars) ui.winStars.innerHTML = starLabel(stars).split('').map((star) => `<span>${star}</span>`).join('');
   renderLevelsScreen();
   refreshUI();
   ui.winModal.classList.add('open');
@@ -2911,7 +2990,9 @@ function renderLevelsScreen() {
   const pageCount = Math.max(1, Math.ceil(totalSlots / LEVELS_PER_PAGE));
   model.levelsPage = Math.min(Math.max(0, model.levelsPage || 0), pageCount - 1);
   const selectedLevel = Math.min(model.currentLevelIndex + 1, Math.max(1, totalSlots));
-  const unlockedThrough = isMaster ? model.masterLevels.length : Math.min(model.highestUnlockedLevel, model.mainLevels.length || 0);
+  const unlockedThrough = isMaster
+    ? Math.min(model.highestUnlockedMasterLevel, model.masterLevels.length || 0)
+    : Math.min(model.highestUnlockedLevel, model.mainLevels.length || 0);
   const pageStart = model.levelsPage * LEVELS_PER_PAGE + 1;
   const pageEnd = Math.min(totalSlots, pageStart + LEVELS_PER_PAGE - 1);
 
@@ -2944,7 +3025,7 @@ function renderLevelsScreen() {
     const meta = document.createElement('span');
     if (isUnlocked) {
       meta.className = 'level-stars';
-      meta.textContent = '★★★';
+      meta.textContent = starLabel(model.levelStars[model.activeLevelSet]?.[String(levelNumber)] || 0);
     } else {
       meta.className = 'level-lock';
       meta.textContent = '🔒';
