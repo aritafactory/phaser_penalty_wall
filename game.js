@@ -1997,8 +1997,8 @@ class BoardScene extends Phaser.Scene {
       remaining -= 1;
       if (remaining === 0 && onComplete) onComplete();
     };
-    this.tweens.add({ targets: preview.left, x: -preview.panelWidth, alpha: 0, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.left) });
-    this.tweens.add({ targets: preview.right, x: this.scale.width + preview.panelWidth, alpha: 0, duration: 230, ease: 'Cubic.easeIn', onComplete: () => finish(preview.right) });
+    this.tweens.add({ targets: preview.left, x: -preview.panelWidth, alpha: 0, duration: 400, ease: 'Cubic.easeIn', onComplete: () => finish(preview.left) });
+    this.tweens.add({ targets: preview.right, x: this.scale.width + preview.panelWidth, alpha: 0, duration: 400, ease: 'Cubic.easeIn', onComplete: () => finish(preview.right) });
   }
 
   handlePointer(pointer) {
@@ -2388,21 +2388,25 @@ class BoardScene extends Phaser.Scene {
     this.showCompressorPreview(true);
     const preview = this.compressorPreview;
     if (preview) {
-      this.tweens.add({ targets: preview.left, x: preview.left.x + 6, duration: 220, ease: 'Cubic.easeIn' });
-      this.tweens.add({ targets: preview.right, x: preview.right.x - 6, duration: 220, ease: 'Cubic.easeIn' });
+      const panelTravel = this.cell * 0.5;
+      this.tweens.add({ targets: preview.left, x: preview.left.x + panelTravel, duration: 550, ease: 'Cubic.easeIn' });
+      this.tweens.add({ targets: preview.right, x: preview.right.x - panelTravel, duration: 550, ease: 'Cubic.easeIn' });
     }
 
     const finishCompression = () => {
       if (!model.gameplayActive || model.gameOver) return;
-      this.renderGridStatic();
-      this.destroyCompressorPreview(false, () => {
-        this.finishResolvedBoardAction();
-        this.animating = false;
-        refreshUI();
+      this.time.delayedCall(125, () => {
+        if (!model.gameplayActive || model.gameOver) return;
+        this.renderGridStatic();
+        this.destroyCompressorPreview(false, () => {
+          this.finishResolvedBoardAction();
+          this.animating = false;
+          refreshUI();
+        });
       });
     };
     if (moves.length === 0) {
-      this.time.delayedCall(220, finishCompression);
+      this.time.delayedCall(550, finishCompression);
       return;
     }
     let finished = 0;
@@ -2417,7 +2421,7 @@ class BoardScene extends Phaser.Scene {
       this.tweens.add({
         targets: block,
         x: target.x,
-        duration: 220,
+        duration: 550,
         ease: 'Cubic.easeIn',
         onComplete: () => {
           finished += 1;
