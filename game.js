@@ -152,6 +152,7 @@ const BOOSTER_CATALOG = [
 
 let phaserGame;
 let boardScene;
+let boardResizeTimer;
 
 
 function currentLevelMultiplier() {
@@ -1344,6 +1345,10 @@ function renderBoosterInventory() {
           boardScene.usePlusTenSeconds();
           return;
         }
+        if (booster.key === 'mix') {
+          if (boardScene) boardScene.useMix();
+          return;
+        }
         if (booster.key === 'compressor') {
           if (boardScene) boardScene.useCompressor();
           return;
@@ -1536,16 +1541,35 @@ function boardLayoutMetrics(rows, cols) {
   const viewportWidth = window.innerWidth || 1200;
   const viewportHeight = window.innerHeight || 800;
   if (!IS_BUILDER_PAGE) {
-    const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
-    const maxBoardHeight = Math.max(260, viewportHeight - 300);
-    const fitByWidth = Math.floor(maxBoardWidth / cols);
-    const fitByHeight = Math.floor(maxBoardHeight / rows);
-    const minCell = viewportWidth < 600 ? 28 : 40;
-    const cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
+    const layout = document.querySelector?.('.game-board-layout');
+    const inventory = layout?.querySelector?.('.inventory');
+    const header = document.querySelector?.('.game-topbar');
+    const layoutRect = layout?.getBoundingClientRect?.();
+    const inventoryRect = inventory?.getBoundingClientRect?.();
+    const headerRect = header?.getBoundingClientRect?.();
+    const sideBySide = Boolean(layoutRect && inventoryRect && inventoryRect.left > layoutRect.left + 40);
+    const columnGap = sideBySide
+      ? (Number.parseFloat(window.getComputedStyle?.(layout)?.columnGap) || 0)
+      : 0;
+    const gameplayColumnWidth = sideBySide
+      ? inventoryRect.left - layoutRect.left - columnGap
+      : (layoutRect?.width || viewportWidth - 24);
+    const boardChrome = 54;
+    const launcherHeight = 150;
+    const availableWidth = Math.max(1, gameplayColumnWidth - boardChrome);
+    const availableGridHeight = Math.max(
+      1,
+      viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - launcherHeight - boardChrome - 20
+    );
+    const cell = Math.max(4, Math.floor(Math.min(
+      availableWidth / cols,
+      availableGridHeight / rows,
+      140
+    )));
     return {
       cell,
       width: cols * cell + 24,
-      height: Math.max(360, 24 + rows * cell + 150),
+      height: 24 + rows * cell + launcherHeight,
     };
   }
 
@@ -1555,7 +1579,7 @@ function boardLayoutMetrics(rows, cols) {
   const maxBoardHeight = Math.max(220, viewportHeight - 250);
   const fitByWidth = Math.floor((maxBoardWidth - 24) / cols);
   const fitByHeight = Math.floor((maxBoardHeight - 174) / rows);
-  const cell = Math.max(12, Math.min(104, fitByWidth, fitByHeight));
+  const cell = Math.max(12, Math.min(140, fitByWidth, fitByHeight));
 
   return {
     cell,
@@ -1574,6 +1598,7 @@ class BoardScene extends Phaser.Scene {
     this.gridX = 12;
     this.gridY = 12;
     this.playAreaHeight = layout.height;
+    this.launcherRadius = Math.max(12, Math.min(24, this.cell * 0.22));
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -1608,8 +1633,8 @@ class BoardScene extends Phaser.Scene {
     this.drawBoardFrame();
 
     this.shooterX = this.scale.width / 2;
-    this.shooterY = this.playAreaHeight - 36;
-    this.shooter = this.add.circle(this.shooterX, this.shooterY, 18, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(3, 0xffffff);
+    this.shooterY = this.gridY + model.grid.length * this.cell + 75;
+    this.shooter = this.add.circle(this.shooterX, this.shooterY, this.launcherRadius, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(3, 0xffffff);
 
     this.renderGridStatic();
 
@@ -1737,7 +1762,7 @@ class BoardScene extends Phaser.Scene {
   syncRainbowBallVisual() {
     const shouldShow = model.activeBooster === 'rainbow' && !model.gameOver && model.gameplayActive;
     if (shouldShow && !this.rainbowShooterPreview) {
-      this.rainbowShooterPreview = this.createRainbowBall(this.shooterX, this.shooterY, 18, 105);
+      this.rainbowShooterPreview = this.createRainbowBall(this.shooterX, this.shooterY, this.launcherRadius, 105);
     } else if (!shouldShow && this.rainbowShooterPreview) {
       this.rainbowShooterPreview.destroy();
       this.rainbowShooterPreview = null;
@@ -2046,10 +2071,6 @@ class BoardScene extends Phaser.Scene {
       this.confirmBombTarget(row, col);
       return;
     }
-    if (model.activeBooster === 'mix') {
-      this.useMix();
-      return;
-    }
     if (model.activeBooster === 'fractions') {
       this.useFractions(row, col);
       return;
@@ -2149,7 +2170,7 @@ class BoardScene extends Phaser.Scene {
 
   useMix() {
     const mixCount = boosterCount('mix');
-    if (mixCount <= 0) return;
+    if (mixCount <= 0 || this.animating || model.gameOver || !model.gameplayActive) return;
 
     this.animating = true;
     consumeBooster('mix');
@@ -3060,6 +3081,15 @@ function initPhaser(rows, cols) {
   });
 }
 
+function scheduleBoardResize() {
+  if (!phaserGame || !model.grid.length || !model.grid[0]?.length) return;
+  clearTimeout(boardResizeTimer);
+  boardResizeTimer = setTimeout(() => {
+    if (!model.grid.length || !model.grid[0]?.length) return;
+    initPhaser(model.grid.length, model.grid[0].length);
+  }, 120);
+}
+
 function startLevelByIndex(index) {
   const level = model.levels[index];
   model.currentLevelIndex = index;
@@ -3092,6 +3122,7 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
+  window.addEventListener?.('resize', scheduleBoardResize);
   try {
     model.mainLevels = await loadBuiltinLevelsFromFiles();
   } catch {

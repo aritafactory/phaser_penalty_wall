@@ -79,6 +79,11 @@ assert.strictEqual(calculateCurrentLevelStars(), 2, 'levels with both limits use
 model.levelStars = { main: {}, master: {} };
 assert.strictEqual(recordBestLevelStars('master', 0, 3), 3);
 assert.strictEqual(recordBestLevelStars('master', 0, 1), 3, 'a replay cannot reduce the saved best rating');
+const smallBoardMetrics = boardLayoutMetrics(3, 3);
+const largeBoardMetrics = boardLayoutMetrics(10, 12);
+assert.strictEqual(smallBoardMetrics.cell, 140, 'small boards should grow to the desktop cell cap');
+assert.ok(largeBoardMetrics.cell < smallBoardMetrics.cell, 'large boards should fit the available viewport height');
+assert.strictEqual(largeBoardMetrics.width, largeBoardMetrics.cell * 12 + 24);
 console.log('layout-sensitive limit calculation ok', { compactRequired, splitRequired });
 `;
 
