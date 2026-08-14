@@ -1323,10 +1323,6 @@ function renderBoosterInventory() {
           boardScene.usePlusTenSeconds();
           return;
         }
-        if (booster.key === 'compressor' && boardScene) {
-          boardScene.useCompressor();
-          return;
-        }
         if (booster.key === 'minusOneColor' && boardScene) {
           boardScene.useMinusOneColor();
           return;
@@ -2035,6 +2031,10 @@ class BoardScene extends Phaser.Scene {
     }
     if (model.activeBooster === 'plusFiveShots') {
       this.usePlusFiveShots();
+      return;
+    }
+    if (model.activeBooster === 'compressor') {
+      this.useCompressor();
       return;
     }
     if (model.activeBooster === 'rotator') {
