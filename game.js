@@ -54,6 +54,7 @@ const model = {
   highestUnlockedMasterLevel: 1,
   levelStars: { main: {}, master: {} },
   winAwarded: false,
+  winReward: 0,
   ineffectiveShotStreak: 0,
   currentLayerIndex: 0,
   boosters: {},
@@ -139,14 +140,14 @@ const STORAGE_KEYS = {
 };
 
 const BOOSTER_CATALOG = [
-  { key: 'bomb', name: 'Bomb', price: 120, effect: 'Blast away colored balls.' },
-  { key: 'mix', name: 'Mix', price: 120, effect: 'Shuffle all balls on screen.' },
-  { key: 'fractions', name: 'Fractions', price: 150, effect: 'Split a ball into 3 random balls.' },
-  { key: 'minusOneColor', name: '-1 Color', price: 120, effect: 'Remove one ball color.' },
-  { key: 'plusFiveShots', name: '+5 Shots', price: 150, effect: 'Add 5 extra shots.' },
-  { key: 'plusTenSeconds', name: '+10 Seconds', price: 150, effect: 'Add 10 seconds on timer levels.' },
-  { key: 'compressor', name: 'Compressor', price: 180, effect: 'Push each row toward the center.' },
-  { key: 'rotator', name: 'Rotator', price: 180, effect: 'Rotate a 3×3 ring clockwise.' },
+  { key: 'bomb', name: 'Bomb', price: 180, effect: 'Blast away colored balls.' },
+  { key: 'mix', name: 'Mix', price: 100, effect: 'Shuffle all balls on screen.' },
+  { key: 'fractions', name: 'Fractions', price: 240, effect: 'Split a ball into 3 random balls.' },
+  { key: 'minusOneColor', name: '-1 Color', price: 280, effect: 'Remove one ball color.' },
+  { key: 'plusFiveShots', name: '+5 Shots', price: 160, effect: 'Add 5 extra shots.' },
+  { key: 'plusTenSeconds', name: '+10 Seconds', price: 160, effect: 'Add 10 seconds on timer levels.' },
+  { key: 'compressor', name: 'Compressor', price: 140, effect: 'Push each row toward the center.' },
+  { key: 'rotator', name: 'Rotator', price: 120, effect: 'Rotate a 3×3 ring clockwise.' },
   { key: 'rainbow', name: 'Rainbow', price: 200, effect: 'Turn a ball into a rainbow ball.' },
 ];
 
@@ -154,14 +155,6 @@ let phaserGame;
 let boardScene;
 let boardResizeTimer;
 
-
-function currentLevelMultiplier() {
-  return Math.max(1, model.currentLevelIndex + 1);
-}
-
-function pointsForRemovedBlocks(count) {
-  return count * 10 * currentLevelMultiplier();
-}
 
 function cloneGrid(grid) {
   return grid.map((row) => row.slice());
@@ -1008,6 +1001,7 @@ function startCustomBuilderLevel() {
   model.gameplayActive = true;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
+  model.winReward = 0;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -2161,9 +2155,6 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = pointsForRemovedBlocks(removed.length);
-    model.score += earned;
-
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
   }
@@ -2372,7 +2363,6 @@ class BoardScene extends Phaser.Scene {
           onComplete: () => block.destroy(),
         });
       });
-      model.score += pointsForRemovedBlocks(region.ordinary.length);
     }, () => {
       if (removedKeys.length === 0) {
         this.renderGridStatic();
@@ -2565,9 +2555,6 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = pointsForRemovedBlocks(removed.length);
-    model.score += earned;
-
     ui.stateLabel.textContent = `Статус: -1 color удалил ${chosenColor}`;
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
@@ -2738,9 +2725,6 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
     repaintTwoColorCells(twoColorGroup, shotColor);
-    const earned = pointsForRemovedBlocks(ordinaryGroup.length);
-    model.score += earned;
-
     if (ordinaryGroup.length === 0) {
       // Кластер состоял только из 2Color: поле не падает, просто перерисовываем.
       this.renderGridStatic();
@@ -2876,13 +2860,42 @@ function recordBestLevelStars(levelSet, levelIndex, stars) {
   return results[levelKey];
 }
 
+function gridsForReward(level) {
+  if (Array.isArray(level?.layers) && level.layers.length) return level.layers;
+  if (Number.isInteger(level?.layers) && level.layers > 0) {
+    const numberedLayers = Array.from({ length: level.layers }, (_, index) => level[`layer${index + 1}`])
+      .filter(Array.isArray);
+    if (numberedLayers.length) return numberedLayers;
+  }
+  return Array.isArray(level?.grid) ? [level.grid] : [];
+}
+
+function breakableBlockCountForLevel(level) {
+  return gridsForReward(level).reduce((total, grid) => total + grid.reduce(
+    (gridTotal, row) => gridTotal + row.filter((cell) => Boolean(cell) && cell !== 'U').length,
+    0
+  ), 0);
+}
+
+function rewardForLevelStars(level, stars) {
+  const rating = Math.max(0, Math.min(3, Number(stars) || 0));
+  if (rating === 0) return 0;
+  const baseReward = 40 + Math.ceil(breakableBlockCountForLevel(level) / 4);
+  const multiplier = { 1: 1, 2: 1.25, 3: 1.5 }[rating];
+  return Math.round(baseReward * multiplier);
+}
+
 function openWinModal() {
   if (!ui.winModal) return;
   const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
-  const moveBonus = movesLeft * 10;
-  const totalAward = model.score + moveBonus;
   const stars = calculateCurrentLevelStars();
+  let totalAward = model.winReward;
   if (!model.winAwarded) {
+    const previousStars = Number(model.levelStars[model.activeLevelSet]?.[String(model.currentLevelIndex + 1)] || 0);
+    const previousReward = rewardForLevelStars(model.currentLevel, previousStars);
+    const improvedReward = rewardForLevelStars(model.currentLevel, stars);
+    totalAward = stars > previousStars ? improvedReward - previousReward : 0;
+    model.winReward = totalAward;
     model.totalScore += totalAward;
     if (model.activeLevelSet === 'main') {
       model.highestUnlockedLevel = Math.max(model.highestUnlockedLevel, Math.min(model.currentLevelIndex + 2, model.mainLevels.length));
@@ -3106,6 +3119,7 @@ function startLevelByIndex(index) {
   model.gameplayActive = true;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
+  model.winReward = 0;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;

@@ -84,6 +84,20 @@ const largeBoardMetrics = boardLayoutMetrics(10, 12);
 assert.strictEqual(smallBoardMetrics.cell, 140, 'small boards should grow to the desktop cell cap');
 assert.ok(largeBoardMetrics.cell < smallBoardMetrics.cell, 'large boards should fit the available viewport height');
 assert.strictEqual(largeBoardMetrics.width, largeBoardMetrics.cell * 12 + 24);
+const twentyBreakable = { grid: Array.from({ length: 4 }, () => Array(5).fill('R')) };
+assert.strictEqual(breakableBlockCountForLevel(twentyBreakable), 20);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 1), 45);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 2), 56);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 3), 68);
+const layeredRewardLevel = {
+  layers: [
+    [['R', 'U', null], ['2G', 'F:R:B:0', 'B']],
+    [['U', 'Y', 'P']],
+  ],
+};
+assert.strictEqual(breakableBlockCountForLevel(layeredRewardLevel), 6, 'all layers count nonempty breakable cells only');
+assert.strictEqual(rewardForLevelStars({ grid: [Array(322).fill('R')] }, 3), 182);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 3) - rewardForLevelStars(twentyBreakable, 2), 12);
 console.log('layout-sensitive limit calculation ok', { compactRequired, splitRequired });
 `;
 
