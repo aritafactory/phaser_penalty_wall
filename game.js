@@ -154,6 +154,67 @@ const BOOSTER_CATALOG = [
 let phaserGame;
 let boardScene;
 let boardResizeTimer;
+let backgroundAudio;
+let shotAudio;
+let audioUnlockInstalled = false;
+
+const AUDIO_PATHS = {
+  background: 'audio/background.mp3',
+  shot: 'audio/shot.mp3',
+};
+
+function ensureAudioElements() {
+  if (typeof Audio === 'undefined') return false;
+  if (!backgroundAudio) {
+    backgroundAudio = new Audio(AUDIO_PATHS.background);
+    backgroundAudio.loop = true;
+    backgroundAudio.preload = 'auto';
+    backgroundAudio.volume = 0.35;
+  }
+  if (!shotAudio) {
+    shotAudio = new Audio(AUDIO_PATHS.shot);
+    shotAudio.preload = 'auto';
+    shotAudio.volume = 0.65;
+  }
+  return true;
+}
+
+function removeAudioUnlockListeners() {
+  if (!audioUnlockInstalled) return;
+  audioUnlockInstalled = false;
+  ['pointerdown', 'touchstart', 'keydown'].forEach((eventName) => {
+    document.removeEventListener(eventName, unlockAudioPlayback);
+  });
+}
+
+function unlockAudioPlayback() {
+  removeAudioUnlockListeners();
+  startBackgroundMusic();
+}
+
+function installAudioUnlockListeners() {
+  if (audioUnlockInstalled) return;
+  audioUnlockInstalled = true;
+  ['pointerdown', 'touchstart', 'keydown'].forEach((eventName) => {
+    document.addEventListener(eventName, unlockAudioPlayback, { once: true });
+  });
+}
+
+function startBackgroundMusic() {
+  if (!ensureAudioElements() || !backgroundAudio.paused) return;
+  const playAttempt = backgroundAudio.play();
+  if (playAttempt?.then) {
+    playAttempt.then(removeAudioUnlockListeners).catch(installAudioUnlockListeners);
+  }
+}
+
+function playShotSound() {
+  if (!ensureAudioElements()) return;
+  const sound = shotAudio.cloneNode();
+  sound.volume = shotAudio.volume;
+  const playAttempt = sound.play();
+  if (playAttempt?.catch) playAttempt.catch(() => {});
+}
 
 
 function cloneGrid(grid) {
@@ -2667,6 +2728,7 @@ class BoardScene extends Phaser.Scene {
       if (model.shotsLeft < 0) model.shotsLeft = 0;
     }
 
+    playShotSound();
     const projectile = this.pendingShotUsedBooster
       ? this.createRainbowBall(this.shooterX, this.shooterY, 14, 110)
       : this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor]).setStrokeStyle(2, 0xffffff);
@@ -3159,6 +3221,7 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
+  if (!IS_BUILDER_PAGE) startBackgroundMusic();
   window.addEventListener?.('resize', scheduleBoardResize);
   try {
     model.mainLevels = await loadBuiltinLevelsFromFiles();

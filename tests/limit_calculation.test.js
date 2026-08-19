@@ -104,6 +104,8 @@ const layeredRewardLevel = {
 assert.strictEqual(breakableBlockCountForLevel(layeredRewardLevel), 6, 'all layers count nonempty breakable cells only');
 assert.strictEqual(rewardForLevelStars({ grid: [Array(322).fill('R')] }, 3), 182);
 assert.strictEqual(rewardForLevelStars(twentyBreakable, 3) - rewardForLevelStars(twentyBreakable, 2), 12);
+assert.strictEqual(AUDIO_PATHS.shot, 'audio/shot.mp3');
+assert.strictEqual(AUDIO_PATHS.background, 'audio/background.mp3');
 console.log('layout-sensitive limit calculation ok', { compactRequired, splitRequired });
 `;
 
