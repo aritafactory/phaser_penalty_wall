@@ -84,6 +84,12 @@ const largeBoardMetrics = boardLayoutMetrics(10, 12);
 assert.strictEqual(smallBoardMetrics.cell, 140, 'small boards should grow to the desktop cell cap');
 assert.ok(largeBoardMetrics.cell < smallBoardMetrics.cell, 'large boards should fit the available viewport height');
 assert.strictEqual(largeBoardMetrics.width, largeBoardMetrics.cell * 12 + 24);
+assert.strictEqual(smallBoardMetrics.shooterGap, 22, 'only a compact gap is reserved above the shooter');
+assert.strictEqual(
+  smallBoardMetrics.height,
+  12 + smallBoardMetrics.cell * 3 + smallBoardMetrics.shooterGap + smallBoardMetrics.launcherRadius * 2 + 12,
+  'canvas height should exactly contain the grid, shooter, and margins without a fixed launcher area'
+);
 const twentyBreakable = { grid: Array.from({ length: 4 }, () => Array(5).fill('R')) };
 assert.strictEqual(breakableBlockCountForLevel(twentyBreakable), 20);
 assert.strictEqual(rewardForLevelStars(twentyBreakable, 1), 45);

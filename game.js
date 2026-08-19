@@ -1548,22 +1548,44 @@ function boardLayoutMetrics(rows, cols) {
     const gameplayColumnWidth = sideBySide
       ? inventoryRect.left - layoutRect.left - columnGap
       : (layoutRect?.width || viewportWidth - 24);
-    const boardChrome = 54;
-    const launcherHeight = 150;
-    const availableWidth = Math.max(1, gameplayColumnWidth - boardChrome);
-    const availableGridHeight = Math.max(
+    const gameElement = document.getElementById?.('game');
+    const gameStyle = gameElement ? window.getComputedStyle?.(gameElement) : null;
+    const horizontalChrome = (Number.parseFloat(gameStyle?.paddingLeft) || 12)
+      + (Number.parseFloat(gameStyle?.paddingRight) || 12)
+      + (Number.parseFloat(gameStyle?.borderLeftWidth) || 3)
+      + (Number.parseFloat(gameStyle?.borderRightWidth) || 3)
+      + 24;
+    const verticalChrome = (Number.parseFloat(gameStyle?.paddingTop) || 12)
+      + (Number.parseFloat(gameStyle?.paddingBottom) || 12)
+      + (Number.parseFloat(gameStyle?.borderTopWidth) || 3)
+      + (Number.parseFloat(gameStyle?.borderBottomWidth) || 3);
+    const gridTop = 12;
+    const shooterGap = 22;
+    const bottomMargin = 12;
+    const availableWidth = Math.max(1, gameplayColumnWidth - horizontalChrome);
+    const availablePlayHeight = Math.max(
       1,
-      viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - launcherHeight - boardChrome - 20
+      viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - 12 - verticalChrome
     );
-    const cell = Math.max(4, Math.floor(Math.min(
+    const fixedVerticalSpace = gridTop + shooterGap + bottomMargin;
+    let cell = Math.max(4, Math.floor(Math.min(
       availableWidth / cols,
-      availableGridHeight / rows,
+      (availablePlayHeight - fixedVerticalSpace - 24) / rows,
       140
     )));
+    let launcherRadius = Math.max(12, Math.min(24, cell * 0.22));
+    cell = Math.max(4, Math.floor(Math.min(
+      availableWidth / cols,
+      (availablePlayHeight - fixedVerticalSpace - launcherRadius * 2) / rows,
+      140
+    )));
+    launcherRadius = Math.max(12, Math.min(24, cell * 0.22));
     return {
       cell,
       width: cols * cell + 24,
-      height: 24 + rows * cell + launcherHeight,
+      height: gridTop + rows * cell + shooterGap + launcherRadius * 2 + bottomMargin,
+      launcherRadius,
+      shooterGap,
     };
   }
 
@@ -1592,7 +1614,8 @@ class BoardScene extends Phaser.Scene {
     this.gridX = 12;
     this.gridY = 12;
     this.playAreaHeight = layout.height;
-    this.launcherRadius = Math.max(12, Math.min(24, this.cell * 0.22));
+    this.launcherRadius = layout.launcherRadius || Math.max(12, Math.min(24, this.cell * 0.22));
+    this.shooterGap = layout.shooterGap || 22;
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -1627,7 +1650,7 @@ class BoardScene extends Phaser.Scene {
     this.drawBoardFrame();
 
     this.shooterX = this.scale.width / 2;
-    this.shooterY = this.gridY + model.grid.length * this.cell + 75;
+    this.shooterY = this.gridY + model.grid.length * this.cell + this.shooterGap + this.launcherRadius;
     this.shooter = this.add.circle(this.shooterX, this.shooterY, this.launcherRadius, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(3, 0xffffff);
 
     this.renderGridStatic();
