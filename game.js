@@ -94,8 +94,8 @@ const ui = {
   mainLevelsTab: document.getElementById('mainLevelsTab'),
   masterLevelsTab: document.getElementById('masterLevelsTab'),
   gameHomeBtn: document.getElementById('gameHomeBtn'),
-  gamePlusBtn: document.getElementById('gamePlusBtn'),
   gameBalanceLabel: document.getElementById('gameBalanceLabel'),
+  gameScoreLabel: document.getElementById('gameScoreLabel'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
   gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
@@ -109,6 +109,7 @@ const ui = {
   winMovesLabel: document.getElementById('winMovesLabel'),
   winRewardLabel: document.getElementById('winRewardLabel'),
   winStars: document.getElementById('winStars'),
+  soundToggle: document.getElementById('soundToggle'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -137,6 +138,7 @@ const STORAGE_KEYS = {
   highestUnlockedLevel: 'cbb_highest_unlocked_level',
   highestUnlockedMasterLevel: 'cbb_highest_unlocked_master_level',
   levelStars: 'cbb_level_stars',
+  soundEnabled: 'cbb_sound_enabled',
 };
 
 const BOOSTER_CATALOG = [
@@ -157,6 +159,8 @@ let boardResizeTimer;
 let backgroundAudio;
 let shotAudio;
 let audioUnlockInstalled = false;
+let soundEnabled = true;
+const activeShotSounds = new Set();
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
@@ -170,11 +174,13 @@ function ensureAudioElements() {
     backgroundAudio.loop = true;
     backgroundAudio.preload = 'auto';
     backgroundAudio.volume = 0.35;
+    backgroundAudio.muted = !soundEnabled;
   }
   if (!shotAudio) {
     shotAudio = new Audio(AUDIO_PATHS.shot);
     shotAudio.preload = 'auto';
     shotAudio.volume = 0.65;
+    shotAudio.muted = !soundEnabled;
   }
   return true;
 }
@@ -201,7 +207,7 @@ function installAudioUnlockListeners() {
 }
 
 function startBackgroundMusic() {
-  if (!ensureAudioElements() || !backgroundAudio.paused) return;
+  if (!soundEnabled || !ensureAudioElements() || !backgroundAudio.paused) return;
   const playAttempt = backgroundAudio.play();
   if (playAttempt?.then) {
     playAttempt.then(removeAudioUnlockListeners).catch(installAudioUnlockListeners);
@@ -209,11 +215,37 @@ function startBackgroundMusic() {
 }
 
 function playShotSound() {
-  if (!ensureAudioElements()) return;
+  if (!soundEnabled || !ensureAudioElements()) return;
   const sound = shotAudio.cloneNode();
   sound.volume = shotAudio.volume;
+  sound.muted = !soundEnabled;
+  activeShotSounds.add(sound);
+  sound.addEventListener('ended', () => activeShotSounds.delete(sound), { once: true });
   const playAttempt = sound.play();
-  if (playAttempt?.catch) playAttempt.catch(() => {});
+  if (playAttempt?.catch) playAttempt.catch(() => activeShotSounds.delete(sound));
+}
+
+function updateSoundToggle() {
+  if (!ui.soundToggle) return;
+  ui.soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+  ui.soundToggle.setAttribute('aria-label', soundEnabled ? 'Mute sound' : 'Enable sound');
+  ui.soundToggle.setAttribute('aria-pressed', String(!soundEnabled));
+}
+
+function applySoundPreference(enabled, persist = true) {
+  soundEnabled = Boolean(enabled);
+  if (backgroundAudio) backgroundAudio.muted = !soundEnabled;
+  if (shotAudio) shotAudio.muted = !soundEnabled;
+  activeShotSounds.forEach((sound) => { sound.muted = !soundEnabled; });
+  if (persist && !IS_BUILDER_PAGE) {
+    localStorage.setItem(STORAGE_KEYS.soundEnabled, String(soundEnabled));
+  }
+  updateSoundToggle();
+  if (soundEnabled && !IS_BUILDER_PAGE) startBackgroundMusic();
+}
+
+function setSoundToggleHidden(hidden) {
+  if (ui.soundToggle) ui.soundToggle.hidden = Boolean(hidden);
 }
 
 
@@ -300,6 +332,7 @@ function loadPersistentState() {
     });
     return;
   }
+  applySoundPreference(localStorage.getItem(STORAGE_KEYS.soundEnabled) !== 'false', false);
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
   const savedUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedLevel) || '1');
@@ -1353,6 +1386,7 @@ function refreshUI() {
   if (ui.startBalanceLabel) ui.startBalanceLabel.textContent = String(model.totalScore);
   if (ui.levelsBalanceLabel) ui.levelsBalanceLabel.textContent = String(model.totalScore);
   if (ui.gameBalanceLabel) ui.gameBalanceLabel.textContent = String(model.totalScore);
+  if (ui.gameScoreLabel) ui.gameScoreLabel.textContent = String(model.score);
   if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
   if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
@@ -1485,6 +1519,7 @@ function cancelActiveGameplay() {
 
 function openShop() {
   cancelActiveGameplay();
+  setSoundToggleHidden(true);
   renderShopTable();
   refreshUI();
   ui.shopModal.classList.add('open');
@@ -1494,6 +1529,7 @@ function openShop() {
 function closeShop() {
   ui.shopModal.classList.remove('open');
   ui.shopModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function getColorGroupStats() {
@@ -1623,10 +1659,11 @@ function boardLayoutMetrics(rows, cols) {
     const gridTop = 12;
     const shooterGap = 22;
     const bottomMargin = 12;
+    const viewportBottomClearance = sideBySide ? 12 : 76;
     const availableWidth = Math.max(1, gameplayColumnWidth - horizontalChrome);
     const availablePlayHeight = Math.max(
       1,
-      viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - 12 - verticalChrome
+      viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - viewportBottomClearance - verticalChrome
     );
     const fixedVerticalSpace = gridTop + shooterGap + bottomMargin;
     let cell = Math.max(4, Math.floor(Math.min(
@@ -2972,6 +3009,7 @@ function rewardForLevelStars(level, stars) {
 
 function openWinModal() {
   if (!ui.winModal) return;
+  setSoundToggleHidden(true);
   const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
   const stars = calculateCurrentLevelStars();
   let totalAward = model.winReward;
@@ -3008,6 +3046,7 @@ function closeWinModal() {
   if (!ui.winModal) return;
   ui.winModal.classList.remove('open');
   ui.winModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function goToNextLevel() {
@@ -3018,6 +3057,7 @@ function goToNextLevel() {
 
 function openFailModal() {
   if (!ui.failModal) return;
+  setSoundToggleHidden(true);
   ui.failModal.classList.add('open');
   ui.failModal.setAttribute('aria-hidden', 'false');
 }
@@ -3026,6 +3066,7 @@ function closeFailModal() {
   if (!ui.failModal) return;
   ui.failModal.classList.remove('open');
   ui.failModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function failLevel(message = 'Статус: поражение') {
@@ -3250,7 +3291,7 @@ async function initApp() {
   if (ui.levelsShopBtn) ui.levelsShopBtn.onclick = () => openShop();
   if (ui.levelsPlusBtn) ui.levelsPlusBtn.onclick = () => openShop();
   if (ui.gameHomeBtn) ui.gameHomeBtn.onclick = () => showLevelsScreen();
-  if (ui.gamePlusBtn) ui.gamePlusBtn.onclick = () => openShop();
+  if (ui.soundToggle) ui.soundToggle.onclick = () => applySoundPreference(!soundEnabled);
   if (ui.failHomeBtn) ui.failHomeBtn.onclick = () => { closeFailModal(); showLevelsScreen(); };
   if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
   if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };

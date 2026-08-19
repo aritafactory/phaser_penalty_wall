@@ -106,6 +106,10 @@ assert.strictEqual(rewardForLevelStars({ grid: [Array(322).fill('R')] }, 3), 182
 assert.strictEqual(rewardForLevelStars(twentyBreakable, 3) - rewardForLevelStars(twentyBreakable, 2), 12);
 assert.strictEqual(AUDIO_PATHS.shot, 'audio/shot.mp3');
 assert.strictEqual(AUDIO_PATHS.background, 'audio/background.mp3');
+applySoundPreference(false, false);
+assert.strictEqual(soundEnabled, false, 'shared sound preference should mute all audio');
+applySoundPreference(true, false);
+assert.strictEqual(soundEnabled, true, 'sound should default back to enabled');
 console.log('layout-sensitive limit calculation ok', { compactRequired, splitRequired });
 `;
 
