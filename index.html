@@ -105,7 +105,7 @@
       .settings-btn { flex:0 0 86px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:46px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; }
       .game-title { flex:0 0 220px; height:86px; display:flex; align-items:center; padding:0 18px; border:2px solid rgba(31,85,166,.5); border-right:0; border-radius:18px 0 0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); font-size:40px; font-weight:900; letter-spacing:.04em; color:#f6fbff; text-shadow:0 4px 0 #53698e, 0 9px 13px #000; white-space:nowrap; }
       .game-stat { flex:0 0 auto; height:86px; display:flex; align-items:center; min-width:140px; padding:0 14px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:24px; font-weight:900; letter-spacing:.04em; color:#f7fbff; text-shadow:0 4px 8px #000; white-space:nowrap; }
-      .game-stat strong, .game-goal strong, .game-score-pill strong { color:#ffd83e; font-weight:900; text-shadow:0 2px 0 #8a5d00, 0 5px 8px #000; margin-right:8px; }
+      .game-stat strong, .game-goal strong { color:#ffd83e; font-weight:900; text-shadow:0 2px 0 #8a5d00, 0 5px 8px #000; margin-right:8px; }
       .game-goal { flex:1 1 260px; height:86px; display:flex; align-items:center; min-width:220px; padding:0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:21px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
       .game-divider { flex:0 0 1px; width:1px; height:54px; margin:0 -12px; background:rgba(71,112,183,.52); box-shadow:0 0 8px rgba(92,158,255,.18); z-index:2; }
       .game-currency { flex:0 0 auto; height:86px; display:flex; align-items:center; gap:10px; padding-left:20px; border:2px solid rgba(31,85,166,.5); border-left:0; border-radius:0 18px 18px 0; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); }
@@ -300,11 +300,10 @@
         <button id="gameHomeBtn" class="home-btn" type="button" aria-label="Home">⌂</button>
         <div id="gameLevelLabel" class="game-title">LEVEL 1</div>
         <div class="game-divider"></div>
-        <div class="game-goal"><strong>GOAL:</strong> Clear all blocks</div>
+        <div id="gameGoalLabel" class="game-goal"><strong>GOAL:</strong> Clear all blocks</div>
         <div class="game-divider"></div>
         <div id="gameMovesLabel" class="game-stat"><strong>MOVES:</strong> ∞</div>
         <div id="gameTimerTopLabel" class="game-stat"><strong>TIMER:</strong> ∞</div>
-        <div class="game-currency"><div class="currency-pill" aria-label="Total balance"><span class="gem">💎</span><span id="gameBalanceLabel">0</span></div><div class="currency-pill game-score-pill" aria-label="Current level score"><strong>SCORE:</strong><span id="gameScoreLabel">0</span></div></div>
       </header>
       <div class="controls">
         <label>Level:
@@ -368,6 +367,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=11"></script>
+    <script type="module" src="game.js?v=12"></script>
   </body>
 </html>

@@ -94,9 +94,8 @@ const ui = {
   mainLevelsTab: document.getElementById('mainLevelsTab'),
   masterLevelsTab: document.getElementById('masterLevelsTab'),
   gameHomeBtn: document.getElementById('gameHomeBtn'),
-  gameBalanceLabel: document.getElementById('gameBalanceLabel'),
-  gameScoreLabel: document.getElementById('gameScoreLabel'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
+  gameGoalLabel: document.getElementById('gameGoalLabel'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
   gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
   failModal: document.getElementById('failModal'),
@@ -160,6 +159,7 @@ let backgroundAudio;
 let shotAudio;
 let audioUnlockInstalled = false;
 let soundEnabled = true;
+let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
 
 const AUDIO_PATHS = {
@@ -207,11 +207,16 @@ function installAudioUnlockListeners() {
 }
 
 function startBackgroundMusic() {
-  if (!soundEnabled || !ensureAudioElements() || !backgroundAudio.paused) return;
+  if (!backgroundMusicRequested || !soundEnabled || !ensureAudioElements() || !backgroundAudio.paused) return;
   const playAttempt = backgroundAudio.play();
   if (playAttempt?.then) {
     playAttempt.then(removeAudioUnlockListeners).catch(installAudioUnlockListeners);
   }
+}
+
+function requestBackgroundMusic() {
+  backgroundMusicRequested = true;
+  startBackgroundMusic();
 }
 
 function playShotSound() {
@@ -232,7 +237,7 @@ function updateSoundToggle() {
   ui.soundToggle.setAttribute('aria-pressed', String(!soundEnabled));
 }
 
-function applySoundPreference(enabled, persist = true) {
+function applySoundPreference(enabled, persist = true, startPlayback = true) {
   soundEnabled = Boolean(enabled);
   if (backgroundAudio) backgroundAudio.muted = !soundEnabled;
   if (shotAudio) shotAudio.muted = !soundEnabled;
@@ -241,7 +246,7 @@ function applySoundPreference(enabled, persist = true) {
     localStorage.setItem(STORAGE_KEYS.soundEnabled, String(soundEnabled));
   }
   updateSoundToggle();
-  if (soundEnabled && !IS_BUILDER_PAGE) startBackgroundMusic();
+  if (startPlayback && backgroundMusicRequested && soundEnabled && !IS_BUILDER_PAGE) startBackgroundMusic();
 }
 
 function setSoundToggleHidden(hidden) {
@@ -332,7 +337,7 @@ function loadPersistentState() {
     });
     return;
   }
-  applySoundPreference(localStorage.getItem(STORAGE_KEYS.soundEnabled) !== 'false', false);
+  applySoundPreference(localStorage.getItem(STORAGE_KEYS.soundEnabled) !== 'false', false, false);
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
   const savedUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedLevel) || '1');
@@ -1380,14 +1385,20 @@ function isWin() {
   return model.grid.every((row) => row.every((cell) => !cell || cell === 'U'));
 }
 
+function currentLevelGoalText() {
+  const isMasterGoal = model.activeLevelSet === 'master' || Boolean(model.currentLevel?.shapeGoal);
+  return isMasterGoal ? 'Complete the shape' : 'Clear all blocks';
+}
+
 function refreshUI() {
   ui.scoreLabel.textContent = `Очки (уровень): ${model.score}`;
   ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
   if (ui.startBalanceLabel) ui.startBalanceLabel.textContent = String(model.totalScore);
   if (ui.levelsBalanceLabel) ui.levelsBalanceLabel.textContent = String(model.totalScore);
-  if (ui.gameBalanceLabel) ui.gameBalanceLabel.textContent = String(model.totalScore);
-  if (ui.gameScoreLabel) ui.gameScoreLabel.textContent = String(model.score);
   if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
+  if (ui.gameGoalLabel) {
+    ui.gameGoalLabel.innerHTML = `<strong>GOAL:</strong> ${currentLevelGoalText()}`;
+  }
   if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
@@ -3014,10 +3025,7 @@ function openWinModal() {
   const stars = calculateCurrentLevelStars();
   let totalAward = model.winReward;
   if (!model.winAwarded) {
-    const previousStars = Number(model.levelStars[model.activeLevelSet]?.[String(model.currentLevelIndex + 1)] || 0);
-    const previousReward = rewardForLevelStars(model.currentLevel, previousStars);
-    const improvedReward = rewardForLevelStars(model.currentLevel, stars);
-    totalAward = stars > previousStars ? improvedReward - previousReward : 0;
+    totalAward = rewardForLevelStars(model.currentLevel, stars);
     model.winReward = totalAward;
     model.totalScore += totalAward;
     if (model.activeLevelSet === 'main') {
@@ -3262,7 +3270,6 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
-  if (!IS_BUILDER_PAGE) startBackgroundMusic();
   window.addEventListener?.('resize', scheduleBoardResize);
   try {
     model.mainLevels = await loadBuiltinLevelsFromFiles();
@@ -3280,6 +3287,7 @@ async function initApp() {
   if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
   if (ui.startPlayBtn) {
     ui.startPlayBtn.onclick = () => {
+      requestBackgroundMusic();
       showLevelsScreen();
     };
   }

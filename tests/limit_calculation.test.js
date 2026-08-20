@@ -103,9 +103,15 @@ const layeredRewardLevel = {
 };
 assert.strictEqual(breakableBlockCountForLevel(layeredRewardLevel), 6, 'all layers count nonempty breakable cells only');
 assert.strictEqual(rewardForLevelStars({ grid: [Array(322).fill('R')] }, 3), 182);
-assert.strictEqual(rewardForLevelStars(twentyBreakable, 3) - rewardForLevelStars(twentyBreakable, 2), 12);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 3), 68, 'replays receive the full run reward again');
+model.activeLevelSet = 'main';
+model.currentLevel = twentyBreakable;
+assert.strictEqual(currentLevelGoalText(), 'Clear all blocks');
+model.activeLevelSet = 'master';
+assert.strictEqual(currentLevelGoalText(), 'Complete the shape');
 assert.strictEqual(AUDIO_PATHS.shot, 'audio/shot.mp3');
 assert.strictEqual(AUDIO_PATHS.background, 'audio/background.mp3');
+assert.strictEqual(backgroundMusicRequested, false, 'music must wait for the PLAY action');
 applySoundPreference(false, false);
 assert.strictEqual(soundEnabled, false, 'shared sound preference should mute all audio');
 applySoundPreference(true, false);
