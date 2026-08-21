@@ -68,6 +68,54 @@ const explicitLevel = {
 applyCalculatedLimitsToLevel(explicitLevel, compactLayout);
 assert.strictEqual(explicitLevel.maxShots, 9, 'automatic balancing must not overwrite JSON maxShots');
 assert.strictEqual(explicitLevel.timerSeconds, 21, 'automatic balancing must not overwrite JSON timerSeconds');
+assert.strictEqual(ratingForRemainingResource(4), 3, 'more than three remaining earns three stars');
+assert.strictEqual(ratingForRemainingResource(3), 2, 'two or three remaining earns two stars');
+assert.strictEqual(ratingForRemainingResource(1), 1, 'zero or one remaining earns one star');
+assert.strictEqual(starLabel(0), '☆☆☆');
+assert.strictEqual(starLabel(2), '★★☆');
+model.shotsLeft = 5;
+model.timerLeft = 2.9;
+assert.strictEqual(calculateCurrentLevelStars(), 2, 'levels with both limits use the lower rating');
+model.levelStars = { main: {}, master: {} };
+assert.strictEqual(recordBestLevelStars('master', 0, 3), 3);
+assert.strictEqual(recordBestLevelStars('master', 0, 1), 3, 'a replay cannot reduce the saved best rating');
+const smallBoardMetrics = boardLayoutMetrics(3, 3);
+const largeBoardMetrics = boardLayoutMetrics(10, 12);
+assert.strictEqual(smallBoardMetrics.cell, 140, 'small boards should grow to the desktop cell cap');
+assert.ok(largeBoardMetrics.cell < smallBoardMetrics.cell, 'large boards should fit the available viewport height');
+assert.strictEqual(largeBoardMetrics.width, largeBoardMetrics.cell * 12 + 24);
+assert.strictEqual(smallBoardMetrics.shooterGap, 22, 'only a compact gap is reserved above the shooter');
+assert.strictEqual(
+  smallBoardMetrics.height,
+  12 + smallBoardMetrics.cell * 3 + smallBoardMetrics.shooterGap + smallBoardMetrics.launcherRadius * 2 + 12,
+  'canvas height should exactly contain the grid, shooter, and margins without a fixed launcher area'
+);
+const twentyBreakable = { grid: Array.from({ length: 4 }, () => Array(5).fill('R')) };
+assert.strictEqual(breakableBlockCountForLevel(twentyBreakable), 20);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 1), 45);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 2), 56);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 3), 68);
+const layeredRewardLevel = {
+  layers: [
+    [['R', 'U', null], ['2G', 'F:R:B:0', 'B']],
+    [['U', 'Y', 'P']],
+  ],
+};
+assert.strictEqual(breakableBlockCountForLevel(layeredRewardLevel), 6, 'all layers count nonempty breakable cells only');
+assert.strictEqual(rewardForLevelStars({ grid: [Array(322).fill('R')] }, 3), 182);
+assert.strictEqual(rewardForLevelStars(twentyBreakable, 3), 68, 'replays receive the full run reward again');
+model.activeLevelSet = 'main';
+model.currentLevel = twentyBreakable;
+assert.strictEqual(currentLevelGoalText(), 'Clear all blocks');
+model.activeLevelSet = 'master';
+assert.strictEqual(currentLevelGoalText(), 'Complete the shape');
+assert.strictEqual(AUDIO_PATHS.shot, 'audio/shot.mp3');
+assert.strictEqual(AUDIO_PATHS.background, 'audio/background.mp3');
+assert.strictEqual(backgroundMusicRequested, false, 'music must wait for the PLAY action');
+applySoundPreference(false, false);
+assert.strictEqual(soundEnabled, false, 'shared sound preference should mute all audio');
+applySoundPreference(true, false);
+assert.strictEqual(soundEnabled, true, 'sound should default back to enabled');
 console.log('layout-sensitive limit calculation ok', { compactRequired, splitRequired });
 `;
 
