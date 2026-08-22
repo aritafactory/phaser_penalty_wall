@@ -169,7 +169,7 @@ let audioUnlockInstalled = false;
 let soundEnabled = true;
 let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
-const GAME_AUDIO_VOLUME = 0.7;
+const GAME_AUDIO_VOLUME = 0.5;
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
