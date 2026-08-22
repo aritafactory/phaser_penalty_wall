@@ -78,7 +78,7 @@
       .levels-tab.active { color:#fff; border-color:#28c7ff; background:linear-gradient(180deg, #118ff0, #076cc6); box-shadow: inset 0 2px 0 rgba(255,255,255,.28), inset 0 -5px 0 rgba(0,0,0,.12), 0 0 20px rgba(20,190,255,.62); }
       .levels-tab.active::after { content:''; position:absolute; left:50%; bottom:-14px; transform:translateX(-50%); border-left:24px solid transparent; border-right:24px solid transparent; border-top:14px solid #10aef2; filter:drop-shadow(0 0 8px rgba(20,190,255,.8)); }
       .levels-board { margin: 0 auto; width:min(1540px, 100%); border-radius:28px; border:2px solid rgba(48,104,181,.58); background:linear-gradient(180deg, rgba(18,45,91,.76), rgba(5,21,52,.82)); box-shadow: inset 0 1px 0 rgba(255,255,255,.11), inset 0 0 44px rgba(54,130,244,.13), 0 20px 42px rgba(0,0,0,.45); }
-      .levels-grid { display:grid; grid-template-columns: repeat(10, minmax(92px, 1fr)); gap:16px; padding:36px 34px; }
+      .levels-grid { display:grid; grid-template-columns: repeat(10, minmax(92px, 1fr)); gap:16px; padding:28px 34px; }
       .level-card { height:134px; border-radius:12px; border:2px solid rgba(75,122,196,.7); background:linear-gradient(145deg, rgba(28,65,124,.88), rgba(9,31,71,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 15px rgba(0,0,0,.38); color:#edf4ff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; cursor:pointer; }
       .level-card.selected { border-color:#34d7ff; background:radial-gradient(circle at 34% 30%, rgba(45,186,255,.55), transparent 52%), linear-gradient(145deg, rgba(13,124,215,.98), rgba(6,47,108,.98)); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 2px rgba(37,206,255,.7), 0 0 24px rgba(37,206,255,.68); }
       .level-card.locked { cursor:not-allowed; opacity:.58; filter:saturate(.75); }
@@ -367,6 +367,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=13"></script>
+    <script type="module" src="game.js?v=14"></script>
   </body>
 </html>
