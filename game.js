@@ -8,6 +8,13 @@ const COLOR_MAP = {
   U: 0x999b9b,
 };
 
+const RENDER_DEPTH = {
+  block: 10,
+  projectileTrail: 299,
+  projectile: 300,
+  projectileImpact: 301,
+};
+
 const BASE_COLORS = ['R', 'G', 'B'];
 const ADDITIONAL_COLORS = ['Y', 'P', 'O'];
 const COMPLICATION_RATIOS = {
@@ -1868,7 +1875,7 @@ class BoardScene extends Phaser.Scene {
     const { x, y } = this.gridToPixel(r, c);
     const size = this.cell - 2;
     const radius = Math.max(2, Math.min(12, size * 0.09));
-    const container = this.add.container(x, y).setSize(size, size);
+    const container = this.add.container(x, y).setSize(size, size).setDepth(RENDER_DEPTH.block);
     const body = this.add.graphics();
     container.add(body);
 
@@ -1935,7 +1942,7 @@ class BoardScene extends Phaser.Scene {
     this.syncRainbowBallVisual();
   }
 
-  createRainbowBall(x, y, radius, depth = 100) {
+  createRainbowBall(x, y, radius, depth = RENDER_DEPTH.projectile) {
     const graphics = this.add.graphics().setPosition(x, y).setDepth(depth);
     const colors = [0xe74c3c, 0xe67e22, 0xf1c40f, 0x27ae60, 0x3498db, 0x9b59b6];
     const stripeHeight = (radius * 2) / colors.length;
@@ -2415,7 +2422,9 @@ class BoardScene extends Phaser.Scene {
 
   playFractionsImpact(x, y) {
     const impact = this.trackFractionsEffect(
-      this.add.circle(x, y, 8, 0xffffff, 0.9).setStrokeStyle(3, 0xffb21a).setDepth(122)
+      this.add.circle(x, y, 8, 0xffffff, 0.9)
+        .setStrokeStyle(3, 0xffb21a)
+        .setDepth(RENDER_DEPTH.projectileImpact)
     );
     this.tweens.add({
       targets: impact,
@@ -2449,7 +2458,7 @@ class BoardScene extends Phaser.Scene {
       const ball = this.trackFractionsEffect(
         this.add.circle(origin.x, origin.y, 13, COLOR_MAP[color] || 0xffffff)
           .setStrokeStyle(2, 0xffffff)
-          .setDepth(121)
+          .setDepth(RENDER_DEPTH.projectile)
       );
       const flight = this.trackFractionsEffect({ progress: 0 });
       let lastTrailProgress = -1;
@@ -2469,7 +2478,8 @@ class BoardScene extends Phaser.Scene {
           if (t - lastTrailProgress >= 0.08) {
             lastTrailProgress = t;
             const trail = this.trackFractionsEffect(
-              this.add.circle(ball.x, ball.y, 5, COLOR_MAP[color] || 0xffffff, 0.55).setDepth(120)
+              this.add.circle(ball.x, ball.y, 5, COLOR_MAP[color] || 0xffffff, 0.55)
+                .setDepth(RENDER_DEPTH.projectileTrail)
             );
             this.tweens.add({
               targets: trail,
@@ -2849,8 +2859,10 @@ class BoardScene extends Phaser.Scene {
 
     playShotSound();
     const projectile = this.pendingShotUsedBooster
-      ? this.createRainbowBall(this.shooterX, this.shooterY, 14, 110)
-      : this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor]).setStrokeStyle(2, 0xffffff);
+      ? this.createRainbowBall(this.shooterX, this.shooterY, 14, RENDER_DEPTH.projectile)
+      : this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor])
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(RENDER_DEPTH.projectile);
     const target = this.gridToPixel(row, col);
 
     this.animating = true;
@@ -2875,6 +2887,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   playBallBounce(projectile, done) {
+    projectile.setDepth(RENDER_DEPTH.projectile);
     const direction = Phaser.Math.Between(0, 1) === 0 ? -1 : 1;
     const startX = projectile.x;
     const startY = projectile.y;
@@ -2916,7 +2929,8 @@ class BoardScene extends Phaser.Scene {
     }
     playShotSound();
     const projectile = this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[model.selectedShotColor])
-      .setStrokeStyle(2, 0xffffff);
+      .setStrokeStyle(2, 0xffffff)
+      .setDepth(RENDER_DEPTH.projectile);
     const target = this.gridToPixel(row, col);
     this.animating = true;
     this.tweens.add({
