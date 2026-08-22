@@ -111,6 +111,8 @@ model.activeLevelSet = 'master';
 assert.strictEqual(currentLevelGoalText(), 'Complete the shape');
 assert.strictEqual(AUDIO_PATHS.shot, 'audio/shot.mp3');
 assert.strictEqual(AUDIO_PATHS.background, 'audio/background.mp3');
+assert.strictEqual(AUDIO_PATHS.swoosh, 'audio/swoosh.mp3');
+assert.strictEqual(GAME_AUDIO_VOLUME, 0.7, 'all game audio should use 70% volume');
 assert.strictEqual(backgroundMusicRequested, false, 'music must wait for the PLAY action');
 applySoundPreference(false, false);
 assert.strictEqual(soundEnabled, false, 'shared sound preference should mute all audio');

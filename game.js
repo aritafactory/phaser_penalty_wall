@@ -157,14 +157,17 @@ let boardScene;
 let boardResizeTimer;
 let backgroundAudio;
 let shotAudio;
+let swooshAudio;
 let audioUnlockInstalled = false;
 let soundEnabled = true;
 let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
+const GAME_AUDIO_VOLUME = 0.7;
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
   shot: 'audio/shot.mp3',
+  swoosh: 'audio/swoosh.mp3',
 };
 
 function ensureAudioElements() {
@@ -173,14 +176,20 @@ function ensureAudioElements() {
     backgroundAudio = new Audio(AUDIO_PATHS.background);
     backgroundAudio.loop = true;
     backgroundAudio.preload = 'auto';
-    backgroundAudio.volume = 0.35;
+    backgroundAudio.volume = GAME_AUDIO_VOLUME;
     backgroundAudio.muted = !soundEnabled;
   }
   if (!shotAudio) {
     shotAudio = new Audio(AUDIO_PATHS.shot);
     shotAudio.preload = 'auto';
-    shotAudio.volume = 0.65;
+    shotAudio.volume = GAME_AUDIO_VOLUME;
     shotAudio.muted = !soundEnabled;
+  }
+  if (!swooshAudio) {
+    swooshAudio = new Audio(AUDIO_PATHS.swoosh);
+    swooshAudio.preload = 'auto';
+    swooshAudio.volume = GAME_AUDIO_VOLUME;
+    swooshAudio.muted = !soundEnabled;
   }
   return true;
 }
@@ -230,6 +239,13 @@ function playShotSound() {
   if (playAttempt?.catch) playAttempt.catch(() => activeShotSounds.delete(sound));
 }
 
+function playSwooshSound() {
+  if (!soundEnabled || !ensureAudioElements() || !swooshAudio.paused) return;
+  swooshAudio.currentTime = 0;
+  const playAttempt = swooshAudio.play();
+  if (playAttempt?.catch) playAttempt.catch(() => {});
+}
+
 function updateSoundToggle() {
   if (!ui.soundToggle) return;
   ui.soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
@@ -241,6 +257,7 @@ function applySoundPreference(enabled, persist = true, startPlayback = true) {
   soundEnabled = Boolean(enabled);
   if (backgroundAudio) backgroundAudio.muted = !soundEnabled;
   if (shotAudio) shotAudio.muted = !soundEnabled;
+  if (swooshAudio) swooshAudio.muted = !soundEnabled;
   activeShotSounds.forEach((sound) => { sound.muted = !soundEnabled; });
   if (persist && !IS_BUILDER_PAGE) {
     localStorage.setItem(STORAGE_KEYS.soundEnabled, String(soundEnabled));
@@ -2622,6 +2639,7 @@ class BoardScene extends Phaser.Scene {
       this.time.delayedCall(550, finishCompression);
       return;
     }
+    playSwooshSound();
     let finished = 0;
     moves.forEach(({ row, fromCol, toCol }) => {
       const block = this.blocks.get(this.key(row, fromCol));
@@ -2857,31 +2875,25 @@ class BoardScene extends Phaser.Scene {
   }
 
   playBallBounce(projectile, done) {
-    const deviation = Phaser.Math.Between(-1, 1) || (Math.random() < 0.5 ? -1 : 1);
-    const horizontalFall = deviation * Math.max(14, Math.min(38, this.cell * 0.55));
+    const direction = Phaser.Math.Between(0, 1) === 0 ? -1 : 1;
+    const startX = projectile.x;
+    const startY = projectile.y;
+    const horizontalDistance = direction * Math.max(50, Math.min(110, this.cell * 1.4));
+    const fallDistance = Math.max(60, this.scale.height - startY + projectile.displayHeight + 12);
+    const flight = { progress: 0 };
     this.tweens.add({
-      targets: projectile,
-      scaleX: 1.22,
-      scaleY: 0.68,
-      y: projectile.y + 4,
-      duration: 70,
-      ease: 'Quad.easeOut',
+      targets: flight,
+      progress: 1,
+      duration: 500,
+      ease: 'Linear',
+      onUpdate: () => {
+        const progress = flight.progress;
+        projectile.x = startX + horizontalDistance * progress;
+        projectile.y = startY + fallDistance * progress * progress;
+      },
       onComplete: () => {
-        this.tweens.add({
-          targets: projectile,
-          x: projectile.x + horizontalFall,
-          y: projectile.y + Math.max(42, this.cell * 0.85),
-          scaleX: 0.82,
-          scaleY: 0.82,
-          angle: deviation * 28,
-          alpha: 0,
-          duration: 230,
-          ease: 'Quad.easeIn',
-          onComplete: () => {
-            projectile.destroy();
-            done();
-          },
-        });
+        projectile.destroy();
+        done();
       },
     });
   }
@@ -3012,6 +3024,7 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
+    playSwooshSound();
     let finished = 0;
     moves.forEach((move) => {
       const fromKey = this.key(move.from[0], move.from[1]);
