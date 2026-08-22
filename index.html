@@ -25,6 +25,7 @@
       .start-screen[hidden] { display: none; }
       .start-screen::before { content: ''; position: absolute; inset: -60px; opacity: .22; background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 52px 52px; mask-image: radial-gradient(circle at center, transparent 0 18%, #000 58%, transparent 88%); }
       .start-top { position: absolute; top: clamp(18px, 4vw, 42px); left: clamp(20px, 4vw, 48px); right: clamp(20px, 4vw, 48px); display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+      .start-top .currency-pill { margin-left:auto; }
       .icon-btn, .currency-pill, .plus-btn { border: 2px solid var(--panel-border); box-shadow: inset 0 0 0 2px rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.45); background: linear-gradient(180deg, rgba(38,44,52,.92), rgba(8,11,15,.94)); color: white; }
       .icon-btn { width: 88px; height: 88px; border-radius: 14px; font-size: 44px; display: grid; place-items: center; text-shadow: 0 2px 3px #000; cursor: pointer; }
       .currency-pill { min-width: 260px; height: 88px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 0 16px 0 20px; font-size: 34px; font-weight: 800; }
@@ -77,7 +78,7 @@
       .levels-tab.active { color:#fff; border-color:#28c7ff; background:linear-gradient(180deg, #118ff0, #076cc6); box-shadow: inset 0 2px 0 rgba(255,255,255,.28), inset 0 -5px 0 rgba(0,0,0,.12), 0 0 20px rgba(20,190,255,.62); }
       .levels-tab.active::after { content:''; position:absolute; left:50%; bottom:-14px; transform:translateX(-50%); border-left:24px solid transparent; border-right:24px solid transparent; border-top:14px solid #10aef2; filter:drop-shadow(0 0 8px rgba(20,190,255,.8)); }
       .levels-board { margin: 0 auto; width:min(1540px, 100%); border-radius:28px; border:2px solid rgba(48,104,181,.58); background:linear-gradient(180deg, rgba(18,45,91,.76), rgba(5,21,52,.82)); box-shadow: inset 0 1px 0 rgba(255,255,255,.11), inset 0 0 44px rgba(54,130,244,.13), 0 20px 42px rgba(0,0,0,.45); }
-      .levels-grid { display:grid; grid-template-columns: repeat(10, minmax(92px, 1fr)); gap:16px; padding:36px 34px; }
+      .levels-grid { display:grid; grid-template-columns: repeat(10, minmax(92px, 1fr)); gap:16px; padding:28px 34px; }
       .level-card { height:134px; border-radius:12px; border:2px solid rgba(75,122,196,.7); background:linear-gradient(145deg, rgba(28,65,124,.88), rgba(9,31,71,.96)); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 15px rgba(0,0,0,.38); color:#edf4ff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; cursor:pointer; }
       .level-card.selected { border-color:#34d7ff; background:radial-gradient(circle at 34% 30%, rgba(45,186,255,.55), transparent 52%), linear-gradient(145deg, rgba(13,124,215,.98), rgba(6,47,108,.98)); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 2px rgba(37,206,255,.7), 0 0 24px rgba(37,206,255,.68); }
       .level-card.locked { cursor:not-allowed; opacity:.58; filter:saturate(.75); }
@@ -99,20 +100,21 @@
           radial-gradient(circle at 95% 78%, rgba(128,45,214,.48) 0 58px, transparent 59px),
           radial-gradient(circle at 16% 22%, rgba(64,107,255,.36) 0 34px, transparent 35px),
           radial-gradient(circle at 82% 23%, rgba(80,104,255,.28) 0 30px, transparent 31px); filter:blur(2px); }
-      .game-topbar { position:relative; z-index:1; min-height:86px; margin:0 0 40px; padding:0; display:flex; align-items:center; gap:24px; }
+      .game-topbar { position:relative; z-index:1; min-height:86px; margin:0 0 40px; padding:0; display:flex; align-items:center; gap:clamp(10px, 1.25vw, 24px); }
       .home-btn { flex:0 0 86px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:52px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; text-shadow:0 4px 8px #001432; }
       .settings-btn { flex:0 0 86px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:46px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; }
-      .game-title { flex:0 0 250px; height:86px; display:flex; align-items:center; padding:0 22px; border:2px solid rgba(31,85,166,.5); border-right:0; border-radius:18px 0 0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); font-size:44px; font-weight:900; letter-spacing:.04em; color:#f6fbff; text-shadow:0 4px 0 #53698e, 0 9px 13px #000; white-space:nowrap; }
-      .game-stat { flex:0 0 auto; height:86px; display:flex; align-items:center; min-width:160px; padding:0 20px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:28px; font-weight:900; letter-spacing:.04em; color:#f7fbff; text-shadow:0 4px 8px #000; white-space:nowrap; }
+      .game-title { flex:0 0 220px; height:86px; display:flex; align-items:center; padding:0 18px; border:2px solid rgba(31,85,166,.5); border-right:0; border-radius:18px 0 0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); font-size:40px; font-weight:900; letter-spacing:.04em; color:#f6fbff; text-shadow:0 4px 0 #53698e, 0 9px 13px #000; white-space:nowrap; }
+      .game-stat { flex:0 0 auto; height:86px; display:flex; align-items:center; min-width:140px; padding:0 14px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:24px; font-weight:900; letter-spacing:.04em; color:#f7fbff; text-shadow:0 4px 8px #000; white-space:nowrap; }
       .game-stat strong, .game-goal strong { color:#ffd83e; font-weight:900; text-shadow:0 2px 0 #8a5d00, 0 5px 8px #000; margin-right:8px; }
-      .game-goal { flex:1 1 320px; height:86px; display:flex; align-items:center; min-width:260px; padding:0 28px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:24px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
+      .game-goal { flex:1 1 260px; height:86px; display:flex; align-items:center; min-width:220px; padding:0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:21px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
       .game-divider { flex:0 0 1px; width:1px; height:54px; margin:0 -12px; background:rgba(71,112,183,.52); box-shadow:0 0 8px rgba(92,158,255,.18); z-index:2; }
       .game-currency { flex:0 0 auto; height:86px; display:flex; align-items:center; gap:10px; padding-left:20px; border:2px solid rgba(31,85,166,.5); border-left:0; border-radius:0 18px 18px 0; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); }
-      .game-currency .currency-pill { height:68px; min-width:244px; border-color:#234e91; border-radius:12px; background:linear-gradient(180deg, rgba(15,42,86,.96), rgba(3,18,48,.96)); font-size:28px; }
+      .game-currency .currency-pill { height:68px; min-width:190px; border-color:#234e91; border-radius:12px; background:linear-gradient(180deg, rgba(15,42,86,.96), rgba(3,18,48,.96)); font-size:24px; }
+      .game-currency .game-score-pill { min-width:160px; font-size:21px; padding:0 12px; }
       .game-currency .plus-btn { width:60px; height:60px; border-radius:12px; border:2px solid rgba(195,89,255,.75); background:linear-gradient(180deg, #a548e6, #5e1ac1); color:#fff; font-size:32px; box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 8px 18px rgba(0,0,0,.45); }
-      .game-board-layout { position:relative; z-index:1; width:min(1180px, 100%); margin:0 auto; display:grid; grid-template-columns: minmax(0, 526px) 456px; gap: clamp(38px, 7vw, 130px); align-items:start; justify-content:center; }
-      #game { width:fit-content; max-width:100%; justify-self:center; border:3px solid rgba(56,144,255,.9); border-radius:26px; overflow:hidden; background:linear-gradient(180deg, rgba(9,24,58,.96), rgba(3,10,28,.98)); box-shadow: inset 0 0 0 8px rgba(6,20,47,.86), inset 0 1px 0 rgba(255,255,255,.14), 0 0 20px rgba(46,143,255,.55), 0 20px 45px rgba(0,0,0,.58); padding:12px; }
-      #game canvas { display:block; max-width:100%; height:auto !important; border-radius:14px; }
+      .game-board-layout { position:relative; z-index:1; width:100%; margin:0 auto; display:grid; grid-template-columns: minmax(0, 1fr) 456px; gap: clamp(24px, 3vw, 48px); align-items:start; justify-content:center; }
+      #game { width:fit-content; justify-self:center; border:3px solid rgba(56,144,255,.9); border-radius:26px; overflow:hidden; background:linear-gradient(180deg, rgba(9,24,58,.96), rgba(3,10,28,.98)); box-shadow: inset 0 0 0 8px rgba(6,20,47,.86), inset 0 1px 0 rgba(255,255,255,.14), 0 0 20px rgba(46,143,255,.55), 0 20px 45px rgba(0,0,0,.58); padding:12px; }
+      #game canvas { display:block; border-radius:14px; }
       .inventory { width:456px; min-width:0; border:0; border-radius:0; padding:42px 0 0; background:transparent; box-shadow:none; }
       .inventory h3 { margin:0 0 28px; display:flex; align-items:center; justify-content:center; gap:16px; font-size:30px; letter-spacing:.08em; text-transform:uppercase; color:#edf6ff; text-shadow:0 4px 0 #30466d, 0 8px 12px #000; }
       .inventory h3::before, .inventory h3::after { content:''; width:64px; height:1px; background:linear-gradient(90deg, transparent, rgba(83,162,255,.68)); }
@@ -125,6 +127,8 @@
       .booster-count { position:absolute; right:8px; top:8px; min-width:32px; height:32px; padding:1px 7px; border-radius:10px; border:2px solid rgba(103,137,200,.8); background:rgba(6,13,35,.82); color:#fff; display:grid; place-items:center; font-size:22px; font-weight:900; text-shadow:0 2px 3px #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.16); }
       .inventory button { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:0; background:transparent; color:transparent; font-size:0; cursor:pointer; box-shadow:none; }
       .inventory button:disabled { cursor:not-allowed; background:transparent; }
+      .sound-toggle { position:fixed; left:max(18px, env(safe-area-inset-left)); bottom:max(18px, env(safe-area-inset-bottom)); z-index:110; width:62px; height:62px; border:2px solid rgba(89,164,255,.8); border-radius:15px; background:linear-gradient(180deg, rgba(20,70,137,.98), rgba(5,28,73,.98)); color:#fff; font-size:32px; cursor:pointer; box-shadow:inset 0 2px 0 rgba(255,255,255,.2), 0 8px 20px rgba(0,0,0,.55); }
+      .sound-toggle[hidden] { display:none; }
       .app > .controls, .app > .status { display:none; }
 
       select { padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
@@ -186,7 +190,7 @@
         .game-divider { margin:0 -7px; }
         .game-currency { height:76px; padding-left:16px; }
         .game-currency .currency-pill { min-width:210px; height:60px; }
-        .game-board-layout { width:min(960px, 100%); grid-template-columns:minmax(0, 500px) 420px; gap:40px; }
+        .game-board-layout { width:100%; grid-template-columns:minmax(0, 1fr) 420px; gap:28px; }
         .inventory { width:420px; }
         .inventory li { height:132px; }
       }
@@ -228,7 +232,8 @@
         .game-stat { order:5; flex:1 1 calc(50% - 5px); height:52px; min-width:0; border:2px solid rgba(31,85,166,.5); border-radius:12px; font-size:19px; }
         .game-currency { order:2; flex:1 1 calc(100% - 136px); height:58px; min-width:0; padding-left:0; border:0; background:transparent; justify-content:flex-end; }
         .game-currency .currency-pill { min-width:0; height:58px; font-size:22px; }
-        .game-currency .plus-btn { width:52px; height:52px; font-size:26px; }
+        .game-currency .game-score-pill { min-width:0; font-size:18px; }
+        .sound-toggle { width:54px; height:54px; font-size:27px; }
         .game-board-layout { width:100%; grid-template-columns:1fr; gap:22px; justify-items:center; }
         .inventory { width:min(420px, 100%); padding-top:12px; }
         .inventory ul { gap:10px; }
@@ -246,7 +251,6 @@
   <body class="start-active">
     <section id="startScreen" class="start-screen" aria-label="Start screen">
       <div class="start-top">
-        <button class="icon-btn" type="button" aria-label="Settings">⚙</button>
         <div class="currency-pill" aria-label="Total score"><span class="gem">💎</span><span id="startBalanceLabel">0</span><button class="plus-btn" id="startPlusBtn" type="button" aria-label="Open shop">+</button></div>
       </div>
       <div class="floating-block b1"></div><div class="floating-block b2"></div><div class="floating-block b3"></div><div class="floating-block b4"></div>
@@ -296,11 +300,10 @@
         <button id="gameHomeBtn" class="home-btn" type="button" aria-label="Home">⌂</button>
         <div id="gameLevelLabel" class="game-title">LEVEL 1</div>
         <div class="game-divider"></div>
-        <div class="game-goal"><strong>GOAL:</strong> Clear all blocks</div>
+        <div id="gameGoalLabel" class="game-goal"><strong>GOAL:</strong> Clear all blocks</div>
         <div class="game-divider"></div>
         <div id="gameMovesLabel" class="game-stat"><strong>MOVES:</strong> ∞</div>
         <div id="gameTimerTopLabel" class="game-stat"><strong>TIMER:</strong> ∞</div>
-        <div class="game-currency"><div class="currency-pill" aria-label="Total score"><span class="gem">💎</span><span id="gameBalanceLabel">0</span></div><button id="gamePlusBtn" class="plus-btn" type="button" aria-label="Open shop">🛒</button><button class="settings-btn" type="button" aria-label="Settings">⚙</button></div>
       </header>
       <div class="controls">
         <label>Level:
@@ -325,13 +328,15 @@
       </div>
     </div>
 
+    <button id="soundToggle" class="sound-toggle" type="button" aria-label="Mute sound" aria-pressed="false">🔊</button>
+
 
 
     <div id="winModal" class="result-backdrop" aria-hidden="true">
       <div class="win-dialog" role="dialog" aria-modal="true" aria-labelledby="winTitle">
         <h2 id="winTitle" class="win-title">CONGRATULATIONS!</h2>
         <p id="winLevelLabel" class="win-level">Level Complete</p>
-        <div class="win-stars" aria-hidden="true"><span>★</span><span>★</span><span>★</span></div>
+        <div class="win-stars" id="winStars" aria-label="Level rating"><span>★</span><span>★</span><span>★</span></div>
         <p id="winMovesLabel" class="win-stat">Moves Left: 0</p>
         <p id="winRewardLabel" class="win-reward">💎 +0</p>
         <div class="win-actions">
@@ -362,6 +367,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=2"></script>
+    <script type="module" src="game.js?v=15"></script>
   </body>
 </html>
