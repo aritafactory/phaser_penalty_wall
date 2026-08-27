@@ -8,6 +8,13 @@ const COLOR_MAP = {
   U: 0x999b9b,
 };
 
+const RENDER_DEPTH = {
+  block: 10,
+  projectileTrail: 299,
+  projectile: 300,
+  projectileImpact: 301,
+};
+
 const BASE_COLORS = ['R', 'G', 'B'];
 const ADDITIONAL_COLORS = ['Y', 'P', 'O'];
 const COMPLICATION_RATIOS = {
@@ -51,7 +58,10 @@ const model = {
   currentLevelIndex: 0,
   levelsPage: 0,
   highestUnlockedLevel: 1,
+  highestUnlockedMasterLevel: 1,
+  levelStars: { main: {}, master: {} },
   winAwarded: false,
+  winReward: 0,
   ineffectiveShotStreak: 0,
   currentLayerIndex: 0,
   boosters: {},
@@ -91,9 +101,8 @@ const ui = {
   mainLevelsTab: document.getElementById('mainLevelsTab'),
   masterLevelsTab: document.getElementById('masterLevelsTab'),
   gameHomeBtn: document.getElementById('gameHomeBtn'),
-  gamePlusBtn: document.getElementById('gamePlusBtn'),
-  gameBalanceLabel: document.getElementById('gameBalanceLabel'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
+  gameGoalLabel: document.getElementById('gameGoalLabel'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
   gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
   failModal: document.getElementById('failModal'),
@@ -105,6 +114,8 @@ const ui = {
   winLevelLabel: document.getElementById('winLevelLabel'),
   winMovesLabel: document.getElementById('winMovesLabel'),
   winRewardLabel: document.getElementById('winRewardLabel'),
+  winStars: document.getElementById('winStars'),
+  soundToggle: document.getElementById('soundToggle'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
   builderGenerateBtn: document.getElementById('builderGenerateBtn'),
@@ -131,31 +142,200 @@ const STORAGE_KEYS = {
   totalScore: 'cbb_total_score',
   boosters: 'cbb_boosters',
   highestUnlockedLevel: 'cbb_highest_unlocked_level',
+  highestUnlockedMasterLevel: 'cbb_highest_unlocked_master_level',
+  levelStars: 'cbb_level_stars',
+  soundEnabled: 'cbb_sound_enabled',
 };
 
 const BOOSTER_CATALOG = [
-  { key: 'bomb', name: 'Bomb', price: 120, effect: 'Blast away colored balls.' },
-  { key: 'mix', name: 'Mix', price: 120, effect: 'Shuffle all balls on screen.' },
-  { key: 'fractions', name: 'Fractions', price: 150, effect: 'Split a ball into 3 random balls.' },
-  { key: 'minusOneColor', name: '-1 Color', price: 120, effect: 'Remove one ball color.' },
-  { key: 'plusFiveShots', name: '+5 Shots', price: 150, effect: 'Add 5 extra shots.' },
-  { key: 'plusTenSeconds', name: '+10 Seconds', price: 150, effect: 'Add 10 seconds on timer levels.' },
-  { key: 'compressor', name: 'Compressor', price: 180, effect: 'Push each row toward the center.' },
-  { key: 'rotator', name: 'Rotator', price: 180, effect: 'Rotate a 3×3 ring clockwise.' },
+  { key: 'bomb', name: 'Bomb', price: 180, effect: 'Blast away colored balls.' },
+  { key: 'mix', name: 'Mix', price: 100, effect: 'Shuffle all balls on screen.' },
+  { key: 'fractions', name: 'Fractions', price: 240, effect: 'Split a ball into 3 random balls.' },
+  { key: 'minusOneColor', name: '-1 Color', price: 280, effect: 'Remove one ball color.' },
+  { key: 'plusFiveShots', name: '+5 Shots', price: 160, effect: 'Add 5 extra shots.' },
+  { key: 'plusTenSeconds', name: '+10 Seconds', price: 160, effect: 'Add 10 seconds on timer levels.' },
+  { key: 'compressor', name: 'Compressor', price: 140, effect: 'Push each row toward the center.' },
+  { key: 'rotator', name: 'Rotator', price: 120, effect: 'Rotate a 3×3 ring clockwise.' },
   { key: 'rainbow', name: 'Rainbow', price: 200, effect: 'Turn a ball into a rainbow ball.' },
 ];
 
 let phaserGame;
 let boardScene;
+let boardResizeTimer;
+let backgroundAudio;
+let shotAudio;
+let swooshAudio;
+const effectAudio = new Map();
+let audioUnlockInstalled = false;
+let soundEnabled = true;
+let backgroundMusicRequested = false;
+const activeShotSounds = new Set();
+const GAME_AUDIO_VOLUME = 0.7;
 
+const AUDIO_PATHS = {
+  background: 'audio/background.mp3',
+  click: 'audio/click.mp3',
+  shot: 'audio/shot.mp3',
+  pop: 'audio/pop.mp3',
+  bounce: 'audio/bounce.mp3',
+  swoosh: 'audio/swoosh.mp3',
+  rotator: 'audio/rotator.mp3',
+  playButton: 'audio/play_button.mp3',
+  fractions: 'audio/pop3.mp3',
+  buy: 'audio/buy.mp3',
+  fuse: 'audio/fuse.mp3',
+  bomb: 'audio/bomb.mp3',
+  plusTenSeconds: 'audio/10sec.mp3',
+  plusFiveShots: 'audio/5shots.mp3',
+  tenSecondsLeft: 'audio/10sec_left.mp3',
+  fiveShotsLeft: 'audio/5shots_left.mp3',
+  win: 'audio/win.mp3',
+  loose: 'audio/loose.mp3',
+};
 
-function currentLevelMultiplier() {
-  return Math.max(1, model.currentLevelIndex + 1);
+const resourceWarnings = { tenSecondsPlayed: false, fiveShotsPlayed: false };
+
+function ensureAudioElements() {
+  if (typeof Audio === 'undefined') return false;
+  if (!backgroundAudio) {
+    backgroundAudio = new Audio(AUDIO_PATHS.background);
+    backgroundAudio.loop = true;
+    backgroundAudio.preload = 'auto';
+    backgroundAudio.volume = GAME_AUDIO_VOLUME;
+    backgroundAudio.muted = !soundEnabled;
+  }
+  if (!shotAudio) {
+    shotAudio = new Audio(AUDIO_PATHS.shot);
+    shotAudio.preload = 'auto';
+    shotAudio.volume = GAME_AUDIO_VOLUME;
+    shotAudio.muted = !soundEnabled;
+  }
+  if (!swooshAudio) {
+    swooshAudio = new Audio(AUDIO_PATHS.swoosh);
+    swooshAudio.preload = 'auto';
+    swooshAudio.volume = GAME_AUDIO_VOLUME;
+    swooshAudio.muted = !soundEnabled;
+  }
+  Object.entries(AUDIO_PATHS).forEach(([key, path]) => {
+    if (['background', 'shot', 'swoosh'].includes(key) || effectAudio.has(key)) return;
+    const audio = new Audio(path);
+    audio.preload = 'auto';
+    audio.volume = GAME_AUDIO_VOLUME;
+    audio.muted = !soundEnabled;
+    effectAudio.set(key, audio);
+  });
+  return true;
 }
 
-function pointsForRemovedBlocks(count) {
-  return count * 10 * currentLevelMultiplier();
+function removeAudioUnlockListeners() {
+  if (!audioUnlockInstalled) return;
+  audioUnlockInstalled = false;
+  ['pointerdown', 'touchstart', 'keydown'].forEach((eventName) => {
+    document.removeEventListener(eventName, unlockAudioPlayback);
+  });
 }
+
+function unlockAudioPlayback() {
+  removeAudioUnlockListeners();
+  startBackgroundMusic();
+}
+
+function installAudioUnlockListeners() {
+  if (audioUnlockInstalled) return;
+  audioUnlockInstalled = true;
+  ['pointerdown', 'touchstart', 'keydown'].forEach((eventName) => {
+    document.addEventListener(eventName, unlockAudioPlayback, { once: true });
+  });
+}
+
+function startBackgroundMusic() {
+  if (!backgroundMusicRequested || !soundEnabled || !ensureAudioElements() || !backgroundAudio.paused) return;
+  const playAttempt = backgroundAudio.play();
+  if (playAttempt?.then) {
+    playAttempt.then(removeAudioUnlockListeners).catch(installAudioUnlockListeners);
+  }
+}
+
+function requestBackgroundMusic() {
+  backgroundMusicRequested = true;
+  startBackgroundMusic();
+}
+
+function playShotSound() {
+  if (!soundEnabled || !ensureAudioElements()) return;
+  const sound = shotAudio.cloneNode();
+  sound.volume = shotAudio.volume;
+  sound.muted = !soundEnabled;
+  activeShotSounds.add(sound);
+  sound.addEventListener('ended', () => activeShotSounds.delete(sound), { once: true });
+  const playAttempt = sound.play();
+  if (playAttempt?.catch) playAttempt.catch(() => activeShotSounds.delete(sound));
+}
+
+function playSwooshSound() {
+  if (!soundEnabled || !ensureAudioElements() || !swooshAudio.paused) return;
+  swooshAudio.currentTime = 0;
+  const playAttempt = swooshAudio.play();
+  if (playAttempt?.catch) playAttempt.catch(() => {});
+}
+
+function playEffectSound(key, allowOverlap = true) {
+  if (!soundEnabled || !ensureAudioElements()) return;
+  const source = effectAudio.get(key);
+  if (!source || (!allowOverlap && !source.paused)) return;
+  const sound = allowOverlap ? source.cloneNode() : source;
+  sound.volume = GAME_AUDIO_VOLUME;
+  sound.muted = !soundEnabled;
+  if (allowOverlap) {
+    activeShotSounds.add(sound);
+    sound.addEventListener('ended', () => activeShotSounds.delete(sound), { once: true });
+  } else {
+    sound.currentTime = 0;
+  }
+  const playAttempt = sound.play();
+  if (playAttempt?.catch) playAttempt.catch(() => activeShotSounds.delete(sound));
+}
+
+function stopEffectSound(key) {
+  const sound = effectAudio.get(key);
+  if (!sound) return;
+  sound.pause();
+  sound.currentTime = 0;
+}
+
+function updateSoundToggle() {
+  if (!ui.soundToggle) return;
+  ui.soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+  ui.soundToggle.setAttribute('aria-label', soundEnabled ? 'Mute sound' : 'Enable sound');
+  ui.soundToggle.setAttribute('aria-pressed', String(!soundEnabled));
+}
+
+function applySoundPreference(enabled, persist = true, startPlayback = true) {
+  soundEnabled = Boolean(enabled);
+  if (backgroundAudio) backgroundAudio.muted = !soundEnabled;
+  if (shotAudio) shotAudio.muted = !soundEnabled;
+  if (swooshAudio) swooshAudio.muted = !soundEnabled;
+  effectAudio.forEach((sound) => { sound.muted = !soundEnabled; });
+  activeShotSounds.forEach((sound) => { sound.muted = !soundEnabled; });
+  if (persist && !IS_BUILDER_PAGE) {
+    localStorage.setItem(STORAGE_KEYS.soundEnabled, String(soundEnabled));
+  }
+  updateSoundToggle();
+  if (startPlayback && backgroundMusicRequested && soundEnabled && !IS_BUILDER_PAGE) startBackgroundMusic();
+}
+
+function setSoundToggleHidden(hidden) {
+  if (ui.soundToggle) ui.soundToggle.hidden = Boolean(hidden);
+}
+
+function installButtonClickSounds() {
+  document.addEventListener?.('click', (event) => {
+    const button = event.target?.closest?.('button');
+    if (!button || button.disabled || button.classList.contains('shop-buy')) return;
+    playEffectSound(button.id === 'startPlayBtn' ? 'playButton' : 'click');
+  });
+}
+
 
 function cloneGrid(grid) {
   return grid.map((row) => row.slice());
@@ -234,15 +414,21 @@ function loadPersistentState() {
   if (IS_BUILDER_PAGE) {
     model.totalScore = 0;
     model.highestUnlockedLevel = Number.MAX_SAFE_INTEGER;
+    model.highestUnlockedMasterLevel = Number.MAX_SAFE_INTEGER;
     BOOSTER_CATALOG.forEach((b) => {
       model.boosters[b.key] = Number.MAX_SAFE_INTEGER;
     });
     return;
   }
+  applySoundPreference(localStorage.getItem(STORAGE_KEYS.soundEnabled) !== 'false', false, false);
   const savedTotal = Number(localStorage.getItem(STORAGE_KEYS.totalScore) || '0');
   model.totalScore = Number.isFinite(savedTotal) ? savedTotal : 0;
   const savedUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedLevel) || '1');
   model.highestUnlockedLevel = Number.isFinite(savedUnlocked) && savedUnlocked > 0 ? Math.floor(savedUnlocked) : 1;
+  const savedMasterUnlocked = Number(localStorage.getItem(STORAGE_KEYS.highestUnlockedMasterLevel) || '1');
+  model.highestUnlockedMasterLevel = Number.isFinite(savedMasterUnlocked) && savedMasterUnlocked > 0
+    ? Math.floor(savedMasterUnlocked)
+    : 1;
 
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.boosters) || '{}');
@@ -250,13 +436,24 @@ function loadPersistentState() {
   } catch {
     model.boosters = {};
   }
+  try {
+    const parsedStars = JSON.parse(localStorage.getItem(STORAGE_KEYS.levelStars) || '{}');
+    model.levelStars = {
+      main: parsedStars?.main && typeof parsedStars.main === 'object' ? parsedStars.main : {},
+      master: parsedStars?.master && typeof parsedStars.master === 'object' ? parsedStars.master : {},
+    };
+  } catch {
+    model.levelStars = { main: {}, master: {} };
+  }
 }
 
 function savePersistentState() {
   if (IS_BUILDER_PAGE) return;
   localStorage.setItem(STORAGE_KEYS.totalScore, String(model.totalScore));
   localStorage.setItem(STORAGE_KEYS.highestUnlockedLevel, String(model.highestUnlockedLevel));
+  localStorage.setItem(STORAGE_KEYS.highestUnlockedMasterLevel, String(model.highestUnlockedMasterLevel));
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
+  localStorage.setItem(STORAGE_KEYS.levelStars, JSON.stringify(model.levelStars));
 }
 
 function combinations(arr, size) {
@@ -986,6 +1183,9 @@ function startCustomBuilderLevel() {
   model.gameplayActive = true;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
+  model.winReward = 0;
+  resourceWarnings.tenSecondsPlayed = false;
+  resourceWarnings.fiveShotsPlayed = false;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -1270,17 +1470,54 @@ function isWin() {
   return model.grid.every((row) => row.every((cell) => !cell || cell === 'U'));
 }
 
+function currentLevelGoalText() {
+  const isMasterGoal = model.activeLevelSet === 'master' || Boolean(model.currentLevel?.shapeGoal);
+  return isMasterGoal ? 'Complete the shape' : 'Clear all blocks';
+}
+
+function updateResourceWarnings() {
+  const lowShots = Number.isFinite(model.shotsLeft) && model.shotsLeft <= 5;
+  const lowTime = Number.isFinite(model.timerLeft) && Math.ceil(model.timerLeft) <= 10;
+  ui.gameMovesLabel?.classList.toggle('resource-low', lowShots);
+  ui.gameTimerTopLabel?.classList.toggle('resource-low', lowTime);
+  if (!lowShots) resourceWarnings.fiveShotsPlayed = false;
+  if (!lowTime) resourceWarnings.tenSecondsPlayed = false;
+  if (model.gameplayActive && !model.gameOver && lowShots && model.shotsLeft > 0 && !resourceWarnings.fiveShotsPlayed) {
+    resourceWarnings.fiveShotsPlayed = true;
+    playEffectSound('fiveShotsLeft', false);
+  }
+  if (model.gameplayActive && !model.gameOver && lowTime && model.timerLeft > 0 && !resourceWarnings.tenSecondsPlayed) {
+    resourceWarnings.tenSecondsPlayed = true;
+    playEffectSound('tenSecondsLeft', false);
+  }
+}
+
+function showResourceBonus(target, text) {
+  const rect = target?.getBoundingClientRect?.();
+  if (!rect || typeof document.createElement !== 'function') return;
+  const bonus = document.createElement('span');
+  bonus.className = 'resource-bonus';
+  bonus.textContent = text;
+  bonus.style.left = `${rect.left + rect.width / 2}px`;
+  bonus.style.top = `${rect.bottom - 8}px`;
+  document.body.appendChild(bonus);
+  setTimeout(() => bonus.remove(), 1000);
+}
+
 function refreshUI() {
   ui.scoreLabel.textContent = `Очки (уровень): ${model.score}`;
   ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
   if (ui.startBalanceLabel) ui.startBalanceLabel.textContent = String(model.totalScore);
   if (ui.levelsBalanceLabel) ui.levelsBalanceLabel.textContent = String(model.totalScore);
-  if (ui.gameBalanceLabel) ui.gameBalanceLabel.textContent = String(model.totalScore);
   if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
+  if (ui.gameGoalLabel) {
+    ui.gameGoalLabel.innerHTML = `<strong>GOAL:</strong> ${currentLevelGoalText()}`;
+  }
   if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
+  updateResourceWarnings();
   if (!model.gameOver) {
     ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
   }
@@ -1291,6 +1528,12 @@ function refreshUI() {
 function boosterCount(boosterKey) {
   if (IS_BUILDER_PAGE) return Number.MAX_SAFE_INTEGER;
   return Number(model.boosters[boosterKey] || 0) + Number(model.levelBoosters[boosterKey] || 0);
+}
+
+function boosterIsAvailableForCurrentLevel(boosterKey) {
+  if (boosterKey === 'plusTenSeconds') return Number.isFinite(model.timerLeft);
+  if (boosterKey === 'plusFiveShots') return Number.isFinite(model.shotsLeft);
+  return true;
 }
 
 function consumeBooster(boosterKey) {
@@ -1311,20 +1554,30 @@ function renderBoosterInventory() {
     const li = document.createElement('li');
     if (BOOSTER_CATALOG.some((item) => item.key === booster.key)) {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
-      const disabled = owned <= 0 ? 'disabled' : '';
+      const available = owned > 0 && boosterIsAvailableForCurrentLevel(booster.key);
+      const disabled = available ? '' : 'disabled';
+      li.classList.toggle('unavailable', !available);
       li.classList.toggle('armed', model.activeBooster === booster.key);
       const amountLabel = IS_BUILDER_PAGE ? '∞' : String(owned);
       const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' };
       li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
-        if (owned <= 0) return;
+        if (!available) return;
         if (booster.key === 'plusTenSeconds' && boardScene) {
           boardScene.usePlusTenSeconds();
           return;
         }
-        if (booster.key === 'compressor' && boardScene) {
-          boardScene.useCompressor();
+        if (booster.key === 'mix') {
+          if (boardScene) boardScene.useMix();
+          return;
+        }
+        if (booster.key === 'compressor') {
+          if (boardScene) boardScene.useCompressor();
+          return;
+        }
+        if (booster.key === 'plusFiveShots') {
+          if (boardScene) boardScene.usePlusFiveShots();
           return;
         }
         if (booster.key === 'minusOneColor' && boardScene) {
@@ -1332,6 +1585,9 @@ function renderBoosterInventory() {
           return;
         }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
+        if (model.activeBooster === 'bomb') playEffectSound('fuse', false);
+        else if (booster.key === 'bomb') stopEffectSound('fuse');
+        if (boardScene) boardScene.syncBoosterTargeting();
         renderBoosterInventory();
         refreshUI();
       };
@@ -1340,6 +1596,7 @@ function renderBoosterInventory() {
     }
     ui.boosterInventoryList.appendChild(li);
   });
+  if (boardScene) boardScene.syncBoosterTargeting();
 }
 
 function boosterIcon(boosterKey) {
@@ -1374,6 +1631,7 @@ function buyBooster(boosterKey) {
   }
   model.totalScore -= booster.price;
   model.boosters[booster.key] = Number(model.boosters[booster.key] || 0) + 1;
+  playEffectSound('buy');
   savePersistentState();
   renderBoosterInventory();
   refreshUI();
@@ -1386,12 +1644,21 @@ function cancelActiveGameplay() {
   model.gameOver = true;
   model.timerLeft = Infinity;
   model.activeBooster = null;
-  if (boardScene) boardScene.animating = false;
+  stopEffectSound('fuse');
+  if (boardScene) {
+    boardScene.animating = false;
+    boardScene.destroyBombPreview();
+    boardScene.destroyFractionsEffects();
+    boardScene.destroyRotatorPreview();
+    boardScene.destroyCompressorPreview();
+    boardScene.syncRainbowBallVisual();
+  }
   closeFailModal();
 }
 
 function openShop() {
   cancelActiveGameplay();
+  setSoundToggleHidden(true);
   renderShopTable();
   refreshUI();
   ui.shopModal.classList.add('open');
@@ -1401,6 +1668,7 @@ function openShop() {
 function closeShop() {
   ui.shopModal.classList.remove('open');
   ui.shopModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function getColorGroupStats() {
@@ -1503,16 +1771,58 @@ function boardLayoutMetrics(rows, cols) {
   const viewportWidth = window.innerWidth || 1200;
   const viewportHeight = window.innerHeight || 800;
   if (!IS_BUILDER_PAGE) {
-    const maxBoardWidth = Math.min(1060, Math.max(280, viewportWidth - (viewportWidth <= 1400 ? 80 : 520)));
-    const maxBoardHeight = Math.max(260, viewportHeight - 300);
-    const fitByWidth = Math.floor(maxBoardWidth / cols);
-    const fitByHeight = Math.floor(maxBoardHeight / rows);
-    const minCell = viewportWidth < 600 ? 28 : 40;
-    const cell = Math.max(minCell, Math.min(104, fitByWidth, fitByHeight));
+    const layout = document.querySelector?.('.game-board-layout');
+    const inventory = layout?.querySelector?.('.inventory');
+    const header = document.querySelector?.('.game-topbar');
+    const layoutRect = layout?.getBoundingClientRect?.();
+    const inventoryRect = inventory?.getBoundingClientRect?.();
+    const headerRect = header?.getBoundingClientRect?.();
+    const sideBySide = Boolean(layoutRect && inventoryRect && inventoryRect.left > layoutRect.left + 40);
+    const columnGap = sideBySide
+      ? (Number.parseFloat(window.getComputedStyle?.(layout)?.columnGap) || 0)
+      : 0;
+    const gameplayColumnWidth = sideBySide
+      ? inventoryRect.left - layoutRect.left - columnGap
+      : (layoutRect?.width || viewportWidth - 24);
+    const gameElement = document.getElementById?.('game');
+    const gameStyle = gameElement ? window.getComputedStyle?.(gameElement) : null;
+    const horizontalChrome = (Number.parseFloat(gameStyle?.paddingLeft) || 12)
+      + (Number.parseFloat(gameStyle?.paddingRight) || 12)
+      + (Number.parseFloat(gameStyle?.borderLeftWidth) || 3)
+      + (Number.parseFloat(gameStyle?.borderRightWidth) || 3)
+      + 24;
+    const verticalChrome = (Number.parseFloat(gameStyle?.paddingTop) || 12)
+      + (Number.parseFloat(gameStyle?.paddingBottom) || 12)
+      + (Number.parseFloat(gameStyle?.borderTopWidth) || 3)
+      + (Number.parseFloat(gameStyle?.borderBottomWidth) || 3);
+    const gridTop = 12;
+    const shooterGap = 22;
+    const bottomMargin = 12;
+    const viewportBottomClearance = sideBySide ? 12 : 76;
+    const availableWidth = Math.max(1, gameplayColumnWidth - horizontalChrome);
+    const availablePlayHeight = Math.max(
+      1,
+      viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - viewportBottomClearance - verticalChrome
+    );
+    const fixedVerticalSpace = gridTop + shooterGap + bottomMargin;
+    let cell = Math.max(4, Math.floor(Math.min(
+      availableWidth / cols,
+      (availablePlayHeight - fixedVerticalSpace - 24) / rows,
+      140
+    )));
+    let launcherRadius = Math.max(12, Math.min(24, cell * 0.22));
+    cell = Math.max(4, Math.floor(Math.min(
+      availableWidth / cols,
+      (availablePlayHeight - fixedVerticalSpace - launcherRadius * 2) / rows,
+      140
+    )));
+    launcherRadius = Math.max(12, Math.min(24, cell * 0.22));
     return {
       cell,
       width: cols * cell + 24,
-      height: Math.max(360, 24 + rows * cell + 150),
+      height: gridTop + rows * cell + shooterGap + launcherRadius * 2 + bottomMargin,
+      launcherRadius,
+      shooterGap,
     };
   }
 
@@ -1522,7 +1832,7 @@ function boardLayoutMetrics(rows, cols) {
   const maxBoardHeight = Math.max(220, viewportHeight - 250);
   const fitByWidth = Math.floor((maxBoardWidth - 24) / cols);
   const fitByHeight = Math.floor((maxBoardHeight - 174) / rows);
-  const cell = Math.max(12, Math.min(104, fitByWidth, fitByHeight));
+  const cell = Math.max(12, Math.min(140, fitByWidth, fitByHeight));
 
   return {
     cell,
@@ -1541,6 +1851,8 @@ class BoardScene extends Phaser.Scene {
     this.gridX = 12;
     this.gridY = 12;
     this.playAreaHeight = layout.height;
+    this.launcherRadius = layout.launcherRadius || Math.max(12, Math.min(24, this.cell * 0.22));
+    this.shooterGap = layout.shooterGap || 22;
     this.blocks = new Map();
     this.animating = false;
     this.shooterX = 0;
@@ -1550,6 +1862,13 @@ class BoardScene extends Phaser.Scene {
     this.pendingShotColor = null;
     this.pendingShotUsedBooster = false;
     this.targetZoneGraphics = null;
+    this.bombPreview = null;
+    this.bombPointerMoveHandler = null;
+    this.bombPointerDownHandler = null;
+    this.fractionsEffects = new Set();
+    this.rotatorPreview = null;
+    this.compressorPreview = null;
+    this.rainbowShooterPreview = null;
   }
 
   key(r, c) {
@@ -1568,12 +1887,22 @@ class BoardScene extends Phaser.Scene {
     this.drawBoardFrame();
 
     this.shooterX = this.scale.width / 2;
-    this.shooterY = this.playAreaHeight - 36;
-    this.shooter = this.add.circle(this.shooterX, this.shooterY, 18, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(3, 0xffffff);
+    this.shooterY = this.gridY + model.grid.length * this.cell + this.shooterGap + this.launcherRadius;
+    this.shooter = this.add.circle(this.shooterX, this.shooterY, this.launcherRadius, COLOR_MAP[model.selectedShotColor]).setStrokeStyle(3, 0xffffff);
 
     this.renderGridStatic();
 
-    this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
+    this.bombPointerMoveHandler = (pointer) => this.handleBombPointerMove(pointer);
+    this.bombPointerDownHandler = (pointer) => this.handlePointer(pointer);
+    this.input.on('pointermove', this.bombPointerMoveHandler);
+    this.input.on('pointerdown', this.bombPointerDownHandler);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.destroyBombPreview(true);
+      this.destroyFractionsEffects();
+      this.destroyRotatorPreview(true);
+      this.destroyCompressorPreview(true);
+      if (this.rainbowShooterPreview) this.rainbowShooterPreview.destroy();
+    });
   }
 
   drawBoardFrame() {
@@ -1648,28 +1977,404 @@ class BoardScene extends Phaser.Scene {
 
   createBlock(r, c, code) {
     const { x, y } = this.gridToPixel(r, c);
-    const rect = this.add.rectangle(x, y, this.cell - 2, this.cell - 2, COLOR_MAP[visibleColor(code)] || 0xffffff).setOrigin(0.5);
-    if (isTwoColor(code)) rect.setStrokeStyle(3, 0xffffff);
-    if (isFlashing(code)) rect.setStrokeStyle(3, 0x111111);
-    return rect;
+    const size = this.cell - 2;
+    const radius = Math.max(2, Math.min(12, size * 0.09));
+    const container = this.add.container(x, y).setSize(size, size).setDepth(RENDER_DEPTH.block);
+    const body = this.add.graphics();
+    container.add(body);
+
+    const drawColoredBody = (color) => {
+      body.clear();
+      body.fillStyle(color, 1);
+      body.fillRoundedRect(-size / 2, -size / 2, size, size, radius);
+    };
+
+    if (code === 'U') {
+      const edge = Math.max(2, Math.min(6, size * 0.08));
+      const rivetOffset = size * 0.34;
+      const rivetRadius = Math.max(1.5, Math.min(4, size * 0.055));
+      body.fillStyle(0x747d84, 1);
+      body.fillRoundedRect(-size / 2, -size / 2, size, size, radius);
+      body.lineStyle(edge, 0xb7c0c6, 1);
+      body.lineBetween(-size / 2 + edge, -size / 2 + edge, size / 2 - edge, -size / 2 + edge);
+      body.lineBetween(-size / 2 + edge, -size / 2 + edge, -size / 2 + edge, size / 2 - edge);
+      body.lineStyle(edge, 0x3c4348, 1);
+      body.lineBetween(-size / 2 + edge, size / 2 - edge, size / 2 - edge, size / 2 - edge);
+      body.lineBetween(size / 2 - edge, -size / 2 + edge, size / 2 - edge, size / 2 - edge);
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([dx, dy]) => {
+        body.fillStyle(0x30363a, 1);
+        body.fillCircle(dx * rivetOffset, dy * rivetOffset, rivetRadius);
+        body.fillStyle(0xcbd2d6, 0.85);
+        body.fillCircle(dx * rivetOffset - rivetRadius * 0.25, dy * rivetOffset - rivetRadius * 0.25, rivetRadius * 0.38);
+      });
+    } else {
+      drawColoredBody(COLOR_MAP[visibleColor(code)] || 0xffffff);
+    }
+
+    let twoColorLabel = null;
+    if (isTwoColor(code)) {
+      twoColorLabel = this.add.text(0, 0, '2', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: `${Math.max(8, Math.round(size * 0.48))}px`,
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#151515',
+        strokeThickness: Math.max(2, Math.round(size * 0.055)),
+      }).setOrigin(0.5);
+      container.add(twoColorLabel);
+    }
+
+    container.setFillStyle = (color) => {
+      drawColoredBody(color);
+      if (twoColorLabel) twoColorLabel.setVisible(false);
+      return container;
+    };
+    return container;
+  }
+
+  pointerToGrid(pointer) {
+    const col = Math.floor((pointer.x - this.gridX) / this.cell);
+    const row = Math.floor((pointer.y - this.gridY) / this.cell);
+    if (row < 0 || col < 0 || row >= model.grid.length || col >= model.grid[0].length) return null;
+    return { row, col };
+  }
+
+  syncBoosterTargeting() {
+    if (model.activeBooster !== 'bomb') {
+      stopEffectSound('fuse');
+      this.destroyBombPreview();
+    }
+    if (model.activeBooster !== 'rotator') this.destroyRotatorPreview();
+    if (model.activeBooster !== 'compressor') this.destroyCompressorPreview();
+    this.syncRainbowBallVisual();
+  }
+
+  createRainbowBall(x, y, radius, depth = RENDER_DEPTH.projectile) {
+    const graphics = this.add.graphics().setPosition(x, y).setDepth(depth);
+    const colors = [0xe74c3c, 0xe67e22, 0xf1c40f, 0x27ae60, 0x3498db, 0x9b59b6];
+    const stripeHeight = (radius * 2) / colors.length;
+    for (let scanY = -radius; scanY < radius; scanY += 1) {
+      const colorIndex = Math.min(colors.length - 1, Math.floor((scanY + radius) / stripeHeight));
+      const halfWidth = Math.sqrt(Math.max(0, radius * radius - (scanY + 0.5) * (scanY + 0.5)));
+      const color = colors[colorIndex];
+      graphics.fillStyle(color, 1);
+      graphics.fillRect(-halfWidth, scanY, halfWidth * 2, 1.2);
+    }
+    graphics.lineStyle(2, 0xffffff, 1);
+    graphics.strokeCircle(0, 0, radius);
+    return graphics;
+  }
+
+  syncRainbowBallVisual() {
+    const shouldShow = model.activeBooster === 'rainbow' && !model.gameOver && model.gameplayActive;
+    if (shouldShow && !this.rainbowShooterPreview) {
+      this.rainbowShooterPreview = this.createRainbowBall(this.shooterX, this.shooterY, this.launcherRadius, 105);
+    } else if (!shouldShow && this.rainbowShooterPreview) {
+      this.rainbowShooterPreview.destroy();
+      this.rainbowShooterPreview = null;
+    }
+    if (this.shooter) this.shooter.setVisible(!shouldShow);
+  }
+
+  bombAreaFor(row, col) {
+    const minRow = Math.max(0, row - 1);
+    const maxRow = Math.min(model.grid.length - 1, row + 1);
+    const minCol = Math.max(0, col - 1);
+    const maxCol = Math.min(model.grid[0].length - 1, col + 1);
+    return { minRow, maxRow, minCol, maxCol };
+  }
+
+  buildFusePath(area) {
+    const inset = 5;
+    const left = this.gridX + area.minCol * this.cell + inset;
+    const top = this.gridY + area.minRow * this.cell + inset;
+    const right = this.gridX + (area.maxCol + 1) * this.cell - inset;
+    const bottom = this.gridY + (area.maxRow + 1) * this.cell - inset;
+    const points = [];
+    const addEdge = (x1, y1, x2, y2) => {
+      const length = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+      const steps = Math.max(2, Math.ceil(length / 11));
+      for (let i = points.length ? 1 : 0; i <= steps; i += 1) {
+        const t = i / steps;
+        const wave = Math.sin(t * Math.PI * steps) * 2.2;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const magnitude = Math.max(1, Math.hypot(dx, dy));
+        points.push({ x: x1 + dx * t - (dy / magnitude) * wave, y: y1 + dy * t + (dx / magnitude) * wave });
+      }
+    };
+    addEdge(left, top, right, top);
+    addEdge(right, top, right, bottom);
+    addEdge(right, bottom, left, bottom);
+    addEdge(left, bottom, left, top);
+    return points;
+  }
+
+  showBombPreview(row, col, touchSelected = false) {
+    if (model.activeBooster !== 'bomb' || this.animating) return;
+    if (this.bombPreview?.row === row && this.bombPreview?.col === col) {
+      this.bombPreview.touchSelected ||= touchSelected;
+      return;
+    }
+    this.destroyBombPreview();
+    const path = this.buildFusePath(this.bombAreaFor(row, col));
+    const fuse = this.add.graphics().setDepth(200);
+    fuse.lineStyle(8, 0xffffff, 0.34);
+    fuse.strokePoints(path, true);
+    fuse.lineStyle(5.5, 0x17120f, 1);
+    fuse.strokePoints(path, true);
+    fuse.lineStyle(1.5, 0x665044, 0.9);
+    fuse.strokePoints(path, true);
+    const sparkGlow = this.add.circle(path[0].x, path[0].y, 9, 0xff7a00, 0.28).setDepth(202);
+    const spark = this.add.circle(path[0].x, path[0].y, 4, 0xfff0a3, 1).setStrokeStyle(2, 0xff5a00).setDepth(203);
+    this.bombPreview = { row, col, path, fuse, spark, sparkGlow, elapsed: 0, particles: [], touchSelected };
+  }
+
+  handleBombPointerMove(pointer) {
+    if (this.isTouchPointer(pointer)) return;
+    const cell = this.pointerToGrid(pointer);
+    if (!cell) return;
+    if (model.activeBooster === 'bomb') this.showBombPreview(cell.row, cell.col);
+    if (model.activeBooster === 'rotator') this.showRotatorPreview(cell.row, cell.col);
+  }
+
+  isTouchPointer(pointer) {
+    return pointer.pointerType === 'touch' || pointer.event?.pointerType === 'touch' || pointer.wasTouch === true;
+  }
+
+  spawnFuseParticle(x, y, kind) {
+    if (!this.bombPreview) return;
+    const smoke = kind === 'smoke';
+    const particle = this.add.circle(x, y, smoke ? 3.5 : 2, smoke ? 0x777777 : (kind === 'ember' ? 0xff6a00 : 0xffc233), smoke ? 0.42 : 0.95).setDepth(201);
+    this.bombPreview.particles.push(particle);
+    this.tweens.add({
+      targets: particle,
+      x: x + Phaser.Math.Between(-7, 7),
+      y: y - Phaser.Math.Between(smoke ? 12 : 4, smoke ? 23 : 12),
+      alpha: 0,
+      scale: smoke ? 2 : 0.25,
+      duration: smoke ? 650 : 330,
+      onComplete: () => {
+        particle.destroy();
+        if (this.bombPreview) this.bombPreview.particles = this.bombPreview.particles.filter((item) => item !== particle);
+      },
+    });
+  }
+
+  updateBombPreview(delta) {
+    const preview = this.bombPreview;
+    if (!preview || model.activeBooster !== 'bomb' || this.animating) return;
+    preview.elapsed = (preview.elapsed + delta) % 1500;
+    const scaled = (preview.elapsed / 1500) * preview.path.length;
+    const index = Math.floor(scaled) % preview.path.length;
+    const next = (index + 1) % preview.path.length;
+    const t = scaled - Math.floor(scaled);
+    const x = Phaser.Math.Linear(preview.path[index].x, preview.path[next].x, t);
+    const y = Phaser.Math.Linear(preview.path[index].y, preview.path[next].y, t);
+    preview.spark.setPosition(x, y);
+    preview.sparkGlow.setPosition(x, y).setAlpha(0.2 + Math.random() * 0.25).setScale(0.8 + Math.random() * 0.5);
+    if (Math.random() < delta / 45) this.spawnFuseParticle(x, y, 'fire');
+    if (Math.random() < delta / 85) this.spawnFuseParticle(x, y, 'ember');
+    if (Math.random() < delta / 120) this.spawnFuseParticle(x, y, 'smoke');
+  }
+
+  destroyBombPreview(removeListeners = false) {
+    const preview = this.bombPreview;
+    if (preview) {
+      [preview.fuse, preview.spark, preview.sparkGlow, ...preview.particles].forEach((object) => {
+        if (object?.active) {
+          this.tweens.killTweensOf(object);
+          object.destroy();
+        }
+      });
+    }
+    this.bombPreview = null;
+    if (removeListeners && this.input) {
+      this.input.off('pointermove', this.bombPointerMoveHandler);
+      this.input.off('pointerdown', this.bombPointerDownHandler);
+    }
+  }
+
+  confirmBombTarget(row, col) {
+    const preview = this.bombPreview;
+    if (!preview || preview.row !== row || preview.col !== col) this.showBombPreview(row, col);
+    this.animating = true;
+    const active = this.bombPreview;
+    if (!active) return;
+    const finish = { progress: active.elapsed / 1500 };
+    this.tweens.add({
+      targets: finish,
+      progress: 1,
+      duration: 180,
+      ease: 'Quad.easeIn',
+      onUpdate: () => {
+        if (!this.bombPreview) return;
+        const scaled = finish.progress * active.path.length;
+        const index = Math.min(active.path.length - 1, Math.floor(scaled));
+        const next = (index + 1) % active.path.length;
+        const t = scaled - Math.floor(scaled);
+        const x = Phaser.Math.Linear(active.path[index].x, active.path[next].x, t);
+        const y = Phaser.Math.Linear(active.path[index].y, active.path[next].y, t);
+        active.spark.setPosition(x, y).setScale(1 + finish.progress);
+        active.sparkGlow.setPosition(x, y).setScale(1.2 + finish.progress);
+        if (Math.random() < 0.55) this.spawnFuseParticle(x, y, Math.random() < 0.25 ? 'smoke' : 'fire');
+      },
+      onComplete: () => {
+        this.destroyBombPreview();
+        this.animating = false;
+        this.useBombAt(row, col);
+      },
+    });
+  }
+
+  showRotatorPreview(row, col) {
+    if (model.activeBooster !== 'rotator' || this.animating) return;
+    const valid = row > 0 && col > 0 && row < model.grid.length - 1 && col < model.grid[0].length - 1;
+    if (!valid) {
+      this.destroyRotatorPreview();
+      return;
+    }
+    if (this.rotatorPreview?.row === row && this.rotatorPreview?.col === col) return;
+    this.destroyRotatorPreview(true);
+
+    const ring = [
+      [-1, -1, '→', 1, 0], [-1, 0, '→', 1, 0], [-1, 1, '↓', 0, 1], [0, 1, '↓', 0, 1],
+      [1, 1, '←', -1, 0], [1, 0, '←', -1, 0], [1, -1, '↑', 0, -1], [0, -1, '↑', 0, -1],
+    ];
+    const arrows = ring.map(([dr, dc, glyph, moveX, moveY]) => {
+      const point = this.gridToPixel(row + dr, col + dc);
+      const arrow = this.add.text(point.x, point.y, glyph, {
+        fontFamily: 'Arial, sans-serif', fontSize: `${Math.max(24, Math.round(this.cell * 0.48))}px`,
+        fontStyle: 'bold', color: '#d8d8d8', stroke: '#111111', strokeThickness: 5,
+      }).setOrigin(0.5).setDepth(210).setAlpha(0);
+      return { arrow, x: point.x, y: point.y, moveX, moveY };
+    });
+    const center = this.gridToPixel(row, col);
+    const centerX = this.add.text(center.x, center.y, 'X', {
+      fontFamily: 'Arial, sans-serif', fontSize: `${Math.max(25, Math.round(this.cell * 0.5))}px`,
+      fontStyle: 'bold', color: '#ffffff', stroke: '#111111', strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(211).setAlpha(0);
+    this.rotatorPreview = { row, col, arrows, centerX, timers: [], generation: Symbol('rotator') };
+    this.tweens.add({ targets: [centerX, ...arrows.map(({ arrow }) => arrow)], alpha: 0.82, duration: 125 });
+    this.scheduleRotatorWave(this.rotatorPreview);
+  }
+
+  scheduleRotatorWave(preview) {
+    if (this.rotatorPreview !== preview || model.activeBooster !== 'rotator') return;
+    preview.arrows.forEach(({ arrow, x, y, moveX, moveY }, index) => {
+      const timer = this.time.delayedCall(125 + index * 125, () => {
+        if (this.rotatorPreview !== preview) return;
+        arrow.setColor('#ffffff');
+        this.tweens.add({
+          targets: arrow,
+          x: x + moveX * 5,
+          y: y + moveY * 5,
+          scale: 1.15,
+          alpha: 1,
+          duration: 115,
+          yoyo: true,
+          ease: 'Sine.easeInOut',
+          onComplete: () => arrow.setColor('#d8d8d8'),
+        });
+      });
+      preview.timers.push(timer);
+    });
+    preview.timers.push(this.time.delayedCall(1250, () => this.scheduleRotatorWave(preview)));
+  }
+
+  destroyRotatorPreview(immediate = false) {
+    const preview = this.rotatorPreview;
+    if (!preview) return;
+    this.rotatorPreview = null;
+    preview.timers.forEach((timer) => timer.remove(false));
+    const indicators = [preview.centerX, ...preview.arrows.map(({ arrow }) => arrow)];
+    indicators.forEach((indicator) => this.tweens.killTweensOf(indicator));
+    if (immediate || !this.sys?.isActive()) {
+      indicators.forEach((indicator) => indicator.destroy());
+      return;
+    }
+    this.tweens.add({
+      targets: indicators,
+      alpha: 0,
+      duration: 125,
+      onComplete: () => indicators.forEach((indicator) => indicator.destroy()),
+    });
+  }
+
+  showCompressorPreview(forActivation = false) {
+    if (this.compressorPreview || (!forActivation && model.activeBooster !== 'compressor')) return;
+    const width = model.grid[0].length * this.cell;
+    const height = model.grid.length * this.cell;
+    const centerY = this.gridY + height / 2;
+    const panelWidth = Math.max(20, Math.min(30, this.cell * 0.38));
+    const panelHeight = Math.max(80, height - 8);
+    const createPanel = (x) => {
+      const panel = this.add.graphics().setPosition(x, centerY - panelHeight / 2).setDepth(215);
+      panel.fillStyle(0x24282b, 1);
+      panel.fillRoundedRect(-panelWidth / 2, 0, panelWidth, panelHeight, 3);
+      const stripeHeight = 13;
+      for (let y = 5 - panelWidth; y < panelHeight; y += stripeHeight * 2) {
+        const top = Math.max(5, y);
+        const bottom = Math.min(panelHeight - 5, y + stripeHeight);
+        if (bottom <= top) continue;
+        panel.fillStyle(0xf2c21b, 1);
+        panel.fillPoints([
+          { x: -panelWidth / 2 + 3, y: top },
+          { x: panelWidth / 2 - 3, y: Math.min(panelHeight - 5, top + panelWidth * 0.55) },
+          { x: panelWidth / 2 - 3, y: Math.min(panelHeight - 5, bottom + panelWidth * 0.55) },
+          { x: -panelWidth / 2 + 3, y: bottom },
+        ], true);
+      }
+      panel.lineStyle(3, 0x0c0e10, 1);
+      panel.strokeRoundedRect(-panelWidth / 2, 0, panelWidth, panelHeight, 3);
+      return panel;
+    };
+    const leftTarget = this.gridX + panelWidth / 2 - 2;
+    const rightTarget = this.gridX + width - panelWidth / 2 + 2;
+    const left = createPanel(forActivation ? leftTarget : -panelWidth);
+    const right = createPanel(forActivation ? rightTarget : this.scale.width + panelWidth);
+    this.compressorPreview = { left, right, panelWidth };
+    if (!forActivation) {
+      this.tweens.add({ targets: left, x: leftTarget, duration: 250, ease: 'Cubic.easeOut' });
+      this.tweens.add({ targets: right, x: rightTarget, duration: 250, ease: 'Cubic.easeOut' });
+    }
+  }
+
+  destroyCompressorPreview(immediate = false, onComplete = null) {
+    const preview = this.compressorPreview;
+    if (!preview) return;
+    this.compressorPreview = null;
+    const panels = [preview.left, preview.right];
+    panels.forEach((panel) => this.tweens.killTweensOf(panel));
+    if (immediate || !this.sys?.isActive()) {
+      panels.forEach((panel) => panel.destroy());
+      if (onComplete) onComplete();
+      return;
+    }
+    let remaining = panels.length;
+    const finish = (panel) => {
+      panel.destroy();
+      remaining -= 1;
+      if (remaining === 0 && onComplete) onComplete();
+    };
+    this.tweens.add({ targets: preview.left, x: -preview.panelWidth, alpha: 0, duration: 400, ease: 'Cubic.easeIn', onComplete: () => finish(preview.left) });
+    this.tweens.add({ targets: preview.right, x: this.scale.width + preview.panelWidth, alpha: 0, duration: 400, ease: 'Cubic.easeIn', onComplete: () => finish(preview.right) });
   }
 
   handlePointer(pointer) {
     if (this.animating || model.gameOver || !model.gameplayActive) return;
 
-    const cols = model.grid[0].length;
-    const rows = model.grid.length;
-    const col = Math.floor((pointer.x - this.gridX) / this.cell);
-    const row = Math.floor((pointer.y - this.gridY) / this.cell);
-
-    if (col < 0 || row < 0 || col >= cols || row >= rows) return;
+    const cell = this.pointerToGrid(pointer);
+    if (!cell) return;
+    const { row, col } = cell;
 
     if (model.activeBooster === 'bomb') {
-      this.useBombAt(row, col);
-      return;
-    }
-    if (model.activeBooster === 'mix') {
-      this.useMix();
+      const isTouch = this.isTouchPointer(pointer);
+      if (isTouch && (!this.bombPreview || this.bombPreview.row !== row || this.bombPreview.col !== col || !this.bombPreview.touchSelected)) {
+        this.showBombPreview(row, col, true);
+        return;
+      }
+      this.confirmBombTarget(row, col);
       return;
     }
     if (model.activeBooster === 'fractions') {
@@ -1678,10 +2383,6 @@ class BoardScene extends Phaser.Scene {
     }
     if (model.activeBooster === 'minusOneColor') {
       this.useMinusOneColor();
-      return;
-    }
-    if (model.activeBooster === 'plusFiveShots') {
-      this.usePlusFiveShots();
       return;
     }
     if (model.activeBooster === 'rotator') {
@@ -1708,6 +2409,10 @@ class BoardScene extends Phaser.Scene {
       } else {
         model.gameOver = true;
         model.gameplayActive = false;
+        this.destroyBombPreview();
+        this.destroyFractionsEffects();
+        this.destroyRotatorPreview();
+        this.destroyCompressorPreview();
         closeFailModal();
         ui.stateLabel.textContent = 'Статус: победа';
         openWinModal();
@@ -1738,6 +2443,9 @@ class BoardScene extends Phaser.Scene {
     this.animating = true;
     consumeBooster('bomb');
     model.activeBooster = null;
+    stopEffectSound('fuse');
+    this.destroyBombPreview();
+    playEffectSound('bomb');
     savePersistentState();
     renderBoosterInventory();
 
@@ -1761,18 +2469,16 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
 
-    const earned = pointsForRemovedBlocks(removed.length);
-    model.score += earned;
-
     const gravityMoves = applyGravityAndGetMoves();
     this.completeAction(removedKeys, gravityMoves);
   }
 
   useMix() {
     const mixCount = boosterCount('mix');
-    if (mixCount <= 0) return;
+    if (mixCount <= 0 || this.animating || model.gameOver || !model.gameplayActive) return;
 
     this.animating = true;
+    playSwooshSound();
     consumeBooster('mix');
     model.activeBooster = null;
     renderBoosterInventory();
@@ -1806,45 +2512,102 @@ class BoardScene extends Phaser.Scene {
   }
 
 
-  animateFractionsSplit(row, col, selectedRegions, color, done) {
-    const origin = this.gridToPixel(row, col);
-    const regionAnchors = selectedRegions
-      .map((region) => region.ordinary[0] || region.twos[0])
-      .filter(Boolean)
-      .map(([r, c]) => this.gridToPixel(r, c));
-    const fallbackOffsets = [
-      { x: -this.cell, y: -this.cell * 0.7 },
-      { x: this.cell, y: -this.cell * 0.7 },
-      { x: 0, y: this.cell },
-    ];
-    const destinations = Array.from({ length: 3 }, (_, idx) => {
-      const anchor = regionAnchors[idx] || regionAnchors[regionAnchors.length - 1] || origin;
-      if (anchor === origin || (anchor.x === origin.x && anchor.y === origin.y)) {
-        const offset = fallbackOffsets[idx];
-        return { x: origin.x + offset.x, y: origin.y + offset.y };
-      }
-      return anchor;
-    });
+  trackFractionsEffect(object) {
+    this.fractionsEffects.add(object);
+    return object;
+  }
 
+  discardFractionsEffect(object) {
+    this.fractionsEffects.delete(object);
+    if (object?.active) object.destroy();
+  }
+
+  destroyFractionsEffects() {
+    this.fractionsEffects.forEach((object) => {
+      this.tweens.killTweensOf(object);
+      if (object?.active) object.destroy();
+    });
+    this.fractionsEffects.clear();
+  }
+
+  playFractionsImpact(x, y) {
+    const impact = this.trackFractionsEffect(
+      this.add.circle(x, y, 8, 0xffffff, 0.9)
+        .setStrokeStyle(3, 0xffb21a)
+        .setDepth(RENDER_DEPTH.projectileImpact)
+    );
+    this.tweens.add({
+      targets: impact,
+      scale: 2.8,
+      alpha: 0,
+      duration: 170,
+      ease: 'Quad.easeOut',
+      onComplete: () => this.discardFractionsEffect(impact),
+    });
+  }
+
+  animateFractionsProjectiles(selectedRegions, color, onRegionImpact, done) {
+    const origin = { x: this.shooterX, y: this.shooterY };
+    const assignments = Array.from({ length: 3 }, (_, index) => ({
+      region: selectedRegions[index] || selectedRegions[index % selectedRegions.length],
+      regionIndex: index < selectedRegions.length ? index : index % selectedRegions.length,
+    }));
     let finished = 0;
-    destinations.forEach((target, idx) => {
-      const ball = this.add.circle(origin.x, origin.y, 13, COLOR_MAP[color] || 0xffffff)
-        .setStrokeStyle(2, 0xffffff)
-        .setDepth(100);
+
+    assignments.forEach(({ region, regionIndex }, projectileIndex) => {
+      const [targetRow, targetCol] = region.ordinary[0] || region.twos[0];
+      const target = this.gridToPixel(targetRow, targetCol);
+      const dx = target.x - origin.x;
+      const dy = target.y - origin.y;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const curve = (projectileIndex - 1) * Math.min(55, this.cell * 0.65);
+      const control = {
+        x: (origin.x + target.x) / 2 - (dy / length) * curve,
+        y: (origin.y + target.y) / 2 + (dx / length) * curve,
+      };
+      const ball = this.trackFractionsEffect(
+        this.add.circle(origin.x, origin.y, 13, COLOR_MAP[color] || 0xffffff)
+          .setStrokeStyle(2, 0xffffff)
+          .setDepth(RENDER_DEPTH.projectile)
+      );
+      const flight = this.trackFractionsEffect({ progress: 0 });
+      let lastTrailProgress = -1;
       this.tweens.add({
-        targets: ball,
-        x: target.x,
-        y: target.y,
-        scaleX: 1.25,
-        scaleY: 1.25,
-        alpha: 0.25,
-        delay: idx * 70,
-        duration: 360,
-        ease: 'Cubic.easeOut',
+        targets: flight,
+        progress: 1,
+        delay: projectileIndex * 45,
+        duration: 430,
+        ease: 'Sine.easeInOut',
+        onUpdate: () => {
+          const t = flight.progress;
+          const inverse = 1 - t;
+          ball.setPosition(
+            inverse * inverse * origin.x + 2 * inverse * t * control.x + t * t * target.x,
+            inverse * inverse * origin.y + 2 * inverse * t * control.y + t * t * target.y
+          );
+          if (t - lastTrailProgress >= 0.08) {
+            lastTrailProgress = t;
+            const trail = this.trackFractionsEffect(
+              this.add.circle(ball.x, ball.y, 5, COLOR_MAP[color] || 0xffffff, 0.55)
+                .setDepth(RENDER_DEPTH.projectileTrail)
+            );
+            this.tweens.add({
+              targets: trail,
+              alpha: 0,
+              scale: 0.25,
+              duration: 180,
+              onComplete: () => this.discardFractionsEffect(trail),
+            });
+          }
+        },
         onComplete: () => {
-          ball.destroy();
+          this.fractionsEffects.delete(flight);
+          this.discardFractionsEffect(ball);
+          if (!model.gameplayActive || model.gameOver) return;
+          this.playFractionsImpact(target.x, target.y);
+          onRegionImpact(region, regionIndex);
           finished += 1;
-          if (finished === destinations.length) done();
+          if (finished === assignments.length) done();
         },
       });
     });
@@ -1864,6 +2627,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
+    playEffectSound('fractions');
     consumeBooster('fractions');
     model.activeBooster = null;
     renderBoosterInventory();
@@ -1893,29 +2657,33 @@ class BoardScene extends Phaser.Scene {
       others.splice(idx, 1);
     }
 
-    const allOrdinary = [];
-    const allTwos = [];
-    selectedRegions.forEach((region) => {
-      allOrdinary.push(...region.ordinary);
-      allTwos.push(...region.twos);
-    });
-
-    const uniqueOrdinary = [...new Set(allOrdinary.map(([r, c]) => `${r},${c}`))].map((k) =>
-      k.split(',').map(Number)
-    );
-
-    this.animateFractionsSplit(row, col, selectedRegions, targetColor, () => {
-      repaintTwoColorCells(allTwos, targetColor);
-
-      const removedKeys = uniqueOrdinary.map(([r, c]) => this.key(r, c));
-      uniqueOrdinary.forEach(([r, c]) => {
-        model.grid[r][c] = null;
+    const resolvedRegions = new Set();
+    const removedKeys = [];
+    this.animateFractionsProjectiles(selectedRegions, targetColor, (region, regionIndex) => {
+      if (resolvedRegions.has(regionIndex)) return;
+      resolvedRegions.add(regionIndex);
+      repaintTwoColorCells(region.twos, targetColor);
+      region.twos.forEach(([r, c]) => {
+        const block = this.blocks.get(this.key(r, c));
+        if (block) block.setFillStyle(COLOR_MAP[visibleColor(model.grid[r][c])] || 0xffffff);
       });
-
-      const earned = pointsForRemovedBlocks(uniqueOrdinary.length);
-      model.score += earned;
-
-      if (uniqueOrdinary.length === 0) {
+      region.ordinary.forEach(([r, c]) => {
+        const key = this.key(r, c);
+        removedKeys.push(key);
+        model.grid[r][c] = null;
+        const block = this.blocks.get(key);
+        if (!block) return;
+        this.blocks.delete(key);
+        this.tweens.add({
+          targets: block,
+          alpha: 0,
+          scale: 0.55,
+          duration: 140,
+          onComplete: () => block.destroy(),
+        });
+      });
+    }, () => {
+      if (removedKeys.length === 0) {
         this.renderGridStatic();
         this.finishResolvedBoardAction();
         this.animating = false;
@@ -1940,32 +2708,81 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('plusTenSeconds');
     model.activeBooster = null;
     model.timerLeft += 10;
+    playEffectSound('plusTenSeconds');
     savePersistentState();
     renderBoosterInventory();
     refreshUI();
+    showResourceBonus(ui.gameTimerTopLabel, '+10');
   }
 
   useCompressor() {
     const count = boosterCount('compressor');
-    if (count <= 0) return;
+    if (count <= 0 || this.animating || model.gameOver || !model.gameplayActive) return;
     const cols = model.grid[0].length;
-
-    model.grid = model.grid.map((row) => {
-      const blocks = row.filter(Boolean);
+    const moves = [];
+    const nextGrid = model.grid.map((row, rowIndex) => {
+      const blocks = row.map((cell, col) => ({ cell, col })).filter(({ cell }) => Boolean(cell));
       const next = Array(cols).fill(null);
       const start = Math.floor((cols - blocks.length) / 2);
-      blocks.forEach((cell, index) => {
-        next[start + index] = cell;
+      blocks.forEach(({ cell, col }, index) => {
+        const targetCol = start + index;
+        next[targetCol] = cell;
+        if (targetCol !== col) moves.push({ row: rowIndex, fromCol: col, toCol: targetCol });
       });
       return next;
     });
 
+    this.animating = true;
+    model.grid = nextGrid;
     consumeBooster('compressor');
     model.activeBooster = null;
     savePersistentState();
-    this.renderGridStatic();
     renderBoosterInventory();
-    this.finishResolvedBoardAction();
+    this.showCompressorPreview(true);
+    const preview = this.compressorPreview;
+    if (preview) {
+      const panelTravel = this.cell * 0.5;
+      this.tweens.add({ targets: preview.left, x: preview.left.x + panelTravel, duration: 550, ease: 'Cubic.easeIn' });
+      this.tweens.add({ targets: preview.right, x: preview.right.x - panelTravel, duration: 550, ease: 'Cubic.easeIn' });
+    }
+
+    const finishCompression = () => {
+      if (!model.gameplayActive || model.gameOver) return;
+      this.time.delayedCall(125, () => {
+        if (!model.gameplayActive || model.gameOver) return;
+        this.renderGridStatic();
+        this.destroyCompressorPreview(false, () => {
+          this.finishResolvedBoardAction();
+          this.animating = false;
+          refreshUI();
+        });
+      });
+    };
+    if (moves.length === 0) {
+      this.time.delayedCall(550, finishCompression);
+      return;
+    }
+    playSwooshSound();
+    let finished = 0;
+    moves.forEach(({ row, fromCol, toCol }) => {
+      const block = this.blocks.get(this.key(row, fromCol));
+      if (!block) {
+        finished += 1;
+        if (finished === moves.length) finishCompression();
+        return;
+      }
+      const target = this.gridToPixel(row, toCol);
+      this.tweens.add({
+        targets: block,
+        x: target.x,
+        duration: 550,
+        ease: 'Cubic.easeIn',
+        onComplete: () => {
+          finished += 1;
+          if (finished === moves.length) finishCompression();
+        },
+      });
+    });
   }
 
   useRotator(row, col) {
@@ -1987,14 +2804,44 @@ class BoardScene extends Phaser.Scene {
     });
 
     this.animating = true;
+    playEffectSound('rotator');
+    this.destroyRotatorPreview();
     consumeBooster('rotator');
     model.activeBooster = null;
     savePersistentState();
     const gravityMoves = applyGravityAndGetMoves();
-    this.animateRemovalAndFall([], gravityMoves, () => {
-      renderBoosterInventory();
-      this.finishResolvedBoardAction();
-      this.animating = false;
+    const ringSprites = ring.map(([r, c]) => this.blocks.get(this.key(r, c)) || null);
+    let completed = 0;
+    const finishRotation = () => {
+      completed += 1;
+      if (completed !== ring.length) return;
+      ring.forEach(([r, c]) => this.blocks.delete(this.key(r, c)));
+      ringSprites.forEach((block, index) => {
+        if (!block) return;
+        const [targetRow, targetCol] = ring[(index + 1) % ring.length];
+        this.blocks.set(this.key(targetRow, targetCol), block);
+      });
+      this.animateRemovalAndFall([], gravityMoves, () => {
+        renderBoosterInventory();
+        this.finishResolvedBoardAction();
+        this.animating = false;
+      });
+    };
+    ringSprites.forEach((block, index) => {
+      if (!block) {
+        finishRotation();
+        return;
+      }
+      const [targetRow, targetCol] = ring[(index + 1) % ring.length];
+      const target = this.gridToPixel(targetRow, targetCol);
+      this.tweens.add({
+        targets: block,
+        x: target.x,
+        y: target.y,
+        duration: 360,
+        ease: 'Sine.easeInOut',
+        onComplete: finishRotation,
+      });
     });
   }
 
@@ -2022,6 +2869,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
+    playEffectSound('pop');
     consumeBooster('minusOneColor');
     model.activeBooster = null;
     renderBoosterInventory();
@@ -2030,9 +2878,6 @@ class BoardScene extends Phaser.Scene {
     removed.forEach(([r, c]) => {
       model.grid[r][c] = null;
     });
-
-    const earned = pointsForRemovedBlocks(removed.length);
-    model.score += earned;
 
     ui.stateLabel.textContent = `Статус: -1 color удалил ${chosenColor}`;
     const gravityMoves = applyGravityAndGetMoves();
@@ -2056,9 +2901,11 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('plusFiveShots');
     model.activeBooster = null;
     model.shotsLeft += 5;
+    playEffectSound('plusFiveShots');
     savePersistentState();
     renderBoosterInventory();
     refreshUI();
+    showResourceBonus(ui.gameMovesLabel, '+5');
     this.animating = false;
   }
 
@@ -2085,7 +2932,7 @@ class BoardScene extends Phaser.Scene {
 
   shootToCell(row, col) {
     const targetCode = model.grid[row][col];
-    if (!targetCode || targetCode === 'U') {
+    if (!targetCode) {
       if (!model.activeBooster) {
         if (Number.isFinite(model.shotsLeft)) {
           model.shotsLeft -= 1;
@@ -2101,6 +2948,10 @@ class BoardScene extends Phaser.Scene {
       }
       return;
     }
+    if (targetCode === 'U') {
+      if (!model.activeBooster) this.shootAtUnbreakable(row, col);
+      return;
+    }
 
     if (model.activeBooster === 'rainbow') {
       const count = boosterCount('rainbow');
@@ -2108,6 +2959,7 @@ class BoardScene extends Phaser.Scene {
         consumeBooster('rainbow');
         model.activeBooster = null;
         model.rainbowNextShot = true;
+        this.syncRainbowBallVisual();
         savePersistentState();
         renderBoosterInventory();
       }
@@ -2122,7 +2974,12 @@ class BoardScene extends Phaser.Scene {
       if (model.shotsLeft < 0) model.shotsLeft = 0;
     }
 
-    const projectile = this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor]).setStrokeStyle(2, 0xffffff);
+    playShotSound();
+    const projectile = this.pendingShotUsedBooster
+      ? this.createRainbowBall(this.shooterX, this.shooterY, 14, RENDER_DEPTH.projectile)
+      : this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[effectiveShotColor])
+        .setStrokeStyle(2, 0xffffff)
+        .setDepth(RENDER_DEPTH.projectile);
     const target = this.gridToPixel(row, col);
 
     this.animating = true;
@@ -2133,15 +2990,80 @@ class BoardScene extends Phaser.Scene {
       duration: 260,
       ease: 'Sine.easeInOut',
       onComplete: () => {
-        projectile.destroy();
-        this.playImpact(target.x, target.y, () => this.resolveHit(row, col));
+        const isMismatch = visibleColor(model.grid[row]?.[col]) !== effectiveShotColor;
+        if (isMismatch) {
+          this.playBallBounce(projectile, () => this.finishIneffectiveShot(!this.pendingShotUsedBooster));
+        } else {
+          projectile.destroy();
+          this.playImpact(target.x, target.y, () => this.resolveHit(row, col));
+        }
       },
     });
 
     refreshUI();
   }
 
+  playBallBounce(projectile, done) {
+    playEffectSound('bounce');
+    projectile.setDepth(RENDER_DEPTH.projectile);
+    const direction = Phaser.Math.Between(0, 1) === 0 ? -1 : 1;
+    const startX = projectile.x;
+    const startY = projectile.y;
+    const horizontalDistance = direction * Math.max(50, Math.min(110, this.cell * 1.4));
+    const fallDistance = Math.max(60, this.scale.height - startY + projectile.displayHeight + 12);
+    const flight = { progress: 0 };
+    this.tweens.add({
+      targets: flight,
+      progress: 1,
+      duration: 500,
+      ease: 'Linear',
+      onUpdate: () => {
+        const progress = flight.progress;
+        projectile.x = startX + horizontalDistance * progress;
+        projectile.y = startY + fallDistance * progress * progress;
+      },
+      onComplete: () => {
+        projectile.destroy();
+        done();
+      },
+    });
+  }
+
+  finishIneffectiveShot(shouldRecordOutcome = true) {
+    if (shouldRecordOutcome) recordNormalShotOutcome(0);
+    pickNextShotColor();
+    this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+    model.rainbowNextShot = false;
+    refreshUI();
+    this.animating = false;
+    if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
+      failLevel('Статус: поражение (кончились выстрелы)');
+    }
+  }
+
+  shootAtUnbreakable(row, col) {
+    if (Number.isFinite(model.shotsLeft)) {
+      model.shotsLeft = Math.max(0, model.shotsLeft - 1);
+    }
+    playShotSound();
+    const projectile = this.add.circle(this.shooterX, this.shooterY, 14, COLOR_MAP[model.selectedShotColor])
+      .setStrokeStyle(2, 0xffffff)
+      .setDepth(RENDER_DEPTH.projectile);
+    const target = this.gridToPixel(row, col);
+    this.animating = true;
+    this.tweens.add({
+      targets: projectile,
+      x: target.x,
+      y: target.y,
+      duration: 260,
+      ease: 'Sine.easeInOut',
+      onComplete: () => this.playBallBounce(projectile, () => this.finishIneffectiveShot()),
+    });
+    refreshUI();
+  }
+
   playImpact(x, y, done) {
+    playEffectSound('pop');
     const flash = this.add.circle(x, y, 10, 0xffffff, 0.9);
     this.tweens.add({
       targets: flash,
@@ -2165,15 +3087,7 @@ class BoardScene extends Phaser.Scene {
     const targetCode = model.grid[row][col];
     const shotColor = this.pendingShotColor || model.selectedShotColor;
     if (visibleColor(targetCode) !== shotColor) {
-      if (!this.pendingShotUsedBooster) recordNormalShotOutcome(0);
-      pickNextShotColor();
-      this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
-      model.rainbowNextShot = false;
-      refreshUI();
-      this.animating = false;
-      if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
-        failLevel('Статус: поражение (кончились выстрелы)');
-      }
+      this.finishIneffectiveShot(!this.pendingShotUsedBooster);
       return;
     }
 
@@ -2201,9 +3115,6 @@ class BoardScene extends Phaser.Scene {
       model.grid[r][c] = null;
     });
     repaintTwoColorCells(twoColorGroup, shotColor);
-    const earned = pointsForRemovedBlocks(ordinaryGroup.length);
-    model.score += earned;
-
     if (ordinaryGroup.length === 0) {
       // Кластер состоял только из 2Color: поле не падает, просто перерисовываем.
       this.renderGridStatic();
@@ -2246,6 +3157,7 @@ class BoardScene extends Phaser.Scene {
       return;
     }
 
+    playSwooshSound();
     let finished = 0;
     moves.forEach((move) => {
       const fromKey = this.key(move.from[0], move.from[1]);
@@ -2281,6 +3193,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   update(_time, delta) {
+    this.updateBombPreview(delta);
     if (model.gameOver || !model.gameplayActive) return;
 
     this.flashAccumulator += delta;
@@ -2312,22 +3225,84 @@ class BoardScene extends Phaser.Scene {
 
 
 
+function ratingForRemainingResource(remaining) {
+  const value = Math.max(0, Math.floor(remaining));
+  if (value > 3) return 3;
+  if (value >= 2) return 2;
+  return 1;
+}
+
+function calculateCurrentLevelStars() {
+  const ratings = [];
+  if (Number.isFinite(model.shotsLeft)) ratings.push(ratingForRemainingResource(model.shotsLeft));
+  if (Number.isFinite(model.timerLeft)) ratings.push(ratingForRemainingResource(model.timerLeft));
+  return ratings.length ? Math.min(...ratings) : 3;
+}
+
+function starLabel(stars) {
+  const count = Math.max(0, Math.min(3, Number(stars) || 0));
+  return `${'★'.repeat(count)}${'☆'.repeat(3 - count)}`;
+}
+
+function recordBestLevelStars(levelSet, levelIndex, stars) {
+  const results = model.levelStars[levelSet];
+  const levelKey = String(levelIndex + 1);
+  results[levelKey] = Math.max(Number(results[levelKey] || 0), stars);
+  return results[levelKey];
+}
+
+function gridsForReward(level) {
+  if (Array.isArray(level?.layers) && level.layers.length) return level.layers;
+  if (Number.isInteger(level?.layers) && level.layers > 0) {
+    const numberedLayers = Array.from({ length: level.layers }, (_, index) => level[`layer${index + 1}`])
+      .filter(Array.isArray);
+    if (numberedLayers.length) return numberedLayers;
+  }
+  return Array.isArray(level?.grid) ? [level.grid] : [];
+}
+
+function breakableBlockCountForLevel(level) {
+  return gridsForReward(level).reduce((total, grid) => total + grid.reduce(
+    (gridTotal, row) => gridTotal + row.filter((cell) => Boolean(cell) && cell !== 'U').length,
+    0
+  ), 0);
+}
+
+function rewardForLevelStars(level, stars) {
+  const rating = Math.max(0, Math.min(3, Number(stars) || 0));
+  if (rating === 0) return 0;
+  const baseReward = 40 + Math.ceil(breakableBlockCountForLevel(level) / 4);
+  const multiplier = { 1: 1, 2: 1.25, 3: 1.5 }[rating];
+  return Math.round(baseReward * multiplier);
+}
+
 function openWinModal() {
   if (!ui.winModal) return;
+  playEffectSound('win', false);
+  setSoundToggleHidden(true);
   const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
-  const moveBonus = movesLeft * 10;
-  const totalAward = model.score + moveBonus;
+  const stars = calculateCurrentLevelStars();
+  let totalAward = model.winReward;
   if (!model.winAwarded) {
+    totalAward = rewardForLevelStars(model.currentLevel, stars);
+    model.winReward = totalAward;
     model.totalScore += totalAward;
     if (model.activeLevelSet === 'main') {
       model.highestUnlockedLevel = Math.max(model.highestUnlockedLevel, Math.min(model.currentLevelIndex + 2, model.mainLevels.length));
+    } else {
+      model.highestUnlockedMasterLevel = Math.max(
+        model.highestUnlockedMasterLevel,
+        Math.min(model.currentLevelIndex + 2, model.masterLevels.length)
+      );
     }
+    recordBestLevelStars(model.activeLevelSet, model.currentLevelIndex, stars);
     model.winAwarded = true;
     savePersistentState();
   }
   if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
   if (ui.winMovesLabel) ui.winMovesLabel.textContent = `Moves Left: ${movesLeft}`;
   if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
+  if (ui.winStars) ui.winStars.innerHTML = starLabel(stars).split('').map((star) => `<span>${star}</span>`).join('');
   renderLevelsScreen();
   refreshUI();
   ui.winModal.classList.add('open');
@@ -2338,6 +3313,7 @@ function closeWinModal() {
   if (!ui.winModal) return;
   ui.winModal.classList.remove('open');
   ui.winModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function goToNextLevel() {
@@ -2348,6 +3324,8 @@ function goToNextLevel() {
 
 function openFailModal() {
   if (!ui.failModal) return;
+  playEffectSound('loose', false);
+  setSoundToggleHidden(true);
   ui.failModal.classList.add('open');
   ui.failModal.setAttribute('aria-hidden', 'false');
 }
@@ -2356,12 +3334,22 @@ function closeFailModal() {
   if (!ui.failModal) return;
   ui.failModal.classList.remove('open');
   ui.failModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function failLevel(message = 'Статус: поражение') {
   if (!model.gameplayActive) return;
   model.gameplayActive = false;
   model.gameOver = true;
+  model.activeBooster = null;
+  stopEffectSound('fuse');
+  if (boardScene) {
+    boardScene.destroyBombPreview();
+    boardScene.destroyFractionsEffects();
+    boardScene.destroyRotatorPreview();
+    boardScene.destroyCompressorPreview();
+    boardScene.syncRainbowBallVisual();
+  }
   ui.stateLabel.textContent = message;
   refreshUI();
   openFailModal();
@@ -2431,7 +3419,9 @@ function renderLevelsScreen() {
   const pageCount = Math.max(1, Math.ceil(totalSlots / LEVELS_PER_PAGE));
   model.levelsPage = Math.min(Math.max(0, model.levelsPage || 0), pageCount - 1);
   const selectedLevel = Math.min(model.currentLevelIndex + 1, Math.max(1, totalSlots));
-  const unlockedThrough = isMaster ? model.masterLevels.length : Math.min(model.highestUnlockedLevel, model.mainLevels.length || 0);
+  const unlockedThrough = isMaster
+    ? Math.min(model.highestUnlockedMasterLevel, model.masterLevels.length || 0)
+    : Math.min(model.highestUnlockedLevel, model.mainLevels.length || 0);
   const pageStart = model.levelsPage * LEVELS_PER_PAGE + 1;
   const pageEnd = Math.min(totalSlots, pageStart + LEVELS_PER_PAGE - 1);
 
@@ -2464,7 +3454,7 @@ function renderLevelsScreen() {
     const meta = document.createElement('span');
     if (isUnlocked) {
       meta.className = 'level-stars';
-      meta.textContent = '★★★';
+      meta.textContent = starLabel(model.levelStars[model.activeLevelSet]?.[String(levelNumber)] || 0);
     } else {
       meta.className = 'level-lock';
       meta.textContent = '🔒';
@@ -2499,6 +3489,15 @@ function initPhaser(rows, cols) {
   });
 }
 
+function scheduleBoardResize() {
+  if (!phaserGame || !model.grid.length || !model.grid[0]?.length) return;
+  clearTimeout(boardResizeTimer);
+  boardResizeTimer = setTimeout(() => {
+    if (!model.grid.length || !model.grid[0]?.length) return;
+    initPhaser(model.grid.length, model.grid[0].length);
+  }, 120);
+}
+
 function startLevelByIndex(index) {
   const level = model.levels[index];
   model.currentLevelIndex = index;
@@ -2515,6 +3514,9 @@ function startLevelByIndex(index) {
   model.gameplayActive = true;
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
+  model.winReward = 0;
+  resourceWarnings.tenSecondsPlayed = false;
+  resourceWarnings.fiveShotsPlayed = false;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -2531,6 +3533,9 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
+  if (!IS_BUILDER_PAGE) requestBackgroundMusic();
+  installButtonClickSounds();
+  window.addEventListener?.('resize', scheduleBoardResize);
   try {
     model.mainLevels = await loadBuiltinLevelsFromFiles();
   } catch {
@@ -2558,7 +3563,7 @@ async function initApp() {
   if (ui.levelsShopBtn) ui.levelsShopBtn.onclick = () => openShop();
   if (ui.levelsPlusBtn) ui.levelsPlusBtn.onclick = () => openShop();
   if (ui.gameHomeBtn) ui.gameHomeBtn.onclick = () => showLevelsScreen();
-  if (ui.gamePlusBtn) ui.gamePlusBtn.onclick = () => openShop();
+  if (ui.soundToggle) ui.soundToggle.onclick = () => applySoundPreference(!soundEnabled);
   if (ui.failHomeBtn) ui.failHomeBtn.onclick = () => { closeFailModal(); showLevelsScreen(); };
   if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
   if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
