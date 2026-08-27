@@ -15,8 +15,6 @@ const RENDER_DEPTH = {
   projectileImpact: 301,
 };
 
-const BOARD_VERTICAL_RESERVE = 174;
-
 const BASE_COLORS = ['R', 'G', 'B'];
 const ADDITIONAL_COLORS = ['Y', 'P', 'O'];
 const COMPLICATION_RATIOS = {
@@ -1698,14 +1696,23 @@ function boardLayoutMetrics(rows, cols) {
     const bottomMargin = 12;
     const viewportBottomClearance = sideBySide ? 12 : 76;
     const availableWidth = Math.max(1, gameplayColumnWidth - horizontalChrome);
-    const maxBoardHeight = Math.max(
+    const availablePlayHeight = Math.max(
       1,
       viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - viewportBottomClearance - verticalChrome
     );
-    const fitByWidth = Math.floor(availableWidth / cols);
-    const fitByHeight = Math.floor((maxBoardHeight - BOARD_VERTICAL_RESERVE) / rows);
-    const cell = Math.max(4, Math.min(140, fitByWidth, fitByHeight));
-    const launcherRadius = Math.max(12, Math.min(24, cell * 0.22));
+    const fixedVerticalSpace = gridTop + shooterGap + bottomMargin;
+    let cell = Math.max(4, Math.floor(Math.min(
+      availableWidth / cols,
+      (availablePlayHeight - fixedVerticalSpace - 24) / rows,
+      140
+    )));
+    let launcherRadius = Math.max(12, Math.min(24, cell * 0.22));
+    cell = Math.max(4, Math.floor(Math.min(
+      availableWidth / cols,
+      (availablePlayHeight - fixedVerticalSpace - launcherRadius * 2) / rows,
+      140
+    )));
+    launcherRadius = Math.max(12, Math.min(24, cell * 0.22));
     return {
       cell,
       width: cols * cell + 24,
@@ -1720,7 +1727,7 @@ function boardLayoutMetrics(rows, cols) {
   const maxBoardWidth = Math.max(180, availableBuilderWidth - 4);
   const maxBoardHeight = Math.max(220, viewportHeight - 250);
   const fitByWidth = Math.floor((maxBoardWidth - 24) / cols);
-  const fitByHeight = Math.floor((maxBoardHeight - BOARD_VERTICAL_RESERVE) / rows);
+  const fitByHeight = Math.floor((maxBoardHeight - 174) / rows);
   const cell = Math.max(12, Math.min(140, fitByWidth, fitByHeight));
 
   return {

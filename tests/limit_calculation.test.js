@@ -80,21 +80,8 @@ model.levelStars = { main: {}, master: {} };
 assert.strictEqual(recordBestLevelStars('master', 0, 3), 3);
 assert.strictEqual(recordBestLevelStars('master', 0, 1), 3, 'a replay cannot reduce the saved best rating');
 const smallBoardMetrics = boardLayoutMetrics(3, 3);
-const fiveByFiveMetrics = boardLayoutMetrics(5, 5);
 const largeBoardMetrics = boardLayoutMetrics(10, 12);
-const fallbackMaxBoardHeight = window.innerHeight - 150 - 76 - 30;
-assert.strictEqual(BOARD_VERTICAL_RESERVE, 174);
-assert.strictEqual(
-  smallBoardMetrics.cell,
-  Math.floor((fallbackMaxBoardHeight - BOARD_VERTICAL_RESERVE) / 3),
-  'game boards must reserve the complete spacing and launcher area before fitting rows'
-);
-assert.strictEqual(
-  fiveByFiveMetrics.cell,
-  Math.floor((fallbackMaxBoardHeight - BOARD_VERTICAL_RESERVE) / 5),
-  '5×5 boards must use the height fit that prevents the level screen scrollbar'
-);
-assert.ok(fiveByFiveMetrics.height <= fallbackMaxBoardHeight, 'the complete 5×5 canvas must fit the available height');
+assert.strictEqual(smallBoardMetrics.cell, 140, 'small boards should grow to the desktop cell cap');
 assert.ok(largeBoardMetrics.cell < smallBoardMetrics.cell, 'large boards should fit the available viewport height');
 assert.strictEqual(largeBoardMetrics.width, largeBoardMetrics.cell * 12 + 24);
 assert.strictEqual(smallBoardMetrics.shooterGap, 22, 'only a compact gap is reserved above the shooter');

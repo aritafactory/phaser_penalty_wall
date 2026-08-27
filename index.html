@@ -90,7 +90,7 @@
       .levels-dot { width:22px; height:22px; border-radius:50%; border:1px solid rgba(255,255,255,.18); background:#3d4658; cursor:pointer; box-shadow: inset 0 2px 3px rgba(255,255,255,.1), 0 4px 8px rgba(0,0,0,.45); }
       .levels-dot.active { background:#25baff; box-shadow:0 0 14px rgba(37,186,255,.72); }
 
-      .app { max-width: none; min-height: 100vh; margin: 0; padding: 26px 26px 32px; background:
+      .app { max-width:none; height:100vh; min-height:0; margin:0; padding:26px 26px 32px; background:
           radial-gradient(circle at 14% 18%, rgba(30, 89, 190, .20), transparent 18%),
           radial-gradient(circle at 89% 78%, rgba(110, 43, 180, .24), transparent 18%),
           radial-gradient(circle at 50% 8%, rgba(26, 146, 255, .10), transparent 28%),
@@ -222,7 +222,7 @@
         .level-card { height: 96px; gap:8px; }
         .level-number { font-size:34px; }
         .level-stars { font-size:18px; }
-        .app { padding: 12px 12px 24px; overflow:auto; }
+        .app { padding: 12px 12px 24px; overflow-y:hidden; }
         .game-topbar { margin:0 0 18px; padding:0; min-height:0; gap:10px; flex-wrap:wrap; }
         .home-btn { flex:0 0 58px; width:58px; height:58px; border-radius:12px; font-size:36px; }
         .settings-btn { flex:0 0 58px; width:58px; height:58px; border-radius:12px; font-size:32px; }
@@ -368,6 +368,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=18"></script>
+    <script type="module" src="game.js?v=19"></script>
   </body>
 </html>
