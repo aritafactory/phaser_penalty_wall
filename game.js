@@ -174,7 +174,6 @@ const GAME_AUDIO_VOLUME = 0.7;
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
-  silence: 'audio/silence.mp3',
   click: 'audio/click.mp3',
   shot: 'audio/shot.mp3',
   pop: 'audio/pop.mp3',
@@ -190,6 +189,8 @@ const AUDIO_PATHS = {
   plusFiveShots: 'audio/5shots.mp3',
   tenSecondsLeft: 'audio/10sec_left.mp3',
   fiveShotsLeft: 'audio/5shots_left.mp3',
+  win: 'audio/win.mp3',
+  loose: 'audio/loose.mp3',
 };
 
 const resourceWarnings = { tenSecondsPlayed: false, fiveShotsPlayed: false };
@@ -216,7 +217,7 @@ function ensureAudioElements() {
     swooshAudio.muted = !soundEnabled;
   }
   Object.entries(AUDIO_PATHS).forEach(([key, path]) => {
-    if (['background', 'silence', 'shot', 'swoosh'].includes(key) || effectAudio.has(key)) return;
+    if (['background', 'shot', 'swoosh'].includes(key) || effectAudio.has(key)) return;
     const audio = new Audio(path);
     audio.preload = 'auto';
     audio.volume = GAME_AUDIO_VOLUME;
@@ -258,18 +259,6 @@ function startBackgroundMusic() {
 function requestBackgroundMusic() {
   backgroundMusicRequested = true;
   startBackgroundMusic();
-}
-
-function startBackgroundMusicOnLoad() {
-  if (IS_BUILDER_PAGE) return;
-  backgroundMusicRequested = true;
-  const autoplayFrame = document.getElementById?.('autoplayUnlock');
-  if (!autoplayFrame) {
-    startBackgroundMusic();
-    return;
-  }
-  autoplayFrame.addEventListener('load', startBackgroundMusic, { once: true });
-  autoplayFrame.src = AUDIO_PATHS.silence;
 }
 
 function playShotSound() {
@@ -3289,6 +3278,7 @@ function rewardForLevelStars(level, stars) {
 
 function openWinModal() {
   if (!ui.winModal) return;
+  playEffectSound('win', false);
   setSoundToggleHidden(true);
   const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
   const stars = calculateCurrentLevelStars();
@@ -3334,6 +3324,7 @@ function goToNextLevel() {
 
 function openFailModal() {
   if (!ui.failModal) return;
+  playEffectSound('loose', false);
   setSoundToggleHidden(true);
   ui.failModal.classList.add('open');
   ui.failModal.setAttribute('aria-hidden', 'false');
@@ -3542,7 +3533,7 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
-  startBackgroundMusicOnLoad();
+  if (!IS_BUILDER_PAGE) requestBackgroundMusic();
   installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
   try {
