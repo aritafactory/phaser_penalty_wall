@@ -174,6 +174,7 @@ const GAME_AUDIO_VOLUME = 0.7;
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
+  silence: 'audio/silence.mp3',
   click: 'audio/click.mp3',
   shot: 'audio/shot.mp3',
   pop: 'audio/pop.mp3',
@@ -215,7 +216,7 @@ function ensureAudioElements() {
     swooshAudio.muted = !soundEnabled;
   }
   Object.entries(AUDIO_PATHS).forEach(([key, path]) => {
-    if (['background', 'shot', 'swoosh'].includes(key) || effectAudio.has(key)) return;
+    if (['background', 'silence', 'shot', 'swoosh'].includes(key) || effectAudio.has(key)) return;
     const audio = new Audio(path);
     audio.preload = 'auto';
     audio.volume = GAME_AUDIO_VOLUME;
@@ -259,6 +260,18 @@ function requestBackgroundMusic() {
   startBackgroundMusic();
 }
 
+function startBackgroundMusicOnLoad() {
+  if (IS_BUILDER_PAGE) return;
+  backgroundMusicRequested = true;
+  const autoplayFrame = document.getElementById?.('autoplayUnlock');
+  if (!autoplayFrame) {
+    startBackgroundMusic();
+    return;
+  }
+  autoplayFrame.addEventListener('load', startBackgroundMusic, { once: true });
+  autoplayFrame.src = AUDIO_PATHS.silence;
+}
+
 function playShotSound() {
   if (!soundEnabled || !ensureAudioElements()) return;
   const sound = shotAudio.cloneNode();
@@ -292,6 +305,13 @@ function playEffectSound(key, allowOverlap = true) {
   }
   const playAttempt = sound.play();
   if (playAttempt?.catch) playAttempt.catch(() => activeShotSounds.delete(sound));
+}
+
+function stopEffectSound(key) {
+  const sound = effectAudio.get(key);
+  if (!sound) return;
+  sound.pause();
+  sound.currentTime = 0;
 }
 
 function updateSoundToggle() {
@@ -1521,6 +1541,12 @@ function boosterCount(boosterKey) {
   return Number(model.boosters[boosterKey] || 0) + Number(model.levelBoosters[boosterKey] || 0);
 }
 
+function boosterIsAvailableForCurrentLevel(boosterKey) {
+  if (boosterKey === 'plusTenSeconds') return Number.isFinite(model.timerLeft);
+  if (boosterKey === 'plusFiveShots') return Number.isFinite(model.shotsLeft);
+  return true;
+}
+
 function consumeBooster(boosterKey) {
   if (IS_BUILDER_PAGE) return;
   if (Number(model.levelBoosters[boosterKey] || 0) > 0) {
@@ -1539,14 +1565,16 @@ function renderBoosterInventory() {
     const li = document.createElement('li');
     if (BOOSTER_CATALOG.some((item) => item.key === booster.key)) {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
-      const disabled = owned <= 0 ? 'disabled' : '';
+      const available = owned > 0 && boosterIsAvailableForCurrentLevel(booster.key);
+      const disabled = available ? '' : 'disabled';
+      li.classList.toggle('unavailable', !available);
       li.classList.toggle('armed', model.activeBooster === booster.key);
       const amountLabel = IS_BUILDER_PAGE ? '∞' : String(owned);
       const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' };
       li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
-        if (owned <= 0) return;
+        if (!available) return;
         if (booster.key === 'plusTenSeconds' && boardScene) {
           boardScene.usePlusTenSeconds();
           return;
@@ -1569,6 +1597,7 @@ function renderBoosterInventory() {
         }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
         if (model.activeBooster === 'bomb') playEffectSound('fuse', false);
+        else if (booster.key === 'bomb') stopEffectSound('fuse');
         if (boardScene) boardScene.syncBoosterTargeting();
         renderBoosterInventory();
         refreshUI();
@@ -1578,6 +1607,7 @@ function renderBoosterInventory() {
     }
     ui.boosterInventoryList.appendChild(li);
   });
+  if (boardScene) boardScene.syncBoosterTargeting();
 }
 
 function boosterIcon(boosterKey) {
@@ -1625,6 +1655,7 @@ function cancelActiveGameplay() {
   model.gameOver = true;
   model.timerLeft = Infinity;
   model.activeBooster = null;
+  stopEffectSound('fuse');
   if (boardScene) {
     boardScene.animating = false;
     boardScene.destroyBombPreview();
@@ -2020,7 +2051,10 @@ class BoardScene extends Phaser.Scene {
   }
 
   syncBoosterTargeting() {
-    if (model.activeBooster !== 'bomb') this.destroyBombPreview();
+    if (model.activeBooster !== 'bomb') {
+      stopEffectSound('fuse');
+      this.destroyBombPreview();
+    }
     if (model.activeBooster !== 'rotator') this.destroyRotatorPreview();
     if (model.activeBooster !== 'compressor') this.destroyCompressorPreview();
     this.syncRainbowBallVisual();
@@ -2420,6 +2454,7 @@ class BoardScene extends Phaser.Scene {
     this.animating = true;
     consumeBooster('bomb');
     model.activeBooster = null;
+    stopEffectSound('fuse');
     this.destroyBombPreview();
     playEffectSound('bomb');
     savePersistentState();
@@ -3316,6 +3351,7 @@ function failLevel(message = 'Статус: поражение') {
   model.gameplayActive = false;
   model.gameOver = true;
   model.activeBooster = null;
+  stopEffectSound('fuse');
   if (boardScene) {
     boardScene.destroyBombPreview();
     boardScene.destroyFractionsEffects();
@@ -3506,6 +3542,7 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
+  startBackgroundMusicOnLoad();
   installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
   try {
