@@ -106,6 +106,9 @@
       .game-title { flex:0 0 220px; height:86px; display:flex; align-items:center; padding:0 18px; border:2px solid rgba(31,85,166,.5); border-right:0; border-radius:18px 0 0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); font-size:40px; font-weight:900; letter-spacing:.04em; color:#f6fbff; text-shadow:0 4px 0 #53698e, 0 9px 13px #000; white-space:nowrap; }
       .game-stat { flex:0 0 auto; height:86px; display:flex; align-items:center; min-width:140px; padding:0 14px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:24px; font-weight:900; letter-spacing:.04em; color:#f7fbff; text-shadow:0 4px 8px #000; white-space:nowrap; }
       .game-stat strong, .game-goal strong { color:#ffd83e; font-weight:900; text-shadow:0 2px 0 #8a5d00, 0 5px 8px #000; margin-right:8px; }
+      .game-stat.resource-low, .game-stat.resource-low strong { color:#ff4545; text-shadow:0 2px 0 #761515, 0 5px 9px #000; }
+      .resource-bonus { position:fixed; z-index:140; transform:translate(-50%, -50%); pointer-events:none; color:#64ef72; font-size:30px; font-weight:900; text-shadow:0 3px 0 #176225, 0 6px 10px #000; animation:resourceBonus 1s ease-out forwards; }
+      @keyframes resourceBonus { 0% { opacity:0; transform:translate(-50%, 0) scale(.75); } 16% { opacity:1; transform:translate(-50%, -12px) scale(1.08); } 100% { opacity:0; transform:translate(-50%, -58px) scale(1); } }
       .game-goal { flex:1 1 260px; height:86px; display:flex; align-items:center; min-width:220px; padding:0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:21px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
       .game-divider { flex:0 0 1px; width:1px; height:54px; margin:0 -12px; background:rgba(71,112,183,.52); box-shadow:0 0 8px rgba(92,158,255,.18); z-index:2; }
       .game-currency { flex:0 0 auto; height:86px; display:flex; align-items:center; gap:10px; padding-left:20px; border:2px solid rgba(31,85,166,.5); border-left:0; border-radius:0 18px 18px 0; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); }
@@ -368,6 +371,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=19"></script>
+    <script type="module" src="game.js?v=20"></script>
   </body>
 </html>

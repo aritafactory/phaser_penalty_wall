@@ -165,6 +165,7 @@ let boardResizeTimer;
 let backgroundAudio;
 let shotAudio;
 let swooshAudio;
+const effectAudio = new Map();
 let audioUnlockInstalled = false;
 let soundEnabled = true;
 let backgroundMusicRequested = false;
@@ -173,9 +174,24 @@ const GAME_AUDIO_VOLUME = 0.7;
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
+  click: 'audio/click.mp3',
   shot: 'audio/shot.mp3',
+  pop: 'audio/pop.mp3',
+  bounce: 'audio/bounce.mp3',
   swoosh: 'audio/swoosh.mp3',
+  rotator: 'audio/rotator.mp3',
+  playButton: 'audio/play_button.mp3',
+  fractions: 'audio/pop3.mp3',
+  buy: 'audio/buy.mp3',
+  fuse: 'audio/fuse.mp3',
+  bomb: 'audio/bomb.mp3',
+  plusTenSeconds: 'audio/10sec.mp3',
+  plusFiveShots: 'audio/5shots.mp3',
+  tenSecondsLeft: 'audio/10sec_left.mp3',
+  fiveShotsLeft: 'audio/5shots_left.mp3',
 };
+
+const resourceWarnings = { tenSecondsPlayed: false, fiveShotsPlayed: false };
 
 function ensureAudioElements() {
   if (typeof Audio === 'undefined') return false;
@@ -198,6 +214,14 @@ function ensureAudioElements() {
     swooshAudio.volume = GAME_AUDIO_VOLUME;
     swooshAudio.muted = !soundEnabled;
   }
+  Object.entries(AUDIO_PATHS).forEach(([key, path]) => {
+    if (['background', 'shot', 'swoosh'].includes(key) || effectAudio.has(key)) return;
+    const audio = new Audio(path);
+    audio.preload = 'auto';
+    audio.volume = GAME_AUDIO_VOLUME;
+    audio.muted = !soundEnabled;
+    effectAudio.set(key, audio);
+  });
   return true;
 }
 
@@ -253,6 +277,23 @@ function playSwooshSound() {
   if (playAttempt?.catch) playAttempt.catch(() => {});
 }
 
+function playEffectSound(key, allowOverlap = true) {
+  if (!soundEnabled || !ensureAudioElements()) return;
+  const source = effectAudio.get(key);
+  if (!source || (!allowOverlap && !source.paused)) return;
+  const sound = allowOverlap ? source.cloneNode() : source;
+  sound.volume = GAME_AUDIO_VOLUME;
+  sound.muted = !soundEnabled;
+  if (allowOverlap) {
+    activeShotSounds.add(sound);
+    sound.addEventListener('ended', () => activeShotSounds.delete(sound), { once: true });
+  } else {
+    sound.currentTime = 0;
+  }
+  const playAttempt = sound.play();
+  if (playAttempt?.catch) playAttempt.catch(() => activeShotSounds.delete(sound));
+}
+
 function updateSoundToggle() {
   if (!ui.soundToggle) return;
   ui.soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
@@ -265,6 +306,7 @@ function applySoundPreference(enabled, persist = true, startPlayback = true) {
   if (backgroundAudio) backgroundAudio.muted = !soundEnabled;
   if (shotAudio) shotAudio.muted = !soundEnabled;
   if (swooshAudio) swooshAudio.muted = !soundEnabled;
+  effectAudio.forEach((sound) => { sound.muted = !soundEnabled; });
   activeShotSounds.forEach((sound) => { sound.muted = !soundEnabled; });
   if (persist && !IS_BUILDER_PAGE) {
     localStorage.setItem(STORAGE_KEYS.soundEnabled, String(soundEnabled));
@@ -275,6 +317,14 @@ function applySoundPreference(enabled, persist = true, startPlayback = true) {
 
 function setSoundToggleHidden(hidden) {
   if (ui.soundToggle) ui.soundToggle.hidden = Boolean(hidden);
+}
+
+function installButtonClickSounds() {
+  document.addEventListener?.('click', (event) => {
+    const button = event.target?.closest?.('button');
+    if (!button || button.disabled || button.classList.contains('shop-buy')) return;
+    playEffectSound(button.id === 'startPlayBtn' ? 'playButton' : 'click');
+  });
 }
 
 
@@ -1125,6 +1175,8 @@ function startCustomBuilderLevel() {
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
   model.winReward = 0;
+  resourceWarnings.tenSecondsPlayed = false;
+  resourceWarnings.fiveShotsPlayed = false;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -1414,6 +1466,35 @@ function currentLevelGoalText() {
   return isMasterGoal ? 'Complete the shape' : 'Clear all blocks';
 }
 
+function updateResourceWarnings() {
+  const lowShots = Number.isFinite(model.shotsLeft) && model.shotsLeft <= 5;
+  const lowTime = Number.isFinite(model.timerLeft) && Math.ceil(model.timerLeft) <= 10;
+  ui.gameMovesLabel?.classList.toggle('resource-low', lowShots);
+  ui.gameTimerTopLabel?.classList.toggle('resource-low', lowTime);
+  if (!lowShots) resourceWarnings.fiveShotsPlayed = false;
+  if (!lowTime) resourceWarnings.tenSecondsPlayed = false;
+  if (model.gameplayActive && !model.gameOver && lowShots && model.shotsLeft > 0 && !resourceWarnings.fiveShotsPlayed) {
+    resourceWarnings.fiveShotsPlayed = true;
+    playEffectSound('fiveShotsLeft', false);
+  }
+  if (model.gameplayActive && !model.gameOver && lowTime && model.timerLeft > 0 && !resourceWarnings.tenSecondsPlayed) {
+    resourceWarnings.tenSecondsPlayed = true;
+    playEffectSound('tenSecondsLeft', false);
+  }
+}
+
+function showResourceBonus(target, text) {
+  const rect = target?.getBoundingClientRect?.();
+  if (!rect || typeof document.createElement !== 'function') return;
+  const bonus = document.createElement('span');
+  bonus.className = 'resource-bonus';
+  bonus.textContent = text;
+  bonus.style.left = `${rect.left + rect.width / 2}px`;
+  bonus.style.top = `${rect.bottom - 8}px`;
+  document.body.appendChild(bonus);
+  setTimeout(() => bonus.remove(), 1000);
+}
+
 function refreshUI() {
   ui.scoreLabel.textContent = `Очки (уровень): ${model.score}`;
   ui.totalScoreLabel.textContent = `Очки (всего): ${model.totalScore}`;
@@ -1427,6 +1508,7 @@ function refreshUI() {
   if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
   ui.shotsLabel.textContent = `Выстрелы: ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   ui.timerLabel.textContent = `Таймер: ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
+  updateResourceWarnings();
   if (!model.gameOver) {
     ui.stateLabel.textContent = `Статус: игра идёт (цвет: ${model.selectedShotColor})`;
   }
@@ -1486,6 +1568,7 @@ function renderBoosterInventory() {
           return;
         }
         model.activeBooster = model.activeBooster === booster.key ? null : booster.key;
+        if (model.activeBooster === 'bomb') playEffectSound('fuse', false);
         if (boardScene) boardScene.syncBoosterTargeting();
         renderBoosterInventory();
         refreshUI();
@@ -1529,6 +1612,7 @@ function buyBooster(boosterKey) {
   }
   model.totalScore -= booster.price;
   model.boosters[booster.key] = Number(model.boosters[booster.key] || 0) + 1;
+  playEffectSound('buy');
   savePersistentState();
   renderBoosterInventory();
   refreshUI();
@@ -2337,6 +2421,7 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('bomb');
     model.activeBooster = null;
     this.destroyBombPreview();
+    playEffectSound('bomb');
     savePersistentState();
     renderBoosterInventory();
 
@@ -2369,6 +2454,7 @@ class BoardScene extends Phaser.Scene {
     if (mixCount <= 0 || this.animating || model.gameOver || !model.gameplayActive) return;
 
     this.animating = true;
+    playSwooshSound();
     consumeBooster('mix');
     model.activeBooster = null;
     renderBoosterInventory();
@@ -2517,6 +2603,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
+    playEffectSound('fractions');
     consumeBooster('fractions');
     model.activeBooster = null;
     renderBoosterInventory();
@@ -2597,9 +2684,11 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('plusTenSeconds');
     model.activeBooster = null;
     model.timerLeft += 10;
+    playEffectSound('plusTenSeconds');
     savePersistentState();
     renderBoosterInventory();
     refreshUI();
+    showResourceBonus(ui.gameTimerTopLabel, '+10');
   }
 
   useCompressor() {
@@ -2691,6 +2780,7 @@ class BoardScene extends Phaser.Scene {
     });
 
     this.animating = true;
+    playEffectSound('rotator');
     this.destroyRotatorPreview();
     consumeBooster('rotator');
     model.activeBooster = null;
@@ -2755,6 +2845,7 @@ class BoardScene extends Phaser.Scene {
     }
 
     this.animating = true;
+    playEffectSound('pop');
     consumeBooster('minusOneColor');
     model.activeBooster = null;
     renderBoosterInventory();
@@ -2786,9 +2877,11 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('plusFiveShots');
     model.activeBooster = null;
     model.shotsLeft += 5;
+    playEffectSound('plusFiveShots');
     savePersistentState();
     renderBoosterInventory();
     refreshUI();
+    showResourceBonus(ui.gameMovesLabel, '+5');
     this.animating = false;
   }
 
@@ -2887,6 +2980,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   playBallBounce(projectile, done) {
+    playEffectSound('bounce');
     projectile.setDepth(RENDER_DEPTH.projectile);
     const direction = Phaser.Math.Between(0, 1) === 0 ? -1 : 1;
     const startX = projectile.x;
@@ -2945,6 +3039,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   playImpact(x, y, done) {
+    playEffectSound('pop');
     const flash = this.add.circle(x, y, 10, 0xffffff, 0.9);
     this.tweens.add({
       targets: flash,
@@ -3393,6 +3488,8 @@ function startLevelByIndex(index) {
   model.ineffectiveShotStreak = 0;
   model.winAwarded = false;
   model.winReward = 0;
+  resourceWarnings.tenSecondsPlayed = false;
+  resourceWarnings.fiveShotsPlayed = false;
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -3409,6 +3506,7 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
+  installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
   try {
     model.mainLevels = await loadBuiltinLevelsFromFiles();
