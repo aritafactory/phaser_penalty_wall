@@ -3552,6 +3552,7 @@ async function initApp() {
   if (ui.shopBtn) ui.shopBtn.onclick = () => openShop();
   if (ui.startPlayBtn) {
     ui.startPlayBtn.onclick = () => {
+      requestBackgroundMusic();
       showLevelsScreen();
     };
   }
