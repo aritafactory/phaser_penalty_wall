@@ -1,34 +1,95 @@
 {
   "level": 20,
   "description": "Встроенный уровень 20",
-  "complications": [],
+  "complications": [
+    "timer",
+    "limited_shots",
+    "unbreakable_blocks",
+    "several_layers"
+  ],
   "grid": [
     [
-      "G",
-      "R",
-      "G",
-      "B"
-    ],
-    [
-      "R",
-      "R",
-      "G",
-      "B"
-    ],
-    [
-      "R",
-      "G",
       "B",
+      "U",
+      "R",
       "R"
     ],
-      [
+    [
       "B",
+      "R",
+      "R",
+      "G"
+    ],
+    [
+      "B",
+      "B",
+      "R",
+      "R"
+    ],
+    [
+      "G",
       "G",
       "B",
       "G"
     ]
   ],
+  "layers": [
+    [
+      [
+        "B",
+        "U",
+        "R",
+        "R"
+      ],
+      [
+        "B",
+        "R",
+        "R",
+        "G"
+      ],
+      [
+        "B",
+        "B",
+        "R",
+        "R"
+      ],
+      [
+        "G",
+        "G",
+        "B",
+        "G"
+      ]
+    ],
+    [
+      [
+        "B",
+        "U",
+        "R",
+        "R"
+      ],
+      [
+        "B",
+        "R",
+        "R",
+        "G"
+      ],
+      [
+        "B",
+        "B",
+        "R",
+        "R"
+      ],
+      [
+        "G",
+        "G",
+        "B",
+        "G"
+      ]
+    ]
+  ],
    "startingBoosters": {
-    "rainbow": 2
+    "minusOneColor": 1,
+    "fractions": 1,
+    "rainbow": 1
   }
 }
