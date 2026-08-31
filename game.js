@@ -71,6 +71,8 @@ const model = {
   gameplayActive: false,
   tutorialOpen: false,
   viewedTutorials: new Set(),
+  returnRewardDay: 0,
+  lastReturnRewardDate: '',
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -105,6 +107,8 @@ const ui = {
   gameHomeBtn: document.getElementById('gameHomeBtn'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
   gameGoalLabel: document.getElementById('gameGoalLabel'),
+  gameLayersLabel: document.getElementById('gameLayersLabel'),
+  gameLayersDivider: document.getElementById('gameLayersDivider'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
   gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
   failModal: document.getElementById('failModal'),
@@ -120,6 +124,10 @@ const ui = {
   tutorialTitle: document.getElementById('tutorialTitle'),
   tutorialDescription: document.getElementById('tutorialDescription'),
   tutorialCloseBtn: document.getElementById('tutorialCloseBtn'),
+  returnRewardModal: document.getElementById('returnRewardModal'),
+  returnRewardDayLabel: document.getElementById('returnRewardDayLabel'),
+  returnRewardName: document.getElementById('returnRewardName'),
+  returnRewardCloseBtn: document.getElementById('returnRewardCloseBtn'),
   soundToggle: document.getElementById('soundToggle'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
@@ -149,6 +157,8 @@ const STORAGE_KEYS = {
   highestUnlockedLevel: 'cbb_highest_unlocked_level',
   highestUnlockedMasterLevel: 'cbb_highest_unlocked_master_level',
   viewedTutorials: 'cbb_viewed_tutorials',
+  returnRewardDay: 'cbb_return_reward_day',
+  lastReturnRewardDate: 'cbb_last_return_reward_date',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
 };
@@ -188,6 +198,17 @@ const LEVEL_TUTORIALS = [
   ['Final Training', 'Clear two layers with Unbreakable blocks before time or shots run out. Use Fractions, Minus One Color, and Rainbow when needed.'],
 ];
 const MASTER_TUTORIAL = ['Master Levels', 'Using granted boosters, complete the shape. Place Unbreakable blocks into the dotted line area.'];
+const RETURN_REWARD_CYCLE = [
+  'mix',
+  'rotator',
+  'compressor',
+  'plusFiveShots',
+  'plusTenSeconds',
+  'bomb',
+  'rainbow',
+  'fractions',
+  'minusOneColor',
+];
 
 let phaserGame;
 let boardScene;
@@ -481,6 +502,11 @@ function loadPersistentState() {
   } catch {
     model.viewedTutorials = new Set();
   }
+  const savedReturnRewardDay = Number(localStorage.getItem(STORAGE_KEYS.returnRewardDay) || '0');
+  model.returnRewardDay = Number.isFinite(savedReturnRewardDay)
+    ? Math.max(0, Math.floor(savedReturnRewardDay)) % RETURN_REWARD_CYCLE.length
+    : 0;
+  model.lastReturnRewardDate = localStorage.getItem(STORAGE_KEYS.lastReturnRewardDate) || '';
 }
 
 function savePersistentState() {
@@ -491,6 +517,44 @@ function savePersistentState() {
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
   localStorage.setItem(STORAGE_KEYS.levelStars, JSON.stringify(model.levelStars));
   localStorage.setItem(STORAGE_KEYS.viewedTutorials, JSON.stringify([...model.viewedTutorials]));
+  localStorage.setItem(STORAGE_KEYS.returnRewardDay, String(model.returnRewardDay));
+  localStorage.setItem(STORAGE_KEYS.lastReturnRewardDate, model.lastReturnRewardDate);
+}
+
+function localCalendarDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function claimReturnReward(date = new Date()) {
+  if (IS_BUILDER_PAGE || model.lastReturnRewardDate === localCalendarDate(date)) return null;
+  const cycleIndex = model.returnRewardDay % RETURN_REWARD_CYCLE.length;
+  const boosterKey = RETURN_REWARD_CYCLE[cycleIndex];
+  model.boosters[boosterKey] = Math.max(0, Number(model.boosters[boosterKey]) || 0) + 1;
+  model.returnRewardDay = (cycleIndex + 1) % RETURN_REWARD_CYCLE.length;
+  model.lastReturnRewardDate = localCalendarDate(date);
+  savePersistentState();
+  return { boosterKey, day: cycleIndex + 1 };
+}
+
+function showReturnReward(reward) {
+  if (!reward || !ui.returnRewardModal) return;
+  const booster = BOOSTER_CATALOG.find(({ key }) => key === reward.boosterKey);
+  if (ui.returnRewardDayLabel) ui.returnRewardDayLabel.textContent = `DAY ${reward.day} OF ${RETURN_REWARD_CYCLE.length}`;
+  if (ui.returnRewardName) ui.returnRewardName.textContent = `+1 ${booster?.name || reward.boosterKey}`;
+  ui.returnRewardModal.classList.add('open');
+  ui.returnRewardModal.setAttribute('aria-hidden', 'false');
+  setSoundToggleHidden(true);
+  refreshUI();
+}
+
+function closeReturnReward() {
+  if (!ui.returnRewardModal) return;
+  ui.returnRewardModal.classList.remove('open');
+  ui.returnRewardModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function masterLevelsAreUnlocked() {
@@ -1586,6 +1650,12 @@ function refreshUI() {
   if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
   if (ui.gameGoalLabel) {
     ui.gameGoalLabel.innerHTML = `<strong>GOAL:</strong> ${currentLevelGoalText()}`;
+  }
+  if (ui.gameLayersLabel) {
+    const layerCount = Array.isArray(model.currentLevel?.layers) ? model.currentLevel.layers.length : 0;
+    ui.gameLayersLabel.hidden = layerCount < 2;
+    if (ui.gameLayersDivider) ui.gameLayersDivider.hidden = layerCount < 2;
+    ui.gameLayersLabel.innerHTML = `<strong>LAYERS:</strong> ${Math.min(model.currentLayerIndex + 1, layerCount)}/${layerCount}`;
   }
   if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
@@ -3612,6 +3682,7 @@ function startLevelByIndex(index) {
 
 async function initApp() {
   loadPersistentState();
+  const returnReward = claimReturnReward();
   if (!IS_BUILDER_PAGE) requestBackgroundMusic();
   installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
@@ -3649,6 +3720,7 @@ async function initApp() {
   if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
   if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
   if (ui.tutorialCloseBtn) ui.tutorialCloseBtn.onclick = () => closeTutorial();
+  if (ui.returnRewardCloseBtn) ui.returnRewardCloseBtn.onclick = () => closeReturnReward();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
@@ -3676,6 +3748,7 @@ async function initApp() {
     renderLevelsScreen();
     refreshUI();
   }
+  showReturnReward(returnReward);
 }
 
 initApp();
