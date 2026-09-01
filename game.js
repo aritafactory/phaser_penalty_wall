@@ -69,6 +69,10 @@ const model = {
   activeBooster: null,
   rainbowNextShot: false,
   gameplayActive: false,
+  tutorialOpen: false,
+  viewedTutorials: new Set(),
+  returnRewardDay: 0,
+  lastReturnRewardDate: '',
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -103,6 +107,8 @@ const ui = {
   gameHomeBtn: document.getElementById('gameHomeBtn'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
   gameGoalLabel: document.getElementById('gameGoalLabel'),
+  gameLayersLabel: document.getElementById('gameLayersLabel'),
+  gameLayersDivider: document.getElementById('gameLayersDivider'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
   gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
   failModal: document.getElementById('failModal'),
@@ -112,9 +118,16 @@ const ui = {
   winHomeBtn: document.getElementById('winHomeBtn'),
   winNextBtn: document.getElementById('winNextBtn'),
   winLevelLabel: document.getElementById('winLevelLabel'),
-  winMovesLabel: document.getElementById('winMovesLabel'),
   winRewardLabel: document.getElementById('winRewardLabel'),
   winStars: document.getElementById('winStars'),
+  tutorialModal: document.getElementById('tutorialModal'),
+  tutorialTitle: document.getElementById('tutorialTitle'),
+  tutorialDescription: document.getElementById('tutorialDescription'),
+  tutorialCloseBtn: document.getElementById('tutorialCloseBtn'),
+  returnRewardModal: document.getElementById('returnRewardModal'),
+  returnRewardDayLabel: document.getElementById('returnRewardDayLabel'),
+  returnRewardName: document.getElementById('returnRewardName'),
+  returnRewardCloseBtn: document.getElementById('returnRewardCloseBtn'),
   soundToggle: document.getElementById('soundToggle'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
@@ -143,6 +156,9 @@ const STORAGE_KEYS = {
   boosters: 'cbb_boosters',
   highestUnlockedLevel: 'cbb_highest_unlocked_level',
   highestUnlockedMasterLevel: 'cbb_highest_unlocked_master_level',
+  viewedTutorials: 'cbb_viewed_tutorials',
+  returnRewardDay: 'cbb_return_reward_day',
+  lastReturnRewardDate: 'cbb_last_return_reward_date',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
 };
@@ -157,6 +173,41 @@ const BOOSTER_CATALOG = [
   { key: 'compressor', name: 'Compressor', price: 140, effect: 'Push each row toward the center.' },
   { key: 'rotator', name: 'Rotator', price: 120, effect: 'Rotate a 3×3 ring clockwise.' },
   { key: 'rainbow', name: 'Rainbow', price: 200, effect: 'Turn a ball into a rainbow ball.' },
+];
+
+const LEVEL_TUTORIALS = [
+  ['Basic Shots', 'Shoot a ball at blocks of the same color. Connected matching blocks disappear.'],
+  ['More Colors', 'Yellow, purple, and orange blocks are now in play. Match them like the basic colors.'],
+  ['Unbreakable Blocks', 'Metal blocks cannot be destroyed, and balls bounce off them. Clear all colored blocks to win.'],
+  ['Flashing Blocks', 'Flashing blocks switch between two colors. Hit them while their color matches the ball.'],
+  ['Two-Color Blocks', 'Blocks marked `2` survive the first matching hit and change color. Match their new color to remove them.'],
+  ['Layers', 'This level has two layers. Clear the first board to reveal the next.'],
+  ['Timer', 'Clear all blocks before the timer reaches zero.'],
+  ['Limited Shots', 'Every shot counts. Clear the board before you run out of shots.'],
+  ['Two Limits', 'You have both a timer and a shot limit. Finish before either one runs out.'],
+  ['Combined Challenge', 'Extra colors, a timer, and limited shots are active together.'],
+  ['Bomb', 'Bomb destroys a `3×3` area, including Unbreakable blocks.'],
+  ['Mix', 'Mix randomly changes the colors of all breakable blocks.'],
+  ['Fractions', 'Fractions launches three balls, hitting up to three separate groups of the current color.'],
+  ['Minus One Color', 'Minus One Color removes every block matching the current ball’s color.'],
+  ['+5 Shots', 'Use `+5 Shots` to add five shots to the current limit.'],
+  ['+10 Seconds', 'Use `+10 Seconds` to add ten seconds to the timer.'],
+  ['Compressor', 'Compressor pushes the blocks in every row toward the center.'],
+  ['Rotator', 'Rotator moves the eight blocks around a selected `3×3` center clockwise. The center stays in place.'],
+  ['Rainbow', 'Rainbow makes the next ball match any target color.'],
+  ['Final Training', 'Clear two layers with Unbreakable blocks before time or shots run out. Use Fractions, Minus One Color, and Rainbow when needed.'],
+];
+const MASTER_TUTORIAL = ['Master Levels', 'Using granted boosters, complete the shape. Place Unbreakable blocks into the dotted line area.'];
+const RETURN_REWARD_CYCLE = [
+  'mix',
+  'rotator',
+  'compressor',
+  'plusFiveShots',
+  'plusTenSeconds',
+  'bomb',
+  'rainbow',
+  'fractions',
+  'minusOneColor',
 ];
 
 let phaserGame;
@@ -445,6 +496,17 @@ function loadPersistentState() {
   } catch {
     model.levelStars = { main: {}, master: {} };
   }
+  try {
+    const viewedTutorials = JSON.parse(localStorage.getItem(STORAGE_KEYS.viewedTutorials) || '[]');
+    model.viewedTutorials = new Set(Array.isArray(viewedTutorials) ? viewedTutorials : []);
+  } catch {
+    model.viewedTutorials = new Set();
+  }
+  const savedReturnRewardDay = Number(localStorage.getItem(STORAGE_KEYS.returnRewardDay) || '0');
+  model.returnRewardDay = Number.isFinite(savedReturnRewardDay)
+    ? Math.max(0, Math.floor(savedReturnRewardDay)) % RETURN_REWARD_CYCLE.length
+    : 0;
+  model.lastReturnRewardDate = localStorage.getItem(STORAGE_KEYS.lastReturnRewardDate) || '';
 }
 
 function savePersistentState() {
@@ -454,6 +516,82 @@ function savePersistentState() {
   localStorage.setItem(STORAGE_KEYS.highestUnlockedMasterLevel, String(model.highestUnlockedMasterLevel));
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
   localStorage.setItem(STORAGE_KEYS.levelStars, JSON.stringify(model.levelStars));
+  localStorage.setItem(STORAGE_KEYS.viewedTutorials, JSON.stringify([...model.viewedTutorials]));
+  localStorage.setItem(STORAGE_KEYS.returnRewardDay, String(model.returnRewardDay));
+  localStorage.setItem(STORAGE_KEYS.lastReturnRewardDate, model.lastReturnRewardDate);
+}
+
+function localCalendarDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function claimReturnReward(date = new Date()) {
+  if (IS_BUILDER_PAGE || model.lastReturnRewardDate === localCalendarDate(date)) return null;
+  const cycleIndex = model.returnRewardDay % RETURN_REWARD_CYCLE.length;
+  const boosterKey = RETURN_REWARD_CYCLE[cycleIndex];
+  model.boosters[boosterKey] = Math.max(0, Number(model.boosters[boosterKey]) || 0) + 1;
+  model.returnRewardDay = (cycleIndex + 1) % RETURN_REWARD_CYCLE.length;
+  model.lastReturnRewardDate = localCalendarDate(date);
+  savePersistentState();
+  return { boosterKey, day: cycleIndex + 1 };
+}
+
+function showReturnReward(reward) {
+  if (!reward || !ui.returnRewardModal) return;
+  const booster = BOOSTER_CATALOG.find(({ key }) => key === reward.boosterKey);
+  if (ui.returnRewardDayLabel) ui.returnRewardDayLabel.textContent = `DAY ${reward.day} OF ${RETURN_REWARD_CYCLE.length}`;
+  if (ui.returnRewardName) ui.returnRewardName.textContent = `+1 ${booster?.name || reward.boosterKey}`;
+  ui.returnRewardModal.classList.add('open');
+  ui.returnRewardModal.setAttribute('aria-hidden', 'false');
+  setSoundToggleHidden(true);
+  refreshUI();
+}
+
+function closeReturnReward() {
+  if (!ui.returnRewardModal) return;
+  ui.returnRewardModal.classList.remove('open');
+  ui.returnRewardModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
+}
+
+function masterLevelsAreUnlocked() {
+  return IS_BUILDER_PAGE || model.highestUnlockedLevel >= 21;
+}
+
+function tutorialForCurrentLevel() {
+  if (model.activeLevelSet === 'master') {
+    return { key: 'master', content: MASTER_TUTORIAL };
+  }
+  if (model.currentLevelIndex >= 0 && model.currentLevelIndex < LEVEL_TUTORIALS.length) {
+    return { key: `main-${model.currentLevelIndex + 1}`, content: LEVEL_TUTORIALS[model.currentLevelIndex] };
+  }
+  return null;
+}
+
+function showCurrentLevelTutorial() {
+  const tutorial = tutorialForCurrentLevel();
+  if (!tutorial || model.viewedTutorials.has(tutorial.key) || !ui.tutorialModal) return false;
+  const [title, description] = tutorial.content;
+  model.viewedTutorials.add(tutorial.key);
+  model.tutorialOpen = true;
+  if (ui.tutorialTitle) ui.tutorialTitle.textContent = title;
+  if (ui.tutorialDescription) ui.tutorialDescription.textContent = description;
+  ui.tutorialModal.classList.add('open');
+  ui.tutorialModal.setAttribute('aria-hidden', 'false');
+  setSoundToggleHidden(true);
+  savePersistentState();
+  return true;
+}
+
+function closeTutorial() {
+  model.tutorialOpen = false;
+  if (!ui.tutorialModal) return;
+  ui.tutorialModal.classList.remove('open');
+  ui.tutorialModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function combinations(arr, size) {
@@ -1462,6 +1600,20 @@ function applyGravityAndGetMoves() {
   return buildGravityMoves(oldGrid, model.grid);
 }
 
+function rotateRingClockwise(grid, row, col) {
+  if (!Array.isArray(grid) || !Array.isArray(grid[0])) return false;
+  if (row <= 0 || col <= 0 || row >= grid.length - 1 || col >= grid[0].length - 1) return false;
+  const ring = [
+    [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
+    [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
+  ];
+  const values = ring.map(([ringRow, ringCol]) => grid[ringRow][ringCol]);
+  ring.forEach(([ringRow, ringCol], index) => {
+    grid[ringRow][ringCol] = values[(index + values.length - 1) % values.length];
+  });
+  return true;
+}
+
 function isWin() {
   const shapeCells = model.currentLevel?.shapeGoal?.cells;
   if (Array.isArray(shapeCells) && shapeCells.length) {
@@ -1512,6 +1664,12 @@ function refreshUI() {
   if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
   if (ui.gameGoalLabel) {
     ui.gameGoalLabel.innerHTML = `<strong>GOAL:</strong> ${currentLevelGoalText()}`;
+  }
+  if (ui.gameLayersLabel) {
+    const layerCount = Array.isArray(model.currentLevel?.layers) ? model.currentLevel.layers.length : 0;
+    ui.gameLayersLabel.hidden = layerCount < 2;
+    if (ui.gameLayersDivider) ui.gameLayersDivider.hidden = layerCount < 2;
+    ui.gameLayersLabel.innerHTML = `<strong>LAYERS:</strong> ${Math.min(model.currentLayerIndex + 1, layerCount)}/${layerCount}`;
   }
   if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
@@ -2362,7 +2520,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   handlePointer(pointer) {
-    if (this.animating || model.gameOver || !model.gameplayActive) return;
+    if (this.animating || model.gameOver || !model.gameplayActive || model.tutorialOpen) return;
 
     const cell = this.pointerToGrid(pointer);
     if (!cell) return;
@@ -2798,10 +2956,7 @@ class BoardScene extends Phaser.Scene {
       [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
       [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
     ];
-    const values = ring.map(([r, c]) => model.grid[r][c]);
-    ring.forEach(([r, c], idx) => {
-      model.grid[r][c] = values[(idx + values.length - 1) % values.length];
-    });
+    rotateRingClockwise(model.grid, row, col);
 
     this.animating = true;
     playEffectSound('rotator');
@@ -2809,7 +2964,6 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('rotator');
     model.activeBooster = null;
     savePersistentState();
-    const gravityMoves = applyGravityAndGetMoves();
     const ringSprites = ring.map(([r, c]) => this.blocks.get(this.key(r, c)) || null);
     let completed = 0;
     const finishRotation = () => {
@@ -2821,7 +2975,8 @@ class BoardScene extends Phaser.Scene {
         const [targetRow, targetCol] = ring[(index + 1) % ring.length];
         this.blocks.set(this.key(targetRow, targetCol), block);
       });
-      this.animateRemovalAndFall([], gravityMoves, () => {
+      this.time.delayedCall(80, () => {
+        this.renderGridStatic();
         renderBoosterInventory();
         this.finishResolvedBoardAction();
         this.animating = false;
@@ -3194,7 +3349,7 @@ class BoardScene extends Phaser.Scene {
 
   update(_time, delta) {
     this.updateBombPreview(delta);
-    if (model.gameOver || !model.gameplayActive) return;
+    if (model.gameOver || !model.gameplayActive || model.tutorialOpen) return;
 
     this.flashAccumulator += delta;
     if (this.flashAccumulator >= 800) {
@@ -3280,7 +3435,6 @@ function openWinModal() {
   if (!ui.winModal) return;
   playEffectSound('win', false);
   setSoundToggleHidden(true);
-  const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
   const stars = calculateCurrentLevelStars();
   let totalAward = model.winReward;
   if (!model.winAwarded) {
@@ -3300,7 +3454,6 @@ function openWinModal() {
     savePersistentState();
   }
   if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
-  if (ui.winMovesLabel) ui.winMovesLabel.textContent = `Moves Left: ${movesLeft}`;
   if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
   if (ui.winStars) ui.winStars.innerHTML = starLabel(stars).split('').map((star) => `<span>${star}</span>`).join('');
   renderLevelsScreen();
@@ -3361,6 +3514,7 @@ function retryCurrentLevel() {
 }
 
 function setActiveLevelSet(levelSet) {
+  if (levelSet === 'master' && !masterLevelsAreUnlocked()) return;
   model.activeLevelSet = levelSet === 'master' ? 'master' : 'main';
   model.levels = model.activeLevelSet === 'master' ? model.masterLevels : model.mainLevels;
   model.currentLevelIndex = Math.min(model.currentLevelIndex, Math.max(0, model.levels.length - 1));
@@ -3432,6 +3586,10 @@ function renderLevelsScreen() {
   if (ui.masterLevelsTab) {
     ui.masterLevelsTab.classList.toggle('active', isMaster);
     ui.masterLevelsTab.setAttribute('aria-selected', String(isMaster));
+    const masterUnlocked = masterLevelsAreUnlocked();
+    ui.masterLevelsTab.disabled = !masterUnlocked;
+    ui.masterLevelsTab.setAttribute('aria-disabled', String(!masterUnlocked));
+    ui.masterLevelsTab.title = masterUnlocked ? '' : 'Complete levels 1–20 to unlock Master Levels';
   }
 
   ui.levelsGrid.innerHTML = '';
@@ -3517,6 +3675,7 @@ function startLevelByIndex(index) {
   model.winReward = 0;
   resourceWarnings.tenSecondsPlayed = false;
   resourceWarnings.fiveShotsPlayed = false;
+  closeTutorial();
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -3529,10 +3688,12 @@ function startLevelByIndex(index) {
   initPhaser(model.grid.length, model.grid[0].length);
   renderBoosterInventory();
   refreshUI();
+  showCurrentLevelTutorial();
 }
 
 async function initApp() {
   loadPersistentState();
+  const returnReward = claimReturnReward();
   if (!IS_BUILDER_PAGE) requestBackgroundMusic();
   installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
@@ -3569,6 +3730,8 @@ async function initApp() {
   if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
   if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
   if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
+  if (ui.tutorialCloseBtn) ui.tutorialCloseBtn.onclick = () => closeTutorial();
+  if (ui.returnRewardCloseBtn) ui.returnRewardCloseBtn.onclick = () => closeReturnReward();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
@@ -3596,6 +3759,7 @@ async function initApp() {
     renderLevelsScreen();
     refreshUI();
   }
+  showReturnReward(returnReward);
 }
 
 initApp();
