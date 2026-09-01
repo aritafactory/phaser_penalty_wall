@@ -1600,6 +1600,20 @@ function applyGravityAndGetMoves() {
   return buildGravityMoves(oldGrid, model.grid);
 }
 
+function rotateRingClockwise(grid, row, col) {
+  if (!Array.isArray(grid) || !Array.isArray(grid[0])) return false;
+  if (row <= 0 || col <= 0 || row >= grid.length - 1 || col >= grid[0].length - 1) return false;
+  const ring = [
+    [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
+    [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
+  ];
+  const values = ring.map(([ringRow, ringCol]) => grid[ringRow][ringCol]);
+  ring.forEach(([ringRow, ringCol], index) => {
+    grid[ringRow][ringCol] = values[(index + values.length - 1) % values.length];
+  });
+  return true;
+}
+
 function isWin() {
   const shapeCells = model.currentLevel?.shapeGoal?.cells;
   if (Array.isArray(shapeCells) && shapeCells.length) {
@@ -2942,10 +2956,7 @@ class BoardScene extends Phaser.Scene {
       [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
       [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
     ];
-    const values = ring.map(([r, c]) => model.grid[r][c]);
-    ring.forEach(([r, c], idx) => {
-      model.grid[r][c] = values[(idx + values.length - 1) % values.length];
-    });
+    rotateRingClockwise(model.grid, row, col);
 
     this.animating = true;
     playEffectSound('rotator');
@@ -2953,7 +2964,6 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('rotator');
     model.activeBooster = null;
     savePersistentState();
-    const gravityMoves = applyGravityAndGetMoves();
     const ringSprites = ring.map(([r, c]) => this.blocks.get(this.key(r, c)) || null);
     let completed = 0;
     const finishRotation = () => {
@@ -2965,7 +2975,8 @@ class BoardScene extends Phaser.Scene {
         const [targetRow, targetCol] = ring[(index + 1) % ring.length];
         this.blocks.set(this.key(targetRow, targetCol), block);
       });
-      this.animateRemovalAndFall([], gravityMoves, () => {
+      this.time.delayedCall(80, () => {
+        this.renderGridStatic();
         renderBoosterInventory();
         this.finishResolvedBoardAction();
         this.animating = false;
