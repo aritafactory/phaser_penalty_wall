@@ -169,6 +169,18 @@
       .return-reward-icon { margin:10px 0 8px; font-size:82px; filter:drop-shadow(0 9px 9px rgba(0,0,0,.55)); }
       .return-reward-day { margin:0 0 8px; color:#65dcff; font-size:20px; font-weight:900; letter-spacing:.12em; }
       .return-reward-name { margin:0; color:#ffd84a; font-size:32px; font-weight:900; text-shadow:0 3px 6px #000; }
+      .level-200-backdrop { overflow:hidden; background:rgba(0,5,18,.88); }
+      .level-200-dialog { position:relative; width:min(1160px, 96vw); max-height:96vh; overflow:hidden; padding:28px 44px 34px; border:3px solid #238cff; border-radius:28px; background:radial-gradient(circle at 50% 34%, rgba(22,79,166,.3), transparent 45%), linear-gradient(180deg, #071c49, #031332); box-shadow:inset 0 0 0 7px rgba(36,118,231,.17), inset 0 0 48px rgba(32,124,255,.22), 0 0 24px rgba(30,133,255,.75), 0 28px 80px #000; text-align:center; }
+      .level-200-title { position:relative; z-index:3; margin:0; color:#f7fbff; font-size:clamp(46px, 7vw, 86px); line-height:1; letter-spacing:.035em; text-shadow:0 6px 0 #748bad, 0 14px 18px #000; }
+      .level-200-blocks { position:relative; z-index:2; display:grid; grid-template-columns:repeat(17, clamp(18px, 3.2vw, 48px)); grid-template-rows:repeat(5, clamp(18px, 3.2vw, 48px)); justify-content:center; gap:clamp(3px, .45vw, 7px); min-height:calc(5 * clamp(18px, 3.2vw, 48px) + 4 * clamp(3px, .45vw, 7px)); margin:32px auto 26px; }
+      .level-200-block { width:100%; height:100%; border-radius:8px; opacity:0; transform:translate(var(--scatter-x), var(--scatter-y)) rotate(500deg) scale(.2); box-shadow:inset 0 3px 3px rgba(255,255,255,.3), inset 0 -5px 4px rgba(0,0,0,.25), 0 5px 8px rgba(0,0,0,.55); transition:transform .72s cubic-bezier(.18,.85,.3,1.15) var(--assemble-delay), opacity .3s ease var(--assemble-delay); }
+      .level-200-blocks.assembled .level-200-block { opacity:1; transform:translate(0,0) rotate(0) scale(1); }
+      .level-200-block.red{background:#ed4439}.level-200-block.green{background:#43c864}.level-200-block.blue{background:#329beb}.level-200-block.orange{background:#f29433}
+      .level-200-copy { position:relative; z-index:3; margin:8px 0; color:#f6f8ff; font-size:clamp(18px, 2.2vw, 29px); font-weight:800; line-height:1.35; text-shadow:0 4px 7px #000; }
+      .level-200-button { position:relative; z-index:4; width:min(620px, 86%); min-height:82px; margin-top:20px; border:3px solid #70ef84; border-radius:18px; background:linear-gradient(180deg, #38c75a, #118333); color:#fff; font-size:clamp(24px, 3.4vw, 43px); font-weight:900; letter-spacing:.025em; text-shadow:0 4px 5px #000; box-shadow:inset 0 2px 0 rgba(255,255,255,.34), inset 0 -6px 0 rgba(0,0,0,.2), 0 0 22px rgba(59,222,88,.55), 0 12px 24px #000; cursor:pointer; }
+      .level-200-confetti { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
+      .level-200-confetti i { position:absolute; left:var(--confetti-x); top:-30px; width:12px; height:20px; border-radius:2px; background:var(--confetti-color); animation:level200Confetti var(--confetti-duration) linear forwards; }
+      @keyframes level200Confetti { to { transform:translate(var(--confetti-drift), calc(100vh + 80px)) rotate(var(--confetti-spin)); } }
       .levels-tab:disabled { cursor:not-allowed; opacity:.48; filter:grayscale(.7); }
       .modal-backdrop { position: fixed; inset: 0; background: rgba(1,6,18,.78); display: none; align-items: center; justify-content: center; z-index: 100; padding: 12px; }
       .modal-backdrop.open { display: flex; }
@@ -259,6 +271,9 @@
         .win-dialog, .fail-dialog { padding: 28px 18px; }
         .win-stars { gap: 16px; }
         .win-btn, .fail-btn { width: 100%; min-width: 0; height: 72px; font-size: 24px; }
+        .level-200-dialog { padding:22px 12px 24px; }
+        .level-200-blocks { margin:24px auto 20px; }
+        .level-200-button { min-height:66px; }
       }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
@@ -359,6 +374,17 @@
           <button id="winHomeBtn" class="win-btn secondary" type="button">⌂ &nbsp; HOME</button>
           <button id="winNextBtn" class="win-btn primary" type="button">NEXT LEVEL</button>
         </div>
+      </div>
+    </div>
+    <div id="level200Modal" class="result-backdrop level-200-backdrop" aria-hidden="true">
+      <div class="level-200-dialog" role="dialog" aria-modal="true" aria-labelledby="level200Title">
+        <div id="level200Confetti" class="level-200-confetti" aria-hidden="true"></div>
+        <h2 id="level200Title" class="level-200-title">YOU MADE IT!</h2>
+        <div id="level200Blocks" class="level-200-blocks" aria-label="200"></div>
+        <p class="level-200-copy">You're truly the Block Breaker!</p>
+        <p class="level-200-copy">Only 1% of players who started the game made it this far.</p>
+        <p class="level-200-copy">Thank you for playing Color Block Breaker!</p>
+        <button id="level200BackBtn" class="level-200-button" type="button">BACK TO LEVELS</button>
       </div>
     </div>
     <div id="tutorialModal" class="result-backdrop" aria-hidden="true">

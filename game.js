@@ -73,6 +73,7 @@ const model = {
   viewedTutorials: new Set(),
   returnRewardDay: 0,
   lastReturnRewardDate: '',
+  level200Celebrated: false,
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -128,6 +129,10 @@ const ui = {
   returnRewardDayLabel: document.getElementById('returnRewardDayLabel'),
   returnRewardName: document.getElementById('returnRewardName'),
   returnRewardCloseBtn: document.getElementById('returnRewardCloseBtn'),
+  level200Modal: document.getElementById('level200Modal'),
+  level200Blocks: document.getElementById('level200Blocks'),
+  level200Confetti: document.getElementById('level200Confetti'),
+  level200BackBtn: document.getElementById('level200BackBtn'),
   soundToggle: document.getElementById('soundToggle'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
@@ -159,6 +164,7 @@ const STORAGE_KEYS = {
   viewedTutorials: 'cbb_viewed_tutorials',
   returnRewardDay: 'cbb_return_reward_day',
   lastReturnRewardDate: 'cbb_last_return_reward_date',
+  level200Celebrated: 'cbb_level_200_celebrated',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
 };
@@ -222,6 +228,7 @@ let soundEnabled = true;
 let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
 const GAME_AUDIO_VOLUME = 0.2;
+const celebrationState = { active: false, timers: [], confettiInterval: null, musicFade: null };
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
@@ -241,6 +248,7 @@ const AUDIO_PATHS = {
   tenSecondsLeft: 'audio/10sec_left.mp3',
   fiveShotsLeft: 'audio/5shots_left.mp3',
   win: 'audio/win.mp3',
+  fanfare: 'audio/fanfare.mp3',
   loose: 'audio/loose.mp3',
 };
 
@@ -507,6 +515,7 @@ function loadPersistentState() {
     ? Math.max(0, Math.floor(savedReturnRewardDay)) % RETURN_REWARD_CYCLE.length
     : 0;
   model.lastReturnRewardDate = localStorage.getItem(STORAGE_KEYS.lastReturnRewardDate) || '';
+  model.level200Celebrated = localStorage.getItem(STORAGE_KEYS.level200Celebrated) === 'true';
 }
 
 function savePersistentState() {
@@ -519,6 +528,7 @@ function savePersistentState() {
   localStorage.setItem(STORAGE_KEYS.viewedTutorials, JSON.stringify([...model.viewedTutorials]));
   localStorage.setItem(STORAGE_KEYS.returnRewardDay, String(model.returnRewardDay));
   localStorage.setItem(STORAGE_KEYS.lastReturnRewardDate, model.lastReturnRewardDate);
+  localStorage.setItem(STORAGE_KEYS.level200Celebrated, String(model.level200Celebrated));
 }
 
 function localCalendarDate(date = new Date()) {
@@ -3439,9 +3449,158 @@ function rewardForLevelStars(level, stars) {
   return Math.round(baseReward * multiplier);
 }
 
+function shouldShowLevel200Celebration() {
+  return model.activeLevelSet === 'main' && model.currentLevelIndex === 199 && !model.level200Celebrated;
+}
+
+function fadeAudioVolume(audio, targetVolume, duration, onComplete = null) {
+  if (!audio) {
+    if (onComplete) onComplete();
+    return;
+  }
+  if (celebrationState.musicFade) clearInterval(celebrationState.musicFade);
+  const startVolume = audio.volume;
+  const startedAt = Date.now();
+  celebrationState.musicFade = setInterval(() => {
+    const progress = Math.min(1, (Date.now() - startedAt) / duration);
+    audio.volume = startVolume + (targetVolume - startVolume) * progress;
+    if (progress < 1) return;
+    clearInterval(celebrationState.musicFade);
+    celebrationState.musicFade = null;
+    if (onComplete) onComplete();
+  }, 30);
+}
+
+function resumeBackgroundAfterCelebration() {
+  if (!soundEnabled || !backgroundMusicRequested || !ensureAudioElements()) return;
+  backgroundAudio.volume = 0;
+  const playAttempt = backgroundAudio.play();
+  if (playAttempt?.catch) playAttempt.catch(() => {});
+  fadeAudioVolume(backgroundAudio, GAME_AUDIO_VOLUME, 700);
+}
+
+function playLevel200Fanfare() {
+  if (!celebrationState.active || !soundEnabled || !ensureAudioElements()) return;
+  const fanfare = effectAudio.get('fanfare');
+  if (!fanfare) {
+    resumeBackgroundAfterCelebration();
+    return;
+  }
+  fanfare.currentTime = 0;
+  fanfare.volume = GAME_AUDIO_VOLUME;
+  fanfare.muted = !soundEnabled;
+  fanfare.onended = () => {
+    fanfare.onended = null;
+    resumeBackgroundAfterCelebration();
+  };
+  const playAttempt = fanfare.play();
+  if (playAttempt?.catch) playAttempt.catch(resumeBackgroundAfterCelebration);
+}
+
+function buildLevel200Blocks() {
+  if (!ui.level200Blocks) return;
+  const glyphs = [
+    ['11110', '00001', '11110', '10000', '11111'],
+    ['01110', '10001', '10001', '10001', '01110'],
+    ['01110', '10001', '10001', '10001', '01110'],
+  ];
+  ui.level200Blocks.innerHTML = '';
+  const colors = ['red', 'green', 'blue', 'orange'];
+  let blockIndex = 0;
+  glyphs.forEach((rows, glyphIndex) => rows.forEach((row, rowIndex) => [...row].forEach((cell, colIndex) => {
+    if (cell !== '1') return;
+    const block = document.createElement('span');
+    block.className = `level-200-block ${colors[blockIndex % colors.length]}`;
+    block.style.gridColumn = String(glyphIndex * 6 + colIndex + 1);
+    block.style.gridRow = String(rowIndex + 1);
+    block.style.setProperty('--assemble-delay', `${blockIndex * 34}ms`);
+    block.style.setProperty('--scatter-x', `${(Math.random() - 0.5) * 900}px`);
+    block.style.setProperty('--scatter-y', `${(Math.random() - 0.5) * 520}px`);
+    ui.level200Blocks.appendChild(block);
+    blockIndex += 1;
+  })));
+  const timer = setTimeout(() => ui.level200Blocks?.classList.add('assembled'), 40);
+  celebrationState.timers.push(timer);
+}
+
+function startLevel200Confetti() {
+  if (!celebrationState.active || !ui.level200Confetti) return;
+  const colors = ['#ff4438', '#3f8cff', '#45d365', '#ffd33d', '#a85cff', '#ff8b2d'];
+  const spawn = () => {
+    for (let index = 0; index < 8; index += 1) {
+      const piece = document.createElement('i');
+      piece.style.setProperty('--confetti-x', `${Math.random() * 100}%`);
+      piece.style.setProperty('--confetti-color', colors[Math.floor(Math.random() * colors.length)]);
+      piece.style.setProperty('--confetti-drift', `${(Math.random() - 0.5) * 260}px`);
+      piece.style.setProperty('--confetti-spin', `${Math.random() * 1080 - 540}deg`);
+      piece.style.setProperty('--confetti-duration', `${2.8 + Math.random() * 2}s`);
+      ui.level200Confetti.appendChild(piece);
+      const removeTimer = setTimeout(() => piece.remove(), 5000);
+      celebrationState.timers.push(removeTimer);
+    }
+  };
+  spawn();
+  celebrationState.confettiInterval = setInterval(spawn, 110);
+  const stopTimer = setTimeout(() => {
+    clearInterval(celebrationState.confettiInterval);
+    celebrationState.confettiInterval = null;
+  }, 10000);
+  celebrationState.timers.push(stopTimer);
+}
+
+function openLevel200Celebration() {
+  if (!ui.level200Modal) return;
+  celebrationState.active = true;
+  setSoundToggleHidden(true);
+  ui.level200Modal.classList.add('open');
+  ui.level200Modal.setAttribute('aria-hidden', 'false');
+  ui.level200Blocks?.classList.remove('assembled');
+  buildLevel200Blocks();
+  const confettiTimer = setTimeout(startLevel200Confetti, 2200);
+  celebrationState.timers.push(confettiTimer);
+  if (soundEnabled && ensureAudioElements()) {
+    fadeAudioVolume(backgroundAudio, 0, 650, () => {
+      backgroundAudio.pause();
+      playLevel200Fanfare();
+    });
+  }
+}
+
+function stopLevel200Celebration() {
+  celebrationState.active = false;
+  celebrationState.timers.forEach(clearTimeout);
+  celebrationState.timers = [];
+  if (celebrationState.confettiInterval) clearInterval(celebrationState.confettiInterval);
+  celebrationState.confettiInterval = null;
+  if (celebrationState.musicFade) clearInterval(celebrationState.musicFade);
+  celebrationState.musicFade = null;
+  const fanfare = effectAudio.get('fanfare');
+  if (fanfare) {
+    fanfare.onended = null;
+    fanfare.pause();
+    fanfare.currentTime = 0;
+  }
+  if (ui.level200Confetti) ui.level200Confetti.innerHTML = '';
+  if (ui.level200Blocks) {
+    ui.level200Blocks.classList.remove('assembled');
+    ui.level200Blocks.innerHTML = '';
+  }
+  if (ui.level200Modal) {
+    ui.level200Modal.classList.remove('open');
+    ui.level200Modal.setAttribute('aria-hidden', 'true');
+  }
+  setSoundToggleHidden(false);
+  resumeBackgroundAfterCelebration();
+}
+
+function leaveLevel200Celebration() {
+  stopLevel200Celebration();
+  setActiveLevelSet('main');
+  showLevelsScreen();
+}
+
 function openWinModal() {
   if (!ui.winModal) return;
-  playEffectSound('win', false);
   setSoundToggleHidden(true);
   const stars = calculateCurrentLevelStars();
   let totalAward = model.winReward;
@@ -3461,6 +3620,15 @@ function openWinModal() {
     model.winAwarded = true;
     savePersistentState();
   }
+  if (shouldShowLevel200Celebration()) {
+    model.level200Celebrated = true;
+    savePersistentState();
+    renderLevelsScreen();
+    refreshUI();
+    openLevel200Celebration();
+    return;
+  }
+  playEffectSound('win', false);
   if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
   if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
   if (ui.winStars) ui.winStars.innerHTML = starLabel(stars).split('').map((star) => `<span>${star}</span>`).join('');
@@ -3740,6 +3908,7 @@ async function initApp() {
   if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
   if (ui.tutorialCloseBtn) ui.tutorialCloseBtn.onclick = () => closeTutorial();
   if (ui.returnRewardCloseBtn) ui.returnRewardCloseBtn.onclick = () => closeReturnReward();
+  if (ui.level200BackBtn) ui.level200BackBtn.onclick = () => leaveLevel200Celebration();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
