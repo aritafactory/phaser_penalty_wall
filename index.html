@@ -110,6 +110,7 @@
       .resource-bonus { position:fixed; z-index:140; transform:translate(-50%, -50%); pointer-events:none; color:#64ef72; font-size:30px; font-weight:900; text-shadow:0 3px 0 #176225, 0 6px 10px #000; animation:resourceBonus 1s ease-out forwards; }
       @keyframes resourceBonus { 0% { opacity:0; transform:translate(-50%, 0) scale(.75); } 16% { opacity:1; transform:translate(-50%, -12px) scale(1.08); } 100% { opacity:0; transform:translate(-50%, -58px) scale(1); } }
       .game-goal { flex:1 1 260px; height:86px; display:flex; align-items:center; min-width:220px; padding:0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:21px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
+      .game-layers[hidden] { display:none; }
       .game-divider { flex:0 0 1px; width:1px; height:54px; margin:0 -12px; background:rgba(71,112,183,.52); box-shadow:0 0 8px rgba(92,158,255,.18); z-index:2; }
       .game-currency { flex:0 0 auto; height:86px; display:flex; align-items:center; gap:10px; padding-left:20px; border:2px solid rgba(31,85,166,.5); border-left:0; border-radius:0 18px 18px 0; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); }
       .game-currency .currency-pill { height:68px; min-width:190px; border-color:#234e91; border-radius:12px; background:linear-gradient(180deg, rgba(15,42,86,.96), rgba(3,18,48,.96)); font-size:24px; }
@@ -161,6 +162,26 @@
       .win-btn { min-width: 206px; height: 88px; border-radius: 8px; border: 2px solid rgba(255,255,255,.14); color:#fff; font-size: 29px; font-weight: 900; text-shadow: 0 3px 4px #000; box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 9px 18px rgba(0,0,0,.45); cursor:pointer; }
       .win-btn.secondary { background: linear-gradient(180deg, rgba(45,52,60,.98), rgba(19,24,30,.98)); }
       .win-btn.primary { min-width: 270px; background: linear-gradient(180deg, #35c654, #147e2d); border-color: rgba(79,232,104,.72); }
+      .tutorial-dialog { width:min(620px, 92vw); border-radius:20px; border:2px solid rgba(67,154,244,.8); background:radial-gradient(circle at 50% 0%, rgba(44,134,224,.28), transparent 42%), linear-gradient(180deg, rgba(12,39,82,.99), rgba(3,18,39,.99)); padding:34px 38px 30px; text-align:center; box-shadow:inset 0 0 34px rgba(71,158,255,.16), 0 24px 70px rgba(0,0,0,.72); }
+      .tutorial-title { margin:0 0 20px; color:#fff; font-size:clamp(32px, 5vw, 48px); text-shadow:0 3px 0 #3875bf, 0 8px 12px #000; }
+      .tutorial-description { margin:0; color:#eaf4ff; font-size:clamp(19px, 2.5vw, 25px); line-height:1.5; text-shadow:0 3px 6px #000; }
+      .tutorial-close { min-width:190px; height:64px; margin-top:28px; border-radius:10px; border:2px solid rgba(79,232,104,.72); background:linear-gradient(180deg, #35c654, #147e2d); color:#fff; font-size:24px; font-weight:900; text-shadow:0 3px 4px #000; cursor:pointer; box-shadow:inset 0 2px 0 rgba(255,255,255,.2), 0 9px 18px rgba(0,0,0,.45); }
+      .return-reward-icon { margin:10px 0 8px; font-size:82px; filter:drop-shadow(0 9px 9px rgba(0,0,0,.55)); }
+      .return-reward-day { margin:0 0 8px; color:#65dcff; font-size:20px; font-weight:900; letter-spacing:.12em; }
+      .return-reward-name { margin:0; color:#ffd84a; font-size:32px; font-weight:900; text-shadow:0 3px 6px #000; }
+      .level-200-backdrop { overflow:hidden; background:rgba(0,5,18,.88); }
+      .level-200-dialog { position:relative; width:min(1160px, 96vw); max-height:96vh; overflow:hidden; padding:28px 44px 34px; border:3px solid #238cff; border-radius:28px; background:radial-gradient(circle at 50% 34%, rgba(22,79,166,.3), transparent 45%), linear-gradient(180deg, #071c49, #031332); box-shadow:inset 0 0 0 7px rgba(36,118,231,.17), inset 0 0 48px rgba(32,124,255,.22), 0 0 24px rgba(30,133,255,.75), 0 28px 80px #000; text-align:center; }
+      .level-200-title { position:relative; z-index:3; margin:0; color:#f7fbff; font-size:clamp(46px, 7vw, 86px); line-height:1; letter-spacing:.035em; text-shadow:0 6px 0 #748bad, 0 14px 18px #000; }
+      .level-200-blocks { position:relative; z-index:2; display:grid; grid-template-columns:repeat(17, clamp(18px, 3.2vw, 48px)); grid-template-rows:repeat(5, clamp(18px, 3.2vw, 48px)); justify-content:center; gap:clamp(3px, .45vw, 7px); min-height:calc(5 * clamp(18px, 3.2vw, 48px) + 4 * clamp(3px, .45vw, 7px)); margin:32px auto 26px; }
+      .level-200-block { width:100%; height:100%; border-radius:8px; opacity:0; transform:translate(var(--scatter-x), var(--scatter-y)) rotate(500deg) scale(.2); box-shadow:inset 0 3px 3px rgba(255,255,255,.3), inset 0 -5px 4px rgba(0,0,0,.25), 0 5px 8px rgba(0,0,0,.55); transition:transform .72s cubic-bezier(.18,.85,.3,1.15) var(--assemble-delay), opacity .3s ease var(--assemble-delay); }
+      .level-200-blocks.assembled .level-200-block { opacity:1; transform:translate(0,0) rotate(0) scale(1); }
+      .level-200-block.red{background:#ed4439}.level-200-block.green{background:#43c864}.level-200-block.blue{background:#329beb}.level-200-block.orange{background:#f29433}
+      .level-200-copy { position:relative; z-index:3; margin:8px 0; color:#f6f8ff; font-size:clamp(18px, 2.2vw, 29px); font-weight:800; line-height:1.35; text-shadow:0 4px 7px #000; }
+      .level-200-button { position:relative; z-index:4; width:min(620px, 86%); min-height:82px; margin-top:20px; border:3px solid #70ef84; border-radius:18px; background:linear-gradient(180deg, #38c75a, #118333); color:#fff; font-size:clamp(24px, 3.4vw, 43px); font-weight:900; letter-spacing:.025em; text-shadow:0 4px 5px #000; box-shadow:inset 0 2px 0 rgba(255,255,255,.34), inset 0 -6px 0 rgba(0,0,0,.2), 0 0 22px rgba(59,222,88,.55), 0 12px 24px #000; cursor:pointer; }
+      .level-200-confetti { position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; }
+      .level-200-confetti i { position:absolute; left:var(--confetti-x); top:-30px; width:12px; height:20px; border-radius:2px; background:var(--confetti-color); animation:level200Confetti var(--confetti-duration) linear forwards; }
+      @keyframes level200Confetti { to { transform:translate(var(--confetti-drift), calc(100vh + 80px)) rotate(var(--confetti-spin)); } }
+      .levels-tab:disabled { cursor:not-allowed; opacity:.48; filter:grayscale(.7); }
       .modal-backdrop { position: fixed; inset: 0; background: rgba(1,6,18,.78); display: none; align-items: center; justify-content: center; z-index: 100; padding: 12px; }
       .modal-backdrop.open { display: flex; }
       .modal { width: min(772px, 98vw); max-height: 92vh; overflow: auto; background: radial-gradient(circle at 50% 0%, rgba(24,113,201,.22), transparent 34%), linear-gradient(180deg, rgba(12,39,82,.98), rgba(3,18,39,.98)); border: 2px solid rgba(67, 154, 244, .75); border-radius: 20px; padding: 14px 13px 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), inset 0 0 34px rgba(71,158,255,.16), 0 24px 70px rgba(0,0,0,.72); }
@@ -250,6 +271,9 @@
         .win-dialog, .fail-dialog { padding: 28px 18px; }
         .win-stars { gap: 16px; }
         .win-btn, .fail-btn { width: 100%; min-width: 0; height: 72px; font-size: 24px; }
+        .level-200-dialog { padding:22px 12px 24px; }
+        .level-200-blocks { margin:24px auto 20px; }
+        .level-200-button { min-height:66px; }
       }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
@@ -308,6 +332,8 @@
         <div class="game-divider"></div>
         <div id="gameGoalLabel" class="game-goal"><strong>GOAL:</strong> Clear all blocks</div>
         <div class="game-divider"></div>
+        <div id="gameLayersLabel" class="game-stat game-layers" hidden><strong>LAYERS:</strong> 1/2</div>
+        <div id="gameLayersDivider" class="game-divider" hidden></div>
         <div id="gameMovesLabel" class="game-stat"><strong>MOVES:</strong> ∞</div>
         <div id="gameTimerTopLabel" class="game-stat"><strong>TIMER:</strong> ∞</div>
       </header>
@@ -343,12 +369,38 @@
         <h2 id="winTitle" class="win-title">BRAVO!</h2>
         <p id="winLevelLabel" class="win-level">Level Complete</p>
         <div class="win-stars" id="winStars" aria-label="Level rating"><span>★</span><span>★</span><span>★</span></div>
-        <p id="winMovesLabel" class="win-stat">Moves Left: 0</p>
         <p id="winRewardLabel" class="win-reward">💎 +0</p>
         <div class="win-actions">
           <button id="winHomeBtn" class="win-btn secondary" type="button">⌂ &nbsp; HOME</button>
           <button id="winNextBtn" class="win-btn primary" type="button">NEXT LEVEL</button>
         </div>
+      </div>
+    </div>
+    <div id="level200Modal" class="result-backdrop level-200-backdrop" aria-hidden="true">
+      <div class="level-200-dialog" role="dialog" aria-modal="true" aria-labelledby="level200Title">
+        <div id="level200Confetti" class="level-200-confetti" aria-hidden="true"></div>
+        <h2 id="level200Title" class="level-200-title">YOU MADE IT!</h2>
+        <div id="level200Blocks" class="level-200-blocks" aria-label="200"></div>
+        <p class="level-200-copy">You're truly the Block Breaker!</p>
+        <p class="level-200-copy">Only 1% of players who started the game made it this far.</p>
+        <p class="level-200-copy">Thank you for playing Color Block Breaker!</p>
+        <button id="level200BackBtn" class="level-200-button" type="button">BACK TO LEVELS</button>
+      </div>
+    </div>
+    <div id="tutorialModal" class="result-backdrop" aria-hidden="true">
+      <div class="tutorial-dialog" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle" aria-describedby="tutorialDescription">
+        <h2 id="tutorialTitle" class="tutorial-title"></h2>
+        <p id="tutorialDescription" class="tutorial-description"></p>
+        <button id="tutorialCloseBtn" class="tutorial-close" type="button">GOT IT</button>
+      </div>
+    </div>
+    <div id="returnRewardModal" class="result-backdrop" aria-hidden="true">
+      <div class="tutorial-dialog" role="dialog" aria-modal="true" aria-labelledby="returnRewardTitle">
+        <h2 id="returnRewardTitle" class="tutorial-title">WELCOME BACK!</h2>
+        <p id="returnRewardDayLabel" class="return-reward-day">DAY 1 OF 9</p>
+        <div class="return-reward-icon" aria-hidden="true">🎁</div>
+        <p id="returnRewardName" class="return-reward-name">+1 Mix</p>
+        <button id="returnRewardCloseBtn" class="tutorial-close" type="button">CLAIM</button>
       </div>
     </div>
     <div id="failModal" class="result-backdrop" aria-hidden="true">

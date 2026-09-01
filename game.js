@@ -69,6 +69,11 @@ const model = {
   activeBooster: null,
   rainbowNextShot: false,
   gameplayActive: false,
+  tutorialOpen: false,
+  viewedTutorials: new Set(),
+  returnRewardDay: 0,
+  lastReturnRewardDate: '',
+  level200Celebrated: false,
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -103,6 +108,8 @@ const ui = {
   gameHomeBtn: document.getElementById('gameHomeBtn'),
   gameLevelLabel: document.getElementById('gameLevelLabel'),
   gameGoalLabel: document.getElementById('gameGoalLabel'),
+  gameLayersLabel: document.getElementById('gameLayersLabel'),
+  gameLayersDivider: document.getElementById('gameLayersDivider'),
   gameMovesLabel: document.getElementById('gameMovesLabel'),
   gameTimerTopLabel: document.getElementById('gameTimerTopLabel'),
   failModal: document.getElementById('failModal'),
@@ -112,9 +119,20 @@ const ui = {
   winHomeBtn: document.getElementById('winHomeBtn'),
   winNextBtn: document.getElementById('winNextBtn'),
   winLevelLabel: document.getElementById('winLevelLabel'),
-  winMovesLabel: document.getElementById('winMovesLabel'),
   winRewardLabel: document.getElementById('winRewardLabel'),
   winStars: document.getElementById('winStars'),
+  tutorialModal: document.getElementById('tutorialModal'),
+  tutorialTitle: document.getElementById('tutorialTitle'),
+  tutorialDescription: document.getElementById('tutorialDescription'),
+  tutorialCloseBtn: document.getElementById('tutorialCloseBtn'),
+  returnRewardModal: document.getElementById('returnRewardModal'),
+  returnRewardDayLabel: document.getElementById('returnRewardDayLabel'),
+  returnRewardName: document.getElementById('returnRewardName'),
+  returnRewardCloseBtn: document.getElementById('returnRewardCloseBtn'),
+  level200Modal: document.getElementById('level200Modal'),
+  level200Blocks: document.getElementById('level200Blocks'),
+  level200Confetti: document.getElementById('level200Confetti'),
+  level200BackBtn: document.getElementById('level200BackBtn'),
   soundToggle: document.getElementById('soundToggle'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
@@ -143,6 +161,10 @@ const STORAGE_KEYS = {
   boosters: 'cbb_boosters',
   highestUnlockedLevel: 'cbb_highest_unlocked_level',
   highestUnlockedMasterLevel: 'cbb_highest_unlocked_master_level',
+  viewedTutorials: 'cbb_viewed_tutorials',
+  returnRewardDay: 'cbb_return_reward_day',
+  lastReturnRewardDate: 'cbb_last_return_reward_date',
+  level200Celebrated: 'cbb_level_200_celebrated',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
 };
@@ -159,6 +181,41 @@ const BOOSTER_CATALOG = [
   { key: 'rainbow', name: 'Rainbow', price: 200, effect: 'Turn a ball into a rainbow ball.' },
 ];
 
+const LEVEL_TUTORIALS = [
+  ['Basic Shots', 'Shoot a ball at blocks of the same color. Connected matching blocks disappear.'],
+  ['More Colors', 'Yellow, purple, and orange blocks are now in play. Match them like the basic colors.'],
+  ['Unbreakable Blocks', 'Metal blocks cannot be destroyed, and balls bounce off them. Clear all colored blocks to win.'],
+  ['Flashing Blocks', 'Flashing blocks switch between two colors. Hit them while their color matches the ball.'],
+  ['Two-Color Blocks', 'Blocks marked `2` survive the first matching hit and change color. Match their new color to remove them.'],
+  ['Layers', 'This level has two layers. Clear the first board to reveal the next.'],
+  ['Timer', 'Clear all blocks before the timer reaches zero.'],
+  ['Limited Shots', 'Every shot counts. Clear the board before you run out of shots.'],
+  ['Two Limits', 'You have both a timer and a shot limit. Finish before either one runs out.'],
+  ['Combined Challenge', 'Extra colors, a timer, and limited shots are active together.'],
+  ['Bomb', 'Bomb destroys a `3×3` area, including Unbreakable blocks.'],
+  ['Mix', 'Mix randomly changes the colors of all breakable blocks.'],
+  ['Fractions', 'Fractions launches three balls, hitting up to three separate groups of the current color.'],
+  ['Minus One Color', 'Minus One Color removes every block matching the current ball’s color.'],
+  ['+5 Shots', 'Use `+5 Shots` to add five shots to the current limit.'],
+  ['+10 Seconds', 'Use `+10 Seconds` to add ten seconds to the timer.'],
+  ['Compressor', 'Compressor pushes the blocks in every row toward the center.'],
+  ['Rotator', 'Rotator moves the eight blocks around a selected `3×3` center clockwise. The center stays in place.'],
+  ['Rainbow', 'Rainbow makes the next ball match any target color.'],
+  ['Final Training', 'Clear two layers with Unbreakable blocks before time or shots run out. Use Fractions, Minus One Color, and Rainbow when needed.'],
+];
+const MASTER_TUTORIAL = ['Master Levels', 'Using granted boosters, complete the shape. Place Unbreakable blocks into the dotted line area.'];
+const RETURN_REWARD_CYCLE = [
+  'mix',
+  'rotator',
+  'compressor',
+  'plusFiveShots',
+  'plusTenSeconds',
+  'bomb',
+  'rainbow',
+  'fractions',
+  'minusOneColor',
+];
+
 let phaserGame;
 let boardScene;
 let boardResizeTimer;
@@ -171,6 +228,7 @@ let soundEnabled = true;
 let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
 const GAME_AUDIO_VOLUME = 0.2;
+const celebrationState = { active: false, timers: [], confettiInterval: null, musicFade: null };
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
@@ -190,6 +248,7 @@ const AUDIO_PATHS = {
   tenSecondsLeft: 'audio/10sec_left.mp3',
   fiveShotsLeft: 'audio/5shots_left.mp3',
   win: 'audio/win.mp3',
+  fanfare: 'audio/fanfare.mp3',
   loose: 'audio/loose.mp3',
 };
 
@@ -445,6 +504,18 @@ function loadPersistentState() {
   } catch {
     model.levelStars = { main: {}, master: {} };
   }
+  try {
+    const viewedTutorials = JSON.parse(localStorage.getItem(STORAGE_KEYS.viewedTutorials) || '[]');
+    model.viewedTutorials = new Set(Array.isArray(viewedTutorials) ? viewedTutorials : []);
+  } catch {
+    model.viewedTutorials = new Set();
+  }
+  const savedReturnRewardDay = Number(localStorage.getItem(STORAGE_KEYS.returnRewardDay) || '0');
+  model.returnRewardDay = Number.isFinite(savedReturnRewardDay)
+    ? Math.max(0, Math.floor(savedReturnRewardDay)) % RETURN_REWARD_CYCLE.length
+    : 0;
+  model.lastReturnRewardDate = localStorage.getItem(STORAGE_KEYS.lastReturnRewardDate) || '';
+  model.level200Celebrated = localStorage.getItem(STORAGE_KEYS.level200Celebrated) === 'true';
 }
 
 function savePersistentState() {
@@ -454,6 +525,83 @@ function savePersistentState() {
   localStorage.setItem(STORAGE_KEYS.highestUnlockedMasterLevel, String(model.highestUnlockedMasterLevel));
   localStorage.setItem(STORAGE_KEYS.boosters, JSON.stringify(model.boosters));
   localStorage.setItem(STORAGE_KEYS.levelStars, JSON.stringify(model.levelStars));
+  localStorage.setItem(STORAGE_KEYS.viewedTutorials, JSON.stringify([...model.viewedTutorials]));
+  localStorage.setItem(STORAGE_KEYS.returnRewardDay, String(model.returnRewardDay));
+  localStorage.setItem(STORAGE_KEYS.lastReturnRewardDate, model.lastReturnRewardDate);
+  localStorage.setItem(STORAGE_KEYS.level200Celebrated, String(model.level200Celebrated));
+}
+
+function localCalendarDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function claimReturnReward(date = new Date()) {
+  if (IS_BUILDER_PAGE || model.lastReturnRewardDate === localCalendarDate(date)) return null;
+  const cycleIndex = model.returnRewardDay % RETURN_REWARD_CYCLE.length;
+  const boosterKey = RETURN_REWARD_CYCLE[cycleIndex];
+  model.boosters[boosterKey] = Math.max(0, Number(model.boosters[boosterKey]) || 0) + 1;
+  model.returnRewardDay = (cycleIndex + 1) % RETURN_REWARD_CYCLE.length;
+  model.lastReturnRewardDate = localCalendarDate(date);
+  savePersistentState();
+  return { boosterKey, day: cycleIndex + 1 };
+}
+
+function showReturnReward(reward) {
+  if (!reward || !ui.returnRewardModal) return;
+  const booster = BOOSTER_CATALOG.find(({ key }) => key === reward.boosterKey);
+  if (ui.returnRewardDayLabel) ui.returnRewardDayLabel.textContent = `DAY ${reward.day} OF ${RETURN_REWARD_CYCLE.length}`;
+  if (ui.returnRewardName) ui.returnRewardName.textContent = `+1 ${booster?.name || reward.boosterKey}`;
+  ui.returnRewardModal.classList.add('open');
+  ui.returnRewardModal.setAttribute('aria-hidden', 'false');
+  setSoundToggleHidden(true);
+  refreshUI();
+}
+
+function closeReturnReward() {
+  if (!ui.returnRewardModal) return;
+  ui.returnRewardModal.classList.remove('open');
+  ui.returnRewardModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
+}
+
+function masterLevelsAreUnlocked() {
+  return IS_BUILDER_PAGE || model.highestUnlockedLevel >= 21;
+}
+
+function tutorialForCurrentLevel() {
+  if (model.activeLevelSet === 'master') {
+    return { key: 'master', content: MASTER_TUTORIAL };
+  }
+  if (model.currentLevelIndex >= 0 && model.currentLevelIndex < LEVEL_TUTORIALS.length) {
+    return { key: `main-${model.currentLevelIndex + 1}`, content: LEVEL_TUTORIALS[model.currentLevelIndex] };
+  }
+  return null;
+}
+
+function showCurrentLevelTutorial() {
+  const tutorial = tutorialForCurrentLevel();
+  if (!tutorial || model.viewedTutorials.has(tutorial.key) || !ui.tutorialModal) return false;
+  const [title, description] = tutorial.content;
+  model.viewedTutorials.add(tutorial.key);
+  model.tutorialOpen = true;
+  if (ui.tutorialTitle) ui.tutorialTitle.textContent = title;
+  if (ui.tutorialDescription) ui.tutorialDescription.textContent = description;
+  ui.tutorialModal.classList.add('open');
+  ui.tutorialModal.setAttribute('aria-hidden', 'false');
+  setSoundToggleHidden(true);
+  savePersistentState();
+  return true;
+}
+
+function closeTutorial() {
+  model.tutorialOpen = false;
+  if (!ui.tutorialModal) return;
+  ui.tutorialModal.classList.remove('open');
+  ui.tutorialModal.setAttribute('aria-hidden', 'true');
+  setSoundToggleHidden(false);
 }
 
 function combinations(arr, size) {
@@ -1462,6 +1610,24 @@ function applyGravityAndGetMoves() {
   return buildGravityMoves(oldGrid, model.grid);
 }
 
+function rotateRingClockwise(grid, row, col) {
+  if (!Array.isArray(grid) || !Array.isArray(grid[0])) return false;
+  if (row <= 0 || col <= 0 || row >= grid.length - 1 || col >= grid[0].length - 1) return false;
+  const ring = [
+    [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
+    [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
+  ];
+  const values = ring.map(([ringRow, ringCol]) => grid[ringRow][ringCol]);
+  ring.forEach(([ringRow, ringCol], index) => {
+    grid[ringRow][ringCol] = values[(index + values.length - 1) % values.length];
+  });
+  return true;
+}
+
+function gridBlockCount(grid) {
+  return grid.reduce((count, gridRow) => count + gridRow.filter(Boolean).length, 0);
+}
+
 function isWin() {
   const shapeCells = model.currentLevel?.shapeGoal?.cells;
   if (Array.isArray(shapeCells) && shapeCells.length) {
@@ -1512,6 +1678,12 @@ function refreshUI() {
   if (ui.gameLevelLabel) ui.gameLevelLabel.textContent = `LEVEL ${model.currentLevelIndex + 1}`;
   if (ui.gameGoalLabel) {
     ui.gameGoalLabel.innerHTML = `<strong>GOAL:</strong> ${currentLevelGoalText()}`;
+  }
+  if (ui.gameLayersLabel) {
+    const layerCount = Array.isArray(model.currentLevel?.layers) ? model.currentLevel.layers.length : 0;
+    ui.gameLayersLabel.hidden = layerCount < 2;
+    if (ui.gameLayersDivider) ui.gameLayersDivider.hidden = layerCount < 2;
+    ui.gameLayersLabel.innerHTML = `<strong>LAYERS:</strong> ${Math.min(model.currentLayerIndex + 1, layerCount)}/${layerCount}`;
   }
   if (ui.gameMovesLabel) ui.gameMovesLabel.innerHTML = `<strong>MOVES:</strong> ${Number.isFinite(model.shotsLeft) ? model.shotsLeft : '∞'}`;
   if (ui.gameTimerTopLabel) ui.gameTimerTopLabel.innerHTML = `<strong>TIMER:</strong> ${Number.isFinite(model.timerLeft) ? Math.max(0, Math.ceil(model.timerLeft)) : '∞'}`;
@@ -1941,6 +2113,7 @@ class BoardScene extends Phaser.Scene {
 
     this.drawTargetZoneOverlay();
     this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+    return this.blocks.size === gridBlockCount(model.grid);
   }
 
   drawTargetZoneOverlay() {
@@ -2362,7 +2535,7 @@ class BoardScene extends Phaser.Scene {
   }
 
   handlePointer(pointer) {
-    if (this.animating || model.gameOver || !model.gameplayActive) return;
+    if (this.animating || model.gameOver || !model.gameplayActive || model.tutorialOpen) return;
 
     const cell = this.pointerToGrid(pointer);
     if (!cell) return;
@@ -2798,10 +2971,7 @@ class BoardScene extends Phaser.Scene {
       [row - 1, col - 1], [row - 1, col], [row - 1, col + 1], [row, col + 1],
       [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
     ];
-    const values = ring.map(([r, c]) => model.grid[r][c]);
-    ring.forEach(([r, c], idx) => {
-      model.grid[r][c] = values[(idx + values.length - 1) % values.length];
-    });
+    rotateRingClockwise(model.grid, row, col);
 
     this.animating = true;
     playEffectSound('rotator');
@@ -2809,7 +2979,6 @@ class BoardScene extends Phaser.Scene {
     consumeBooster('rotator');
     model.activeBooster = null;
     savePersistentState();
-    const gravityMoves = applyGravityAndGetMoves();
     const ringSprites = ring.map(([r, c]) => this.blocks.get(this.key(r, c)) || null);
     let completed = 0;
     const finishRotation = () => {
@@ -2821,6 +2990,10 @@ class BoardScene extends Phaser.Scene {
         const [targetRow, targetCol] = ring[(index + 1) % ring.length];
         this.blocks.set(this.key(targetRow, targetCol), block);
       });
+      // Rebuild from the rotated model before calculating gravity. This removes
+      // any stale or overwritten sprites left by the eight simultaneous tweens.
+      this.renderGridStatic();
+      const gravityMoves = applyGravityAndGetMoves();
       this.animateRemovalAndFall([], gravityMoves, () => {
         renderBoosterInventory();
         this.finishResolvedBoardAction();
@@ -3194,10 +3367,10 @@ class BoardScene extends Phaser.Scene {
 
   update(_time, delta) {
     this.updateBombPreview(delta);
-    if (model.gameOver || !model.gameplayActive) return;
+    if (model.gameOver || !model.gameplayActive || model.tutorialOpen) return;
 
-    this.flashAccumulator += delta;
-    if (this.flashAccumulator >= 800) {
+    if (!this.animating) this.flashAccumulator += delta;
+    if (!this.animating && this.flashAccumulator >= 800) {
       this.flashAccumulator = 0;
       for (let r = 0; r < model.grid.length; r += 1) {
         for (let c = 0; c < model.grid[0].length; c += 1) {
@@ -3276,11 +3449,159 @@ function rewardForLevelStars(level, stars) {
   return Math.round(baseReward * multiplier);
 }
 
+function shouldShowLevel200Celebration() {
+  return model.activeLevelSet === 'main' && model.currentLevelIndex === 199 && !model.level200Celebrated;
+}
+
+function fadeAudioVolume(audio, targetVolume, duration, onComplete = null) {
+  if (!audio) {
+    if (onComplete) onComplete();
+    return;
+  }
+  if (celebrationState.musicFade) clearInterval(celebrationState.musicFade);
+  const startVolume = audio.volume;
+  const startedAt = Date.now();
+  celebrationState.musicFade = setInterval(() => {
+    const progress = Math.min(1, (Date.now() - startedAt) / duration);
+    audio.volume = startVolume + (targetVolume - startVolume) * progress;
+    if (progress < 1) return;
+    clearInterval(celebrationState.musicFade);
+    celebrationState.musicFade = null;
+    if (onComplete) onComplete();
+  }, 30);
+}
+
+function resumeBackgroundAfterCelebration() {
+  if (!soundEnabled || !backgroundMusicRequested || !ensureAudioElements()) return;
+  backgroundAudio.volume = 0;
+  const playAttempt = backgroundAudio.play();
+  if (playAttempt?.catch) playAttempt.catch(() => {});
+  fadeAudioVolume(backgroundAudio, GAME_AUDIO_VOLUME, 700);
+}
+
+function playLevel200Fanfare() {
+  if (!celebrationState.active || !soundEnabled || !ensureAudioElements()) return;
+  const fanfare = effectAudio.get('fanfare');
+  if (!fanfare) {
+    resumeBackgroundAfterCelebration();
+    return;
+  }
+  fanfare.currentTime = 0;
+  fanfare.volume = GAME_AUDIO_VOLUME;
+  fanfare.muted = !soundEnabled;
+  fanfare.onended = () => {
+    fanfare.onended = null;
+    resumeBackgroundAfterCelebration();
+  };
+  const playAttempt = fanfare.play();
+  if (playAttempt?.catch) playAttempt.catch(resumeBackgroundAfterCelebration);
+}
+
+function buildLevel200Blocks() {
+  if (!ui.level200Blocks) return;
+  const glyphs = [
+    ['11110', '00001', '11110', '10000', '11111'],
+    ['01110', '10001', '10001', '10001', '01110'],
+    ['01110', '10001', '10001', '10001', '01110'],
+  ];
+  ui.level200Blocks.innerHTML = '';
+  const colors = ['red', 'green', 'blue', 'orange'];
+  let blockIndex = 0;
+  glyphs.forEach((rows, glyphIndex) => rows.forEach((row, rowIndex) => [...row].forEach((cell, colIndex) => {
+    if (cell !== '1') return;
+    const block = document.createElement('span');
+    block.className = `level-200-block ${colors[blockIndex % colors.length]}`;
+    block.style.gridColumn = String(glyphIndex * 6 + colIndex + 1);
+    block.style.gridRow = String(rowIndex + 1);
+    block.style.setProperty('--assemble-delay', `${blockIndex * 34}ms`);
+    block.style.setProperty('--scatter-x', `${(Math.random() - 0.5) * 900}px`);
+    block.style.setProperty('--scatter-y', `${(Math.random() - 0.5) * 520}px`);
+    ui.level200Blocks.appendChild(block);
+    blockIndex += 1;
+  })));
+  const timer = setTimeout(() => ui.level200Blocks?.classList.add('assembled'), 40);
+  celebrationState.timers.push(timer);
+}
+
+function startLevel200Confetti() {
+  if (!celebrationState.active || !ui.level200Confetti) return;
+  const colors = ['#ff4438', '#3f8cff', '#45d365', '#ffd33d', '#a85cff', '#ff8b2d'];
+  const spawn = () => {
+    for (let index = 0; index < 8; index += 1) {
+      const piece = document.createElement('i');
+      piece.style.setProperty('--confetti-x', `${Math.random() * 100}%`);
+      piece.style.setProperty('--confetti-color', colors[Math.floor(Math.random() * colors.length)]);
+      piece.style.setProperty('--confetti-drift', `${(Math.random() - 0.5) * 260}px`);
+      piece.style.setProperty('--confetti-spin', `${Math.random() * 1080 - 540}deg`);
+      piece.style.setProperty('--confetti-duration', `${2.8 + Math.random() * 2}s`);
+      ui.level200Confetti.appendChild(piece);
+      const removeTimer = setTimeout(() => piece.remove(), 5000);
+      celebrationState.timers.push(removeTimer);
+    }
+  };
+  spawn();
+  celebrationState.confettiInterval = setInterval(spawn, 110);
+  const stopTimer = setTimeout(() => {
+    clearInterval(celebrationState.confettiInterval);
+    celebrationState.confettiInterval = null;
+  }, 10000);
+  celebrationState.timers.push(stopTimer);
+}
+
+function openLevel200Celebration() {
+  if (!ui.level200Modal) return;
+  celebrationState.active = true;
+  setSoundToggleHidden(true);
+  ui.level200Modal.classList.add('open');
+  ui.level200Modal.setAttribute('aria-hidden', 'false');
+  ui.level200Blocks?.classList.remove('assembled');
+  buildLevel200Blocks();
+  const confettiTimer = setTimeout(startLevel200Confetti, 2200);
+  celebrationState.timers.push(confettiTimer);
+  if (soundEnabled && ensureAudioElements()) {
+    fadeAudioVolume(backgroundAudio, 0, 650, () => {
+      backgroundAudio.pause();
+      playLevel200Fanfare();
+    });
+  }
+}
+
+function stopLevel200Celebration() {
+  celebrationState.active = false;
+  celebrationState.timers.forEach(clearTimeout);
+  celebrationState.timers = [];
+  if (celebrationState.confettiInterval) clearInterval(celebrationState.confettiInterval);
+  celebrationState.confettiInterval = null;
+  if (celebrationState.musicFade) clearInterval(celebrationState.musicFade);
+  celebrationState.musicFade = null;
+  const fanfare = effectAudio.get('fanfare');
+  if (fanfare) {
+    fanfare.onended = null;
+    fanfare.pause();
+    fanfare.currentTime = 0;
+  }
+  if (ui.level200Confetti) ui.level200Confetti.innerHTML = '';
+  if (ui.level200Blocks) {
+    ui.level200Blocks.classList.remove('assembled');
+    ui.level200Blocks.innerHTML = '';
+  }
+  if (ui.level200Modal) {
+    ui.level200Modal.classList.remove('open');
+    ui.level200Modal.setAttribute('aria-hidden', 'true');
+  }
+  setSoundToggleHidden(false);
+  resumeBackgroundAfterCelebration();
+}
+
+function leaveLevel200Celebration() {
+  stopLevel200Celebration();
+  setActiveLevelSet('main');
+  showLevelsScreen();
+}
+
 function openWinModal() {
   if (!ui.winModal) return;
-  playEffectSound('win', false);
   setSoundToggleHidden(true);
-  const movesLeft = Number.isFinite(model.shotsLeft) ? Math.max(0, model.shotsLeft) : 0;
   const stars = calculateCurrentLevelStars();
   let totalAward = model.winReward;
   if (!model.winAwarded) {
@@ -3299,8 +3620,16 @@ function openWinModal() {
     model.winAwarded = true;
     savePersistentState();
   }
+  if (shouldShowLevel200Celebration()) {
+    model.level200Celebrated = true;
+    savePersistentState();
+    renderLevelsScreen();
+    refreshUI();
+    openLevel200Celebration();
+    return;
+  }
+  playEffectSound('win', false);
   if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
-  if (ui.winMovesLabel) ui.winMovesLabel.textContent = `Moves Left: ${movesLeft}`;
   if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
   if (ui.winStars) ui.winStars.innerHTML = starLabel(stars).split('').map((star) => `<span>${star}</span>`).join('');
   renderLevelsScreen();
@@ -3361,6 +3690,7 @@ function retryCurrentLevel() {
 }
 
 function setActiveLevelSet(levelSet) {
+  if (levelSet === 'master' && !masterLevelsAreUnlocked()) return;
   model.activeLevelSet = levelSet === 'master' ? 'master' : 'main';
   model.levels = model.activeLevelSet === 'master' ? model.masterLevels : model.mainLevels;
   model.currentLevelIndex = Math.min(model.currentLevelIndex, Math.max(0, model.levels.length - 1));
@@ -3432,6 +3762,10 @@ function renderLevelsScreen() {
   if (ui.masterLevelsTab) {
     ui.masterLevelsTab.classList.toggle('active', isMaster);
     ui.masterLevelsTab.setAttribute('aria-selected', String(isMaster));
+    const masterUnlocked = masterLevelsAreUnlocked();
+    ui.masterLevelsTab.disabled = !masterUnlocked;
+    ui.masterLevelsTab.setAttribute('aria-disabled', String(!masterUnlocked));
+    ui.masterLevelsTab.title = masterUnlocked ? '' : 'Complete levels 1–20 to unlock Master Levels';
   }
 
   ui.levelsGrid.innerHTML = '';
@@ -3517,6 +3851,7 @@ function startLevelByIndex(index) {
   model.winReward = 0;
   resourceWarnings.tenSecondsPlayed = false;
   resourceWarnings.fiveShotsPlayed = false;
+  closeTutorial();
   closeFailModal();
   closeWinModal();
   model.gameOver = false;
@@ -3529,10 +3864,12 @@ function startLevelByIndex(index) {
   initPhaser(model.grid.length, model.grid[0].length);
   renderBoosterInventory();
   refreshUI();
+  showCurrentLevelTutorial();
 }
 
 async function initApp() {
   loadPersistentState();
+  const returnReward = claimReturnReward();
   if (!IS_BUILDER_PAGE) requestBackgroundMusic();
   installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
@@ -3569,6 +3906,9 @@ async function initApp() {
   if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
   if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
   if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
+  if (ui.tutorialCloseBtn) ui.tutorialCloseBtn.onclick = () => closeTutorial();
+  if (ui.returnRewardCloseBtn) ui.returnRewardCloseBtn.onclick = () => closeReturnReward();
+  if (ui.level200BackBtn) ui.level200BackBtn.onclick = () => leaveLevel200Celebration();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
@@ -3596,6 +3936,7 @@ async function initApp() {
     renderLevelsScreen();
     refreshUI();
   }
+  showReturnReward(returnReward);
 }
 
 initApp();
