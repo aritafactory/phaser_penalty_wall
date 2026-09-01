@@ -3737,6 +3737,7 @@ function openWinModal() {
   if (ui.winLevelLabel) ui.winLevelLabel.textContent = `Level ${model.currentLevelIndex + 1} Complete`;
   if (ui.winRewardLabel) ui.winRewardLabel.textContent = `💎 +${totalAward}`;
   if (ui.winStars) ui.winStars.innerHTML = starLabel(stars).split('').map((star) => `<span>${star}</span>`).join('');
+  if (ui.winNextBtn) ui.winNextBtn.textContent = isLastLevelInActiveSet() ? 'BACK TO LEVELS' : 'NEXT LEVEL';
   renderLevelsScreen();
   refreshUI();
   ui.winModal.classList.add('open');
@@ -3752,8 +3753,16 @@ function closeWinModal() {
 
 function goToNextLevel() {
   closeWinModal();
+  if (isLastLevelInActiveSet()) {
+    showLevelsScreen();
+    return;
+  }
   const nextIndex = Math.min(model.currentLevelIndex + 1, model.levels.length - 1);
   startLevelByIndex(nextIndex);
+}
+
+function isLastLevelInActiveSet() {
+  return model.currentLevelIndex >= model.levels.length - 1;
 }
 
 function openFailModal() {

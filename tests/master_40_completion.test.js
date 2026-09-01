@@ -22,6 +22,14 @@ savePersistentState();
 assert.strictEqual(localStorage.getItem(STORAGE_KEYS.master40Celebrated), 'true');
 assert.ok(boosterIcon('mix').includes('icons/mix.png'));
 assert.ok(boosterIcon('plusTenSeconds').includes('icons/plusTenSeconds.png'));
+model.levels = Array(40).fill({});
+model.currentLevelIndex = 39;
+assert.strictEqual(isLastLevelInActiveSet(), true, 'Master level 40 should return to its level screen');
+model.levels = Array(200).fill({});
+model.currentLevelIndex = 199;
+assert.strictEqual(isLastLevelInActiveSet(), true, 'Main level 200 should return to its level screen');
+model.currentLevelIndex = 198;
+assert.strictEqual(isLastLevelInActiveSet(), false, 'non-final levels should keep the next-level action');
 console.log('master level 40 completion state ok');`;
 
 const storage = new Map();
