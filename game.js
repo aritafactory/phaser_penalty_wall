@@ -1614,6 +1614,10 @@ function rotateRingClockwise(grid, row, col) {
   return true;
 }
 
+function gridBlockCount(grid) {
+  return grid.reduce((count, gridRow) => count + gridRow.filter(Boolean).length, 0);
+}
+
 function isWin() {
   const shapeCells = model.currentLevel?.shapeGoal?.cells;
   if (Array.isArray(shapeCells) && shapeCells.length) {
@@ -2099,6 +2103,7 @@ class BoardScene extends Phaser.Scene {
 
     this.drawTargetZoneOverlay();
     this.shooter.setFillStyle(COLOR_MAP[model.selectedShotColor]);
+    return this.blocks.size === gridBlockCount(model.grid);
   }
 
   drawTargetZoneOverlay() {
@@ -2975,8 +2980,11 @@ class BoardScene extends Phaser.Scene {
         const [targetRow, targetCol] = ring[(index + 1) % ring.length];
         this.blocks.set(this.key(targetRow, targetCol), block);
       });
-      this.time.delayedCall(80, () => {
-        this.renderGridStatic();
+      // Rebuild from the rotated model before calculating gravity. This removes
+      // any stale or overwritten sprites left by the eight simultaneous tweens.
+      this.renderGridStatic();
+      const gravityMoves = applyGravityAndGetMoves();
+      this.animateRemovalAndFall([], gravityMoves, () => {
         renderBoosterInventory();
         this.finishResolvedBoardAction();
         this.animating = false;
@@ -3351,8 +3359,8 @@ class BoardScene extends Phaser.Scene {
     this.updateBombPreview(delta);
     if (model.gameOver || !model.gameplayActive || model.tutorialOpen) return;
 
-    this.flashAccumulator += delta;
-    if (this.flashAccumulator >= 800) {
+    if (!this.animating) this.flashAccumulator += delta;
+    if (!this.animating && this.flashAccumulator >= 800) {
       this.flashAccumulator = 0;
       for (let r = 0; r < model.grid.length; r += 1) {
         for (let c = 0; c < model.grid[0].length; c += 1) {
