@@ -74,6 +74,7 @@ const model = {
   returnRewardDay: 0,
   lastReturnRewardDate: '',
   level200Celebrated: false,
+  master40Celebrated: false,
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -133,6 +134,10 @@ const ui = {
   level200Blocks: document.getElementById('level200Blocks'),
   level200Confetti: document.getElementById('level200Confetti'),
   level200BackBtn: document.getElementById('level200BackBtn'),
+  master40Modal: document.getElementById('master40Modal'),
+  master40Blocks: document.getElementById('master40Blocks'),
+  master40Confetti: document.getElementById('master40Confetti'),
+  master40BackBtn: document.getElementById('master40BackBtn'),
   soundToggle: document.getElementById('soundToggle'),
   builderCols: document.getElementById('builderCols'),
   builderRows: document.getElementById('builderRows'),
@@ -165,6 +170,7 @@ const STORAGE_KEYS = {
   returnRewardDay: 'cbb_return_reward_day',
   lastReturnRewardDate: 'cbb_last_return_reward_date',
   level200Celebrated: 'cbb_level_200_celebrated',
+  master40Celebrated: 'cbb_master_40_celebrated',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
 };
@@ -227,7 +233,7 @@ let audioUnlockInstalled = false;
 let soundEnabled = true;
 let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
-const GAME_AUDIO_VOLUME = 0.2;
+const GAME_AUDIO_VOLUME = 0.7;
 const celebrationState = { active: false, timers: [], confettiInterval: null, musicFade: null };
 
 const AUDIO_PATHS = {
@@ -516,6 +522,7 @@ function loadPersistentState() {
     : 0;
   model.lastReturnRewardDate = localStorage.getItem(STORAGE_KEYS.lastReturnRewardDate) || '';
   model.level200Celebrated = localStorage.getItem(STORAGE_KEYS.level200Celebrated) === 'true';
+  model.master40Celebrated = localStorage.getItem(STORAGE_KEYS.master40Celebrated) === 'true';
 }
 
 function savePersistentState() {
@@ -529,6 +536,7 @@ function savePersistentState() {
   localStorage.setItem(STORAGE_KEYS.returnRewardDay, String(model.returnRewardDay));
   localStorage.setItem(STORAGE_KEYS.lastReturnRewardDate, model.lastReturnRewardDate);
   localStorage.setItem(STORAGE_KEYS.level200Celebrated, String(model.level200Celebrated));
+  localStorage.setItem(STORAGE_KEYS.master40Celebrated, String(model.master40Celebrated));
 }
 
 function localCalendarDate(date = new Date()) {
@@ -1731,8 +1739,7 @@ function renderBoosterInventory() {
       li.classList.toggle('unavailable', !available);
       li.classList.toggle('armed', model.activeBooster === booster.key);
       const amountLabel = IS_BUILDER_PAGE ? '∞' : String(owned);
-      const iconMap = { bomb: '💣', mix: '🌪️', fractions: '🧩', minusOneColor: '⛔', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' };
-      li.innerHTML = `<span class="booster-icon">${iconMap[booster.key] || '✨'}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>`;
+      li.innerHTML = `<span class="booster-icon">${boosterIcon(booster.key)}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>`;
       const btn = li.querySelector('button');
       btn.onclick = () => {
         if (!available) return;
@@ -1772,7 +1779,12 @@ function renderBoosterInventory() {
 }
 
 function boosterIcon(boosterKey) {
-  return { bomb: '💣', mix: '🌈', fractions: '🧩', minusOneColor: '-1', plusFiveShots: '+5', plusTenSeconds: '+10', compressor: '🗜️', rotator: '🔄', rainbow: '🌈' }[boosterKey] || '✨';
+  const fileName = {
+    bomb: 'bomb.png', mix: 'mix.png', fractions: 'fractions.png', minusOneColor: 'minusOneColor.png',
+    plusFiveShots: 'plusFiveShots.png', plusTenSeconds: 'plusTenSeconds.png', compressor: 'compressor.png',
+    rotator: 'rotator.png', rainbow: 'rainbow.png',
+  }[boosterKey];
+  return fileName ? `<img src="icons/${fileName}" alt="" draggable="false">` : '✨';
 }
 
 function renderShopTable() {
@@ -2588,7 +2600,8 @@ class BoardScene extends Phaser.Scene {
         this.destroyCompressorPreview();
         closeFailModal();
         ui.stateLabel.textContent = 'Статус: победа';
-        openWinModal();
+        if (model.activeLevelSet === 'master') setTimeout(openWinModal, 550);
+        else openWinModal();
       }
     } else if (Number.isFinite(model.shotsLeft) && model.shotsLeft <= 0) {
       failLevel('Статус: поражение (кончились выстрелы)');
@@ -3453,6 +3466,12 @@ function shouldShowLevel200Celebration() {
   return model.activeLevelSet === 'main' && model.currentLevelIndex === 199 && !model.level200Celebrated;
 }
 
+function shouldShowMaster40Celebration() {
+  return model.activeLevelSet === 'master'
+    && model.currentLevelIndex === 39
+    && !model.master40Celebrated;
+}
+
 function fadeAudioVolume(audio, targetVolume, duration, onComplete = null) {
   if (!audio) {
     if (onComplete) onComplete();
@@ -3599,6 +3618,84 @@ function leaveLevel200Celebration() {
   showLevelsScreen();
 }
 
+function buildMaster40Blocks() {
+  if (!ui.master40Blocks) return;
+  const glyphs = [
+    ['10010', '10010', '11111', '00010', '00010'],
+    ['01110', '10001', '10001', '10001', '01110'],
+  ];
+  ui.master40Blocks.innerHTML = '';
+  let blockIndex = 0;
+  glyphs.forEach((rows, glyphIndex) => rows.forEach((row, rowIndex) => [...row].forEach((cell, colIndex) => {
+    if (cell !== '1') return;
+    const block = document.createElement('span');
+    block.className = 'level-200-block master-gold-block';
+    block.style.gridColumn = String(glyphIndex * 6 + colIndex + 1);
+    block.style.gridRow = String(rowIndex + 1);
+    block.style.setProperty('--assemble-delay', `${blockIndex * 55}ms`);
+    block.style.setProperty('--scatter-x', `${(Math.random() - 0.5) * 900}px`);
+    block.style.setProperty('--scatter-y', `${(Math.random() - 0.5) * 520}px`);
+    ui.master40Blocks.appendChild(block);
+    blockIndex += 1;
+  })));
+  celebrationState.timers.push(setTimeout(() => ui.master40Blocks?.classList.add('assembled'), 40));
+}
+
+function startMaster40Confetti() {
+  if (!celebrationState.active || !ui.master40Confetti) return;
+  const colors = ['#ffd23f', '#ff9f1c', '#c04cff', '#fff4a3', '#36a8ff'];
+  const spawn = () => {
+    for (let index = 0; index < 8; index += 1) {
+      const piece = document.createElement('i');
+      piece.style.setProperty('--confetti-x', `${Math.random() * 100}%`);
+      piece.style.setProperty('--confetti-color', colors[Math.floor(Math.random() * colors.length)]);
+      piece.style.setProperty('--confetti-drift', `${(Math.random() - 0.5) * 260}px`);
+      piece.style.setProperty('--confetti-spin', `${Math.random() * 1080 - 540}deg`);
+      piece.style.setProperty('--confetti-duration', `${2.8 + Math.random() * 2}s`);
+      ui.master40Confetti.appendChild(piece);
+      celebrationState.timers.push(setTimeout(() => piece.remove(), 5000));
+    }
+  };
+  spawn();
+  celebrationState.confettiInterval = setInterval(spawn, 110);
+  celebrationState.timers.push(setTimeout(() => {
+    clearInterval(celebrationState.confettiInterval);
+    celebrationState.confettiInterval = null;
+  }, 10000));
+}
+
+function openMaster40Celebration() {
+  if (!ui.master40Modal) return;
+  celebrationState.active = true;
+  setSoundToggleHidden(true);
+  ui.master40Modal.classList.add('open');
+  ui.master40Modal.setAttribute('aria-hidden', 'false');
+  ui.master40Blocks?.classList.remove('assembled');
+  buildMaster40Blocks();
+  celebrationState.timers.push(setTimeout(startMaster40Confetti, 1800));
+  if (soundEnabled && ensureAudioElements()) {
+    fadeAudioVolume(backgroundAudio, 0, 650, () => {
+      backgroundAudio.pause();
+      playLevel200Fanfare();
+    });
+  }
+}
+
+function leaveMaster40Celebration() {
+  stopLevel200Celebration();
+  if (ui.master40Confetti) ui.master40Confetti.innerHTML = '';
+  if (ui.master40Blocks) {
+    ui.master40Blocks.classList.remove('assembled');
+    ui.master40Blocks.innerHTML = '';
+  }
+  if (ui.master40Modal) {
+    ui.master40Modal.classList.remove('open');
+    ui.master40Modal.setAttribute('aria-hidden', 'true');
+  }
+  setActiveLevelSet('main');
+  showLevelsScreen();
+}
+
 function openWinModal() {
   if (!ui.winModal) return;
   setSoundToggleHidden(true);
@@ -3626,6 +3723,14 @@ function openWinModal() {
     renderLevelsScreen();
     refreshUI();
     openLevel200Celebration();
+    return;
+  }
+  if (shouldShowMaster40Celebration()) {
+    model.master40Celebrated = true;
+    savePersistentState();
+    renderLevelsScreen();
+    refreshUI();
+    openMaster40Celebration();
     return;
   }
   playEffectSound('win', false);
@@ -3909,6 +4014,7 @@ async function initApp() {
   if (ui.tutorialCloseBtn) ui.tutorialCloseBtn.onclick = () => closeTutorial();
   if (ui.returnRewardCloseBtn) ui.returnRewardCloseBtn.onclick = () => closeReturnReward();
   if (ui.level200BackBtn) ui.level200BackBtn.onclick = () => leaveLevel200Celebration();
+  if (ui.master40BackBtn) ui.master40BackBtn.onclick = () => leaveMaster40Celebration();
   if (ui.closeShopBtn) ui.closeShopBtn.onclick = () => closeShop();
   if (ui.shopModal) {
     ui.shopModal.onclick = (event) => {
