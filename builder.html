@@ -6,8 +6,8 @@
     <title>Level Builder</title>
     <style>
       body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
-      .app { width:100%; max-width: 1920px; margin: 0 auto; padding: 12px clamp(12px, 2vw, 32px); box-sizing:border-box; }
-      .builder-layout { display:grid; grid-template-columns:minmax(540px, 600px) minmax(0, 1fr); gap:clamp(14px, 2vw, 28px); align-items:flex-start; }
+      .app { width:100%; max-width: 1920px; margin: 0 auto; padding: 12px clamp(12px, 38.4px, 32px); box-sizing:border-box; }
+      .builder-layout { display:grid; grid-template-columns:minmax(540px, 600px) minmax(0, 1fr); gap:clamp(14px, 38.4px, 28px); align-items:flex-start; }
       .left { min-width:0; background: #18181b; border:1px solid #334155; border-radius: 12px; padding: 14px; }
       .right { min-width:0; width:100%; }
       .row { display:flex; gap:10px; align-items:center; margin-bottom: 10px; flex-wrap: wrap; }
@@ -31,19 +31,10 @@
       .inventory .booster-name { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:11px; }
       .inventory .booster-count { display:none; }
       .inventory button { min-width:0; padding:3px 4px; border-radius:5px; font-size:9px; }
-      @media (max-width: 1180px) {
-        .builder-layout { grid-template-columns:1fr; }
-        .left, .right { width:100%; box-sizing:border-box; }
-        .settings-row { grid-template-columns:minmax(0, 1fr) 170px; }
-      }
-      @media (max-width: 680px) {
-        .app { padding:8px; }
-        .settings-row { grid-template-columns:1fr; }
-        .inventory ul { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-        .builder-grid { overflow-x:auto; }
-      }
       .modal-backdrop { display:none; }
     </style>
+    <link rel="stylesheet" href="viewport-scale.css?v=1" />
+    <script src="viewport-scale.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   </head>
   <body data-page="builder">
