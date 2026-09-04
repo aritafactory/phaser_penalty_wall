@@ -67,7 +67,14 @@
     ]
   },
   "startingBoosters": {
-    "plusTenSeconds": 2,
-    "rainbow": 10
+    "mix": 999,
+    "rotator": 999,
+    "compressor": 999,
+    "plusFiveShots": 999,
+    "plusTenSeconds": 999,
+    "bomb": 999,
+    "rainbow": 999,
+    "fractions": 999,
+    "minusOneColor": 999
   }
 }

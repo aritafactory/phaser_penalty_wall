@@ -209,7 +209,7 @@ const LEVEL_TUTORIALS = [
   ['Rainbow', 'Rainbow makes the next ball match any target color.'],
   ['Final Training', 'Clear two layers with Unbreakable blocks before time or shots run out. Use Fractions, Minus One Color, and Rainbow when needed.'],
 ];
-const MASTER_TUTORIAL = ['Master Levels', 'Using granted boosters, complete the shape. Place Unbreakable blocks into the dotted line area.'];
+const MASTER_TUTORIAL = ['Master Levels', 'Using granted boosters, complete the shape. Place Unbreakable blocks into the dotted line area. If you feel stuck, restart the level and try again.'];
 const RETURN_REWARD_CYCLE = [
   'mix',
   'rotator',
@@ -561,7 +561,7 @@ function showReturnReward(reward) {
   if (!reward || !ui.returnRewardModal) return;
   const booster = BOOSTER_CATALOG.find(({ key }) => key === reward.boosterKey);
   if (ui.returnRewardDayLabel) ui.returnRewardDayLabel.textContent = `DAY ${reward.day} OF ${RETURN_REWARD_CYCLE.length}`;
-  if (ui.returnRewardName) ui.returnRewardName.textContent = `+1 ${booster?.name || reward.boosterKey}`;
+  if (ui.returnRewardName) ui.returnRewardName.textContent = `${booster?.name || reward.boosterKey} was granted!`;
   ui.returnRewardModal.classList.add('open');
   ui.returnRewardModal.setAttribute('aria-hidden', 'false');
   setSoundToggleHidden(true);
