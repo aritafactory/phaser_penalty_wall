@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-screen="start">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,18 +12,10 @@
         --green: #19b447;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #0b0f14; color: #e2e8f0; min-height: 1080px; }
+      body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: transparent; color: #e2e8f0; min-height: 1080px; }
       body.start-active { overflow: hidden; }
-      .start-screen { position: fixed; inset: 0; z-index: 50; min-height: 1080px; overflow: hidden; background:
-          radial-gradient(circle at 17% 19%, rgba(225, 37, 28, .18), transparent 12%),
-          radial-gradient(circle at 12% 39%, rgba(0, 132, 255, .16), transparent 14%),
-          radial-gradient(circle at 14% 64%, rgba(255, 211, 0, .16), transparent 13%),
-          radial-gradient(circle at 83% 22%, rgba(16, 181, 67, .18), transparent 13%),
-          radial-gradient(circle at 91% 44%, rgba(148, 45, 207, .18), transparent 12%),
-          radial-gradient(circle at 86% 68%, rgba(244, 119, 0, .16), transparent 12%),
-          linear-gradient(180deg, #11171d 0%, #080c10 100%); display: flex; align-items: center; justify-content: center; padding: 28px; transition: opacity .25s ease, visibility .25s ease; }
+      .start-screen { position: fixed; inset: 0; z-index: 50; min-height: 1080px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 28px; transition: opacity .25s ease, visibility .25s ease; }
       .start-screen[hidden] { display: none; }
-      .start-screen::before { content: ''; position: absolute; inset: -60px; opacity: .22; background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 52px 52px; mask-image: radial-gradient(circle at center, transparent 0 18%, #000 58%, transparent 88%); }
       .start-top { position: absolute; top: clamp(18px, 76.8px, 42px); left: clamp(20px, 76.8px, 48px); right: clamp(20px, 76.8px, 48px); display: flex; justify-content: space-between; align-items: center; z-index: 2; }
       .start-top .currency-pill { margin-left:auto; }
       .icon-btn, .currency-pill, .plus-btn { border: 2px solid var(--panel-border); box-shadow: inset 0 0 0 2px rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.45); background: linear-gradient(180deg, rgba(38,44,52,.92), rgba(8,11,15,.94)); color: white; }
@@ -45,20 +37,9 @@
       .menu-btn { height: 104px; border-radius: 15px; border: 2px solid rgba(255,255,255,.16); color: #fff; font-weight: 900; font-size: clamp(36px, 76.8px, 54px); letter-spacing: .04em; text-shadow: 0 3px 4px #000; box-shadow: inset 0 2px 0 rgba(255,255,255,.24), inset 0 -5px 0 rgba(0,0,0,.25), 0 12px 24px rgba(0,0,0,.55); cursor: pointer; }
       .play-btn { background: linear-gradient(180deg, #23cb50, #0b8d31); border-color: #39e763; }
       .shop-start-btn { background: linear-gradient(180deg, #252b32, #0d1117); }
-      .floating-block { position:absolute; width: 120px; height: 120px; border-radius: 14px; transform: rotate(var(--rot)); background: var(--color); box-shadow: inset 0 4px 9px rgba(255,255,255,.22), inset 0 -7px 8px rgba(0,0,0,.28), 0 14px 22px rgba(0,0,0,.65), 0 0 38px var(--glow); }
-      .b1{--rot:20deg;--color:#d92721;--glow:rgba(217,39,33,.45);left:14%;top:13%}.b2{--rot:18deg;--color:#0872c9;--glow:rgba(8,114,201,.45);left:5%;top:34%}.b3{--rot:-12deg;--color:#e4b900;--glow:rgba(228,185,0,.45);left:11%;top:56%}.b4{--rot:20deg;--color:#555;--glow:rgba(255,255,255,.12);left:7%;bottom:7%}.b5{--rot:-15deg;--color:#07913a;--glow:rgba(7,145,58,.45);right:16%;top:18%}.b6{--rot:-15deg;--color:#76209b;--glow:rgba(118,32,155,.45);right:6%;top:38%}.b7{--rot:16deg;--color:#df7000;--glow:rgba(223,112,0,.45);right:10%;top:61%}.b8{--rot:-15deg;--color:#4a4a4a;--glow:rgba(255,255,255,.12);right:8%;bottom:7%}
 
-      .levels-screen { position: fixed; inset: 0; z-index: 55; min-height: 1080px; overflow: auto; padding: 24px 32px 18px; background:
-          radial-gradient(circle at 14% 18%, rgba(30, 89, 190, .22), transparent 18%),
-          radial-gradient(circle at 88% 80%, rgba(110, 43, 180, .26), transparent 18%),
-          radial-gradient(circle at 50% 8%, rgba(26, 146, 255, .12), transparent 28%),
-          linear-gradient(180deg, #081434 0%, #031128 52%, #041833 100%); }
+      .levels-screen { position: fixed; inset: 0; z-index: 55; min-height: 1080px; overflow: auto; padding: 24px 32px 18px; }
       .levels-screen[hidden] { display: none; }
-      .levels-screen::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.24; background-image:
-          radial-gradient(circle at 11% 15%, rgba(64,107,255,.55) 0 38px, transparent 39px),
-          radial-gradient(circle at 82% 18%, rgba(80,104,255,.32) 0 32px, transparent 33px),
-          radial-gradient(circle at 5% 83%, rgba(0,154,255,.42) 0 54px, transparent 55px),
-          radial-gradient(circle at 95% 76%, rgba(128,45,214,.5) 0 58px, transparent 59px); filter: blur(2px); }
       .levels-panel { position:relative; z-index:1; min-height: calc(1080px - 42px); background: transparent; border: 0; box-shadow:none; overflow: visible; display:flex; flex-direction:column; }
       .levels-header { min-height: 92px; display: grid; grid-template-columns: 160px 1fr minmax(420px, auto); align-items: start; gap: 22px; padding: 0; border: 0; box-shadow: none; }
       .levels-logo { justify-self:center; display:flex; align-items:center; gap:18px; filter: drop-shadow(0 8px 10px rgba(0,0,0,.55)); }
@@ -90,16 +71,7 @@
       .levels-dot { width:22px; height:22px; border-radius:50%; border:1px solid rgba(255,255,255,.18); background:#3d4658; cursor:pointer; box-shadow: inset 0 2px 3px rgba(255,255,255,.1), 0 4px 8px rgba(0,0,0,.45); }
       .levels-dot.active { background:#25baff; box-shadow:0 0 14px rgba(37,186,255,.72); }
 
-      .app { max-width:none; height:1080px; min-height:0; margin:0; padding:26px 26px 32px; background:
-          radial-gradient(circle at 14% 18%, rgba(30, 89, 190, .20), transparent 18%),
-          radial-gradient(circle at 89% 78%, rgba(110, 43, 180, .24), transparent 18%),
-          radial-gradient(circle at 50% 8%, rgba(26, 146, 255, .10), transparent 28%),
-          linear-gradient(180deg, #071231 0%, #020d24 54%, #031731 100%); position:relative; overflow:hidden; }
-      .app::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.22; background-image:
-          radial-gradient(circle at 8% 80%, rgba(0,154,255,.42) 0 54px, transparent 55px),
-          radial-gradient(circle at 95% 78%, rgba(128,45,214,.48) 0 58px, transparent 59px),
-          radial-gradient(circle at 16% 22%, rgba(64,107,255,.36) 0 34px, transparent 35px),
-          radial-gradient(circle at 82% 23%, rgba(80,104,255,.28) 0 30px, transparent 31px); filter:blur(2px); }
+      .app { max-width:none; height:1080px; min-height:0; margin:0; padding:26px 26px 32px; position:relative; overflow:hidden; }
       .game-topbar { position:relative; z-index:1; min-height:86px; margin:0 0 40px; padding:0; display:flex; align-items:center; gap:clamp(10px, 24px, 24px); }
       .home-btn { flex:0 0 86px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:52px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; text-shadow:0 4px 8px #001432; }
       .settings-btn { flex:0 0 86px; width:86px; height:86px; border-radius:17px; border:2px solid #1e6dcc; background:linear-gradient(180deg, rgba(17,73,145,.96), rgba(4,29,76,.96)); color:#dff7ff; font-size:46px; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 10px 22px rgba(0,0,0,.45); cursor:pointer; }
@@ -217,8 +189,6 @@
       <div class="start-top">
         <div class="currency-pill" aria-label="Total score"><span class="gem">💎</span><span id="startBalanceLabel">0</span></div>
       </div>
-      <div class="floating-block b1"></div><div class="floating-block b2"></div><div class="floating-block b3"></div><div class="floating-block b4"></div>
-      <div class="floating-block b5"></div><div class="floating-block b6"></div><div class="floating-block b7"></div><div class="floating-block b8"></div>
       <div class="start-content">
         <h1 class="logo" aria-label="Color Block Breaker">
           <span class="logo-line logo-color"><span>C</span><span>O</span><span>L</span><span>O</span><span>R</span></span>

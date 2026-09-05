@@ -3824,6 +3824,7 @@ function setActiveLevelSet(levelSet) {
 
 function showStartScreen() {
   cancelActiveGameplay();
+  document.documentElement.dataset.screen = 'start';
   if (ui.levelsScreen) ui.levelsScreen.hidden = true;
   if (ui.startScreen) ui.startScreen.hidden = false;
   document.body.classList.add('start-active');
@@ -3831,6 +3832,7 @@ function showStartScreen() {
 
 function showLevelsScreen() {
   cancelActiveGameplay();
+  document.documentElement.dataset.screen = 'gameplay';
   model.levelsPage = Math.floor(Math.max(0, model.currentLevelIndex) / LEVELS_PER_PAGE);
   if (ui.startScreen) ui.startScreen.hidden = true;
   if (ui.levelsScreen) ui.levelsScreen.hidden = false;
@@ -3839,6 +3841,7 @@ function showLevelsScreen() {
 }
 
 function hideMenuScreens() {
+  document.documentElement.dataset.screen = 'gameplay';
   if (ui.startScreen) ui.startScreen.hidden = true;
   if (ui.levelsScreen) ui.levelsScreen.hidden = true;
   document.body.classList.remove('start-active');
