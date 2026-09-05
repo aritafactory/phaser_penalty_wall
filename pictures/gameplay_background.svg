@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#001132"/>
+      <stop offset="28%" stop-color="#062562"/>
+      <stop offset="52%" stop-color="#02235b"/>
+      <stop offset="78%" stop-color="#001658"/>
+      <stop offset="100%" stop-color="#00123f"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="0.5" cy="0.36" r="0.72">
+      <stop offset="0%" stop-color="#123c8a" stop-opacity="0.14"/>
+      <stop offset="55%" stop-color="#123c8a" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#00040f" stop-opacity="0.34"/>
+    </radialGradient>
+    <radialGradient id="blueGlowLeftBottom" cx="0.05" cy="0.88" r="0.16">
+      <stop offset="0%" stop-color="#17a0ff" stop-opacity="0.18"/>
+      <stop offset="42%" stop-color="#17a0ff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#17a0ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="purpleGlowRightBottom" cx="0.93" cy="0.83" r="0.2">
+      <stop offset="0%" stop-color="#8d59ff" stop-opacity="0.18"/>
+      <stop offset="44%" stop-color="#8d59ff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#8d59ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur40" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="32"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg2)"/>
+  <rect width="1920" height="1080" fill="url(#vignette)"/>
+  <rect width="1920" height="1080" fill="url(#blueGlowLeftBottom)"/>
+  <rect width="1920" height="1080" fill="url(#purpleGlowRightBottom)"/>
+
+  <circle cx="209" cy="136" r="38" fill="#6f8fff" opacity="0.18" filter="url(#blur40)"/>
+  <circle cx="1557" cy="926" r="70" fill="#8f59ff" opacity="0.20" filter="url(#blur40)"/>
+  <circle cx="1548" cy="174" r="28" fill="#7993ff" opacity="0.12" filter="url(#blur40)"/>
+  <circle cx="97" cy="1003" r="52" fill="#0ca0ff" opacity="0.16" filter="url(#blur40)"/>
+</svg>
