@@ -1,0 +1,61 @@
+:root {
+  --viewport-scale: 1;
+  --viewport-offset-x: 0px;
+  --viewport-offset-y: 0px;
+  --design-width: 1920px;
+  --design-height: 1080px;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #020711;
+}
+
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+html[data-screen='start']::before {
+  background-image: url('pictures/start_background.svg');
+}
+
+html[data-screen='gameplay']::before {
+  background-image: url('pictures/gameplay_background.svg');
+}
+
+body {
+  position: relative;
+  width: var(--design-width) !important;
+  height: var(--design-height) !important;
+  min-height: var(--design-height) !important;
+  overflow: hidden;
+  transform-origin: top left;
+  transform: translate(var(--viewport-offset-x), var(--viewport-offset-y)) scale(var(--viewport-scale));
+  z-index: 1;
+  background: transparent !important;
+}
+
+.start-screen,
+.levels-screen,
+.app {
+  background: transparent !important;
+}
+
+/* Fixed screens use the design surface instead of the browser's unscaled viewport. */
+.start-screen,
+.levels-screen,
+.app,
+.result-backdrop,
+.modal-backdrop {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+}

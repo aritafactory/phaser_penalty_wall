@@ -1952,8 +1952,14 @@ function recordNormalShotOutcome(ordinaryRemoved) {
 }
 
 function boardLayoutMetrics(rows, cols) {
-  const viewportWidth = window.innerWidth || 1200;
-  const viewportHeight = window.innerHeight || 800;
+  const viewportMetrics = window.viewportScaling?.calculateViewportScale?.(
+    window.visualViewport?.width || window.innerWidth,
+    window.visualViewport?.height || window.innerHeight
+  );
+  const viewportScale = viewportMetrics?.scale || 1;
+  const viewportOffsetY = viewportMetrics?.offsetY || 0;
+  const viewportWidth = viewportMetrics?.designWidth || window.innerWidth || 1200;
+  const viewportHeight = viewportMetrics?.designHeight || window.innerHeight || 800;
   if (!IS_BUILDER_PAGE) {
     const layout = document.querySelector?.('.game-board-layout');
     const inventory = layout?.querySelector?.('.inventory');
@@ -1961,13 +1967,13 @@ function boardLayoutMetrics(rows, cols) {
     const layoutRect = layout?.getBoundingClientRect?.();
     const inventoryRect = inventory?.getBoundingClientRect?.();
     const headerRect = header?.getBoundingClientRect?.();
-    const sideBySide = Boolean(layoutRect && inventoryRect && inventoryRect.left > layoutRect.left + 40);
+    const sideBySide = Boolean(layoutRect && inventoryRect && inventoryRect.left > layoutRect.left + 40 * viewportScale);
     const columnGap = sideBySide
       ? (Number.parseFloat(window.getComputedStyle?.(layout)?.columnGap) || 0)
       : 0;
     const gameplayColumnWidth = sideBySide
-      ? inventoryRect.left - layoutRect.left - columnGap
-      : (layoutRect?.width || viewportWidth - 24);
+      ? (inventoryRect.left - layoutRect.left) / viewportScale - columnGap
+      : ((layoutRect?.width || (viewportWidth - 24) * viewportScale) / viewportScale);
     const gameElement = document.getElementById?.('game');
     const gameStyle = gameElement ? window.getComputedStyle?.(gameElement) : null;
     const horizontalChrome = (Number.parseFloat(gameStyle?.paddingLeft) || 12)
@@ -1986,7 +1992,10 @@ function boardLayoutMetrics(rows, cols) {
     const availableWidth = Math.max(1, gameplayColumnWidth - horizontalChrome);
     const availablePlayHeight = Math.max(
       1,
-      viewportHeight - (layoutRect?.top || headerRect?.bottom || 150) - viewportBottomClearance - verticalChrome
+      viewportHeight
+        - (((layoutRect?.top || headerRect?.bottom) - viewportOffsetY) / viewportScale || 150)
+        - viewportBottomClearance
+        - verticalChrome
     );
     const fixedVerticalSpace = gridTop + shooterGap + bottomMargin;
     let cell = Math.max(4, Math.floor(Math.min(
@@ -3815,6 +3824,7 @@ function setActiveLevelSet(levelSet) {
 
 function showStartScreen() {
   cancelActiveGameplay();
+  document.documentElement.dataset.screen = 'start';
   if (ui.levelsScreen) ui.levelsScreen.hidden = true;
   if (ui.startScreen) ui.startScreen.hidden = false;
   document.body.classList.add('start-active');
@@ -3822,6 +3832,7 @@ function showStartScreen() {
 
 function showLevelsScreen() {
   cancelActiveGameplay();
+  document.documentElement.dataset.screen = 'gameplay';
   model.levelsPage = Math.floor(Math.max(0, model.currentLevelIndex) / LEVELS_PER_PAGE);
   if (ui.startScreen) ui.startScreen.hidden = true;
   if (ui.levelsScreen) ui.levelsScreen.hidden = false;
@@ -3830,6 +3841,7 @@ function showLevelsScreen() {
 }
 
 function hideMenuScreens() {
+  document.documentElement.dataset.screen = 'gameplay';
   if (ui.startScreen) ui.startScreen.hidden = true;
   if (ui.levelsScreen) ui.levelsScreen.hidden = true;
   document.body.classList.remove('start-active');

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11171d"/>
+      <stop offset="1" stop-color="#080c10"/>
+    </linearGradient>
+    <radialGradient id="red"><stop stop-color="#e1251c" stop-opacity=".32"/><stop offset="1" stop-color="#e1251c" stop-opacity="0"/></radialGradient>
+    <radialGradient id="blue"><stop stop-color="#0084ff" stop-opacity=".3"/><stop offset="1" stop-color="#0084ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="green"><stop stop-color="#10b543" stop-opacity=".32"/><stop offset="1" stop-color="#10b543" stop-opacity="0"/></radialGradient>
+    <radialGradient id="purple"><stop stop-color="#942dcf" stop-opacity=".3"/><stop offset="1" stop-color="#942dcf" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse"><path d="M52 0H0v52" fill="none" stroke="#fff" stroke-opacity=".035"/></pattern>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#base)"/>
+  <ellipse cx="260" cy="210" rx="390" ry="300" fill="url(#red)"/>
+  <ellipse cx="210" cy="610" rx="430" ry="360" fill="url(#blue)"/>
+  <ellipse cx="1620" cy="250" rx="420" ry="320" fill="url(#green)"/>
+  <ellipse cx="1740" cy="650" rx="430" ry="360" fill="url(#purple)"/>
+  <rect width="1920" height="1080" fill="url(#grid)"/>
+</svg>
