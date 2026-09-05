@@ -1,19 +1,80 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
   <defs>
-    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#11171d"/>
-      <stop offset="1" stop-color="#080c10"/>
+    <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#02060c"/>
+      <stop offset="18%" stop-color="#07192f"/>
+      <stop offset="50%" stop-color="#02070d"/>
+      <stop offset="82%" stop-color="#08182e"/>
+      <stop offset="100%" stop-color="#02060c"/>
     </linearGradient>
-    <radialGradient id="red"><stop stop-color="#e1251c" stop-opacity=".32"/><stop offset="1" stop-color="#e1251c" stop-opacity="0"/></radialGradient>
-    <radialGradient id="blue"><stop stop-color="#0084ff" stop-opacity=".3"/><stop offset="1" stop-color="#0084ff" stop-opacity="0"/></radialGradient>
-    <radialGradient id="green"><stop stop-color="#10b543" stop-opacity=".32"/><stop offset="1" stop-color="#10b543" stop-opacity="0"/></radialGradient>
-    <radialGradient id="purple"><stop stop-color="#942dcf" stop-opacity=".3"/><stop offset="1" stop-color="#942dcf" stop-opacity="0"/></radialGradient>
-    <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse"><path d="M52 0H0v52" fill="none" stroke="#fff" stroke-opacity=".035"/></pattern>
+    <radialGradient id="leftGlowBlue" cx="0.08" cy="0.44" r="0.22">
+      <stop offset="0%" stop-color="#1087ff" stop-opacity="0.14"/>
+      <stop offset="55%" stop-color="#1087ff" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#1087ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="leftGlowYellow" cx="0.14" cy="0.58" r="0.22">
+      <stop offset="0%" stop-color="#ffe100" stop-opacity="0.16"/>
+      <stop offset="52%" stop-color="#ffe100" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#ffe100" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rightGlowGreen" cx="0.83" cy="0.38" r="0.2">
+      <stop offset="0%" stop-color="#14d850" stop-opacity="0.14"/>
+      <stop offset="52%" stop-color="#14d850" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#14d850" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rightGlowPurple" cx="0.88" cy="0.56" r="0.2">
+      <stop offset="0%" stop-color="#b13dff" stop-opacity="0.14"/>
+      <stop offset="50%" stop-color="#b13dff" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#b13dff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rightGlowOrange" cx="0.84" cy="0.71" r="0.18">
+      <stop offset="0%" stop-color="#ff8a00" stop-opacity="0.14"/>
+      <stop offset="50%" stop-color="#ff8a00" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#ff8a00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="redHalo" cx="0.17" cy="0.14" r="0.09">
+      <stop offset="0%" stop-color="#ff3c32" stop-opacity="0.30"/>
+      <stop offset="55%" stop-color="#ff3c32" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ff3c32" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#9cc2ff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="softGlow" x="-90%" y="-90%" width="280%" height="280%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
   </defs>
-  <rect width="1920" height="1080" fill="url(#base)"/>
-  <ellipse cx="260" cy="210" rx="390" ry="300" fill="url(#red)"/>
-  <ellipse cx="210" cy="610" rx="430" ry="360" fill="url(#blue)"/>
-  <ellipse cx="1620" cy="250" rx="420" ry="320" fill="url(#green)"/>
-  <ellipse cx="1740" cy="650" rx="430" ry="360" fill="url(#purple)"/>
-  <rect width="1920" height="1080" fill="url(#grid)"/>
+
+  <rect width="1920" height="1080" fill="url(#bg1)"/>
+  <rect width="1920" height="1080" fill="url(#leftGlowBlue)"/>
+  <rect width="1920" height="1080" fill="url(#leftGlowYellow)"/>
+  <rect width="1920" height="1080" fill="url(#rightGlowGreen)"/>
+  <rect width="1920" height="1080" fill="url(#rightGlowPurple)"/>
+  <rect width="1920" height="1080" fill="url(#rightGlowOrange)"/>
+  <rect width="1920" height="1080" fill="url(#redHalo)"/>
+  <rect width="1920" height="1080" fill="url(#grid)" opacity="0.65"/>
+
+  <g opacity="0.88">
+    <circle cx="292" cy="205" r="110" fill="#ff4236" opacity="0.16" filter="url(#softGlow)"/>
+    <circle cx="140" cy="415" r="135" fill="#1292ff" opacity="0.14" filter="url(#softGlow)"/>
+    <circle cx="262" cy="642" r="145" fill="#ffe600" opacity="0.16" filter="url(#softGlow)"/>
+    <circle cx="1490" cy="248" r="145" fill="#13d653" opacity="0.14" filter="url(#softGlow)"/>
+    <circle cx="1703" cy="470" r="145" fill="#a542ff" opacity="0.16" filter="url(#softGlow)"/>
+    <circle cx="1628" cy="686" r="145" fill="#ff8a00" opacity="0.16" filter="url(#softGlow)"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="254" y="95" width="120" height="120" rx="14" fill="#eb241d" transform="rotate(18 314 155)"/>
+    <rect x="94" y="336" width="120" height="120" rx="14" fill="#1f7fd2" transform="rotate(18 154 396)"/>
+    <rect x="214" y="625" width="120" height="120" rx="14" fill="#e8c100" transform="rotate(-10 274 685)"/>
+    <rect x="128" y="891" width="120" height="120" rx="14" fill="#686868" transform="rotate(20 188 951)"/>
+
+    <rect x="1457" y="150" width="120" height="120" rx="14" fill="#0ca33a" transform="rotate(-14 1517 210)"/>
+    <rect x="1660" y="385" width="120" height="120" rx="14" fill="#8f2cc0" transform="rotate(-15 1720 445)"/>
+    <rect x="1581" y="667" width="120" height="120" rx="14" fill="#ed8300" transform="rotate(15 1641 727)"/>
+    <rect x="1616" y="889" width="120" height="120" rx="14" fill="#686868" transform="rotate(-15 1676 949)"/>
+  </g>
 </svg>
