@@ -23,6 +23,10 @@
     const metrics = calculateViewportScale(width, height);
     const rootStyle = globalScope.document?.documentElement?.style;
     if (!rootStyle) return metrics;
+    rootStyle.setProperty('--overlay-width', `${width / metrics.scale}px`);
+    rootStyle.setProperty('--overlay-height', `${height / metrics.scale}px`);
+    rootStyle.setProperty('--overlay-left', `${-metrics.offsetX / metrics.scale}px`);
+    rootStyle.setProperty('--overlay-top', `${-metrics.offsetY / metrics.scale}px`);
 
     rootStyle.setProperty('--viewport-scale', String(metrics.scale));
     rootStyle.setProperty('--viewport-offset-x', `${metrics.offsetX}px`);

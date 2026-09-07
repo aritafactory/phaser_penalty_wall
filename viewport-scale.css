@@ -59,3 +59,30 @@ body {
   height: 100% !important;
   min-height: 100% !important;
 }
+
+body.start-active .app {
+  visibility: hidden;
+}
+
+body,
+body.start-active {
+  overflow: visible !important;
+}
+
+.start-screen,
+.levels-screen,
+.app {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+.result-backdrop,
+.modal-backdrop {
+  inset: auto !important;
+  left: var(--overlay-left) !important;
+  top: var(--overlay-top) !important;
+  width: var(--overlay-width) !important;
+  height: var(--overlay-height) !important;
+  min-height: var(--overlay-height) !important;
+}
