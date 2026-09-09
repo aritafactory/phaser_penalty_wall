@@ -3,6 +3,7 @@ const {
   DESIGN_WIDTH,
   DESIGN_HEIGHT,
   calculateViewportScale,
+  shouldBlockPortrait,
 } = require('../viewport-scale.js');
 
 assert.deepStrictEqual(calculateViewportScale(1920, 1080), {
@@ -25,5 +26,9 @@ assert.strictEqual(ultrawide.offsetY, 0);
 
 const enlarged = calculateViewportScale(3840, 2160);
 assert.strictEqual(enlarged.scale, 2, 'large displays should scale every UI element up consistently');
+
+assert.strictEqual(shouldBlockPortrait(390, 844, true), true, 'portrait mobile devices should be blocked');
+assert.strictEqual(shouldBlockPortrait(844, 390, true), false, 'landscape mobile devices should be playable');
+assert.strictEqual(shouldBlockPortrait(800, 1200, false), false, 'portrait desktop windows should remain playable');
 
 console.log('viewport scaling calculations ok');

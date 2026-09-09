@@ -3947,6 +3947,26 @@ function initPhaser(rows, cols) {
     height,
     scene: [boardScene],
   });
+  if (window.viewportScaling?.isOrientationBlocked?.()) pauseForPortraitOrientation();
+}
+
+function pauseForPortraitOrientation() {
+  if (!phaserGame) return;
+  phaserGame.input.enabled = false;
+  phaserGame.loop.sleep();
+}
+
+function resumeFromPortraitOrientation() {
+  window.viewportScaling?.applyViewportScale?.();
+  if (!phaserGame) return;
+  phaserGame.loop.wake();
+  phaserGame.input.enabled = true;
+  scheduleBoardResize();
+}
+
+function handleOrientationBlockChange(event) {
+  if (event.detail?.blocked) pauseForPortraitOrientation();
+  else resumeFromPortraitOrientation();
 }
 
 function scheduleBoardResize() {
@@ -3999,6 +4019,7 @@ async function initApp() {
   if (!IS_BUILDER_PAGE) requestBackgroundMusic();
   installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
+  window.addEventListener?.(window.viewportScaling?.ORIENTATION_EVENT || 'gameorientationblockchange', handleOrientationBlockChange);
   try {
     model.mainLevels = await loadBuiltinLevelsFromFiles();
   } catch {
