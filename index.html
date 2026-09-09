@@ -81,7 +81,7 @@
       .game-stat.resource-low, .game-stat.resource-low strong { color:#ff4545; text-shadow:0 2px 0 #761515, 0 5px 9px #000; }
       .resource-bonus { position:fixed; z-index:140; transform:translate(-50%, -50%); pointer-events:none; color:#64ef72; font-size:30px; font-weight:900; text-shadow:0 3px 0 #176225, 0 6px 10px #000; animation:resourceBonus 1s ease-out forwards; }
       @keyframes resourceBonus { 0% { opacity:0; transform:translate(-50%, 0) scale(.75); } 16% { opacity:1; transform:translate(-50%, -12px) scale(1.08); } 100% { opacity:0; transform:translate(-50%, -58px) scale(1); } }
-      .game-goal { flex:1 1 260px; height:86px; display:flex; align-items:center; min-width:220px; padding:0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:21px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
+      .game-goal { flex:1 1 260px; height:86px; display:flex; align-items:center; min-width:220px; padding:0 18px; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); border-top:2px solid rgba(31,85,166,.5); border-bottom:2px solid rgba(31,85,166,.5); font-size:24px; font-weight:400; color:#f3f6ff; text-shadow:0 4px 8px #000; white-space:nowrap; }
       .game-layers[hidden] { display:none; }
       .game-divider { flex:0 0 1px; width:1px; height:54px; margin:0 -12px; background:rgba(71,112,183,.52); box-shadow:0 0 8px rgba(92,158,255,.18); z-index:2; }
       .game-currency { flex:0 0 auto; height:86px; display:flex; align-items:center; gap:10px; padding-left:20px; border:2px solid rgba(31,85,166,.5); border-left:0; border-radius:0 18px 18px 0; background:linear-gradient(180deg, rgba(8,31,79,.72), rgba(4,15,43,.84)); }
@@ -91,7 +91,7 @@
       .game-board-layout { position:relative; z-index:1; width:100%; margin:0 auto; display:grid; grid-template-columns: minmax(0, 1fr) 456px; gap: clamp(24px, 57.6px, 48px); align-items:start; justify-content:center; }
       #game { width:fit-content; justify-self:center; border:3px solid rgba(56,144,255,.9); border-radius:26px; overflow:hidden; background:linear-gradient(180deg, rgba(9,24,58,.96), rgba(3,10,28,.98)); box-shadow: inset 0 0 0 8px rgba(6,20,47,.86), inset 0 1px 0 rgba(255,255,255,.14), 0 0 20px rgba(46,143,255,.55), 0 20px 45px rgba(0,0,0,.58); padding:12px; }
       #game canvas { display:block; border-radius:14px; }
-      .inventory { width:456px; min-width:0; border:0; border-radius:0; padding:42px 0 0; background:transparent; box-shadow:none; }
+      .inventory { width:456px; min-width:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
       .inventory h3 { margin:0 0 28px; display:flex; align-items:center; justify-content:center; gap:16px; font-size:30px; letter-spacing:.08em; text-transform:uppercase; color:#edf6ff; text-shadow:0 4px 0 #30466d, 0 8px 12px #000; }
       .inventory h3::before, .inventory h3::after { content:''; width:64px; height:1px; background:linear-gradient(90deg, transparent, rgba(83,162,255,.68)); }
       .inventory h3::after { background:linear-gradient(90deg, rgba(83,162,255,.68), transparent); }
@@ -168,20 +168,20 @@
       .modal h2::before, .modal h2::after { content:'✦'; color:#5bd4ff; font-size:22px; margin:0 18px; vertical-align:middle; text-shadow:0 0 10px rgba(91,212,255,.9); }
       .shop-close { position:absolute; right:1px; top:0; width:46px; height:46px; border-radius:10px; border:1px solid rgba(105,175,255,.7); background:linear-gradient(180deg, #234b86, #0c2449); color:#fff; font-size:42px; line-height:38px; font-weight:900; cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 8px 18px rgba(0,0,0,.45); }
       .shop-balance { display:none; }
-      .shop-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); grid-auto-rows:165px; gap:12px; }
-      .shop-card { min-width:0; height:165px; border:1px solid rgba(82,166,255,.52); border-radius:10px; padding:8px 12px 6px; background:radial-gradient(circle at 50% 0%, rgba(77,151,232,.24), transparent 40%), linear-gradient(145deg, rgba(14,43,82,.98), rgba(2,16,35,.98)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -12px 24px rgba(0,0,0,.18), 0 8px 16px rgba(0,0,0,.38); display:grid; grid-template-rows:54px auto auto 38px; align-content:start; row-gap:2px; position:relative; overflow:hidden; }
-      .shop-icon { min-width:0; align-self:center; justify-self:center; font-size:58px; line-height:1; filter:drop-shadow(0 7px 6px #000); }
-      .shop-icon img { display:block; width:68px; height:68px; object-fit:contain; }
+      .shop-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); grid-auto-rows:190px; gap:12px; }
+      .shop-card { min-width:0; height:190px; border:1px solid rgba(82,166,255,.52); border-radius:10px; padding:8px 12px 6px; background:radial-gradient(circle at 50% 0%, rgba(77,151,232,.24), transparent 40%), linear-gradient(145deg, rgba(14,43,82,.98), rgba(2,16,35,.98)); box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -12px 24px rgba(0,0,0,.18), 0 8px 16px rgba(0,0,0,.38); display:grid; grid-template-rows:75px auto auto 38px; align-content:start; row-gap:6px; position:relative; overflow:hidden; }
+      .shop-icon { min-width:0; width: 75px; height: 75px; align-self:center; justify-self:center; font-size:58px; line-height:1; filter:drop-shadow(0 7px 6px #000); }
+      .shop-icon img { display:block; width:75px; height:75px; object-fit:contain; }
       .shop-owned { position:absolute; right:9px; top:8px; min-width:38px; max-width:calc(100% - 18px); padding:4px 7px; border-radius:7px; border:1px solid rgba(134,191,255,.42); background:rgba(4,14,31,.82); font-size:18px; font-weight:900; line-height:1.2; text-align:center; overflow:hidden; text-overflow:ellipsis; box-shadow:inset 0 1px 0 rgba(255,255,255,.12); }
-      .shop-name { min-width:0; font-size:19px; line-height:1.15; font-weight:900; color:#fff; text-align:center; overflow-wrap:anywhere; text-shadow:0 3px 5px #000; }
-      .shop-effect { min-width:0; font-size:13px; line-height:1.25; color:#f0f5ff; text-align:center; overflow-wrap:anywhere; overflow:hidden; text-shadow:0 2px 4px #000; }
+      .shop-name { min-width:0; font-size:20px; line-height:1.15; font-weight:900; color:#fff; text-align:center; overflow-wrap:anywhere; text-shadow:0 3px 5px #000; }
+      .shop-effect { min-width:0; font-size:16px; line-height:1.25; color:#f0f5ff; text-align:center; overflow-wrap:anywhere; overflow:hidden; text-shadow:0 2px 4px #000; }
       .shop-buy-row { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:7px; border-top:1px solid rgba(113,178,255,.18); }
       .shop-price { min-width:0; font-size:19px; font-weight:900; color:#fff; overflow:hidden; text-overflow:ellipsis; text-shadow:0 3px 6px #000; white-space:nowrap; }
       .shop-buy { flex:0 0 78px; width:78px; height:34px; border-radius:6px; border:1px solid rgba(126, 255, 78, .7); background:linear-gradient(180deg, #70d237, #16861d); color:#fff; font-size:17px; font-weight:900; text-shadow:0 2px 3px #000; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.32), 0 5px 9px rgba(0,0,0,.38), 0 0 8px rgba(84,218,52,.25); }
 
     </style>
-    <link rel="stylesheet" href="viewport-scale.css?v=1" />
-    <script src="viewport-scale.js?v=1"></script>
+    <link rel="stylesheet" href="viewport-scale.css?v=2" />
+    <script src="viewport-scale.js?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   </head>
   <body class="start-active">

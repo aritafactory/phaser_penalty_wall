@@ -6,6 +6,56 @@
   --design-height: 1080px;
 }
 
+.rotate-device-overlay {
+  position: fixed;
+  left: var(--overlay-left);
+  top: var(--overlay-top);
+  width: var(--overlay-width);
+  height: var(--overlay-height);
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 48px;
+  overflow: hidden;
+  color: #f8fbff;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(26, 115, 224, .34), transparent 38%),
+    linear-gradient(160deg, #071b45, #020711 72%);
+  pointer-events: auto;
+}
+
+.rotate-device-overlay[hidden] { display: none; }
+
+.rotate-device-content { max-width: 920px; }
+
+.rotate-device-icon {
+  position: relative;
+  width: 260px;
+  height: 160px;
+  margin: 0 auto 42px;
+  border: 12px solid #5bd4ff;
+  border-radius: 28px;
+  box-shadow: 0 0 42px rgba(38, 181, 255, .55), inset 0 0 24px rgba(38, 181, 255, .2);
+  transform: rotate(90deg);
+}
+
+.rotate-device-icon span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: #ffd83e;
+  font-size: 88px;
+  line-height: 1;
+  text-shadow: 0 5px 12px #000;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+.rotate-device-overlay h1 { margin: 0 0 24px; font-size: 76px; text-shadow: 0 5px 12px #000; }
+.rotate-device-overlay p { margin: 0; color: #cceeff; font-size: 34px; line-height: 1.4; }
+
+html.portrait-device-blocked body > :not(.rotate-device-overlay) { pointer-events: none !important; }
+
 html {
   width: 100%;
   height: 100%;
