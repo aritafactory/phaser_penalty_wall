@@ -75,6 +75,7 @@ const model = {
   lastReturnRewardDate: '',
   level200Celebrated: false,
   master40Celebrated: false,
+  adProgress: { completedLevels: 0, gameplayMs: 0 },
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -173,7 +174,16 @@ const STORAGE_KEYS = {
   master40Celebrated: 'cbb_master_40_celebrated',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
+  adProgress: 'cbb_ad_progress',
 };
+
+const ADS_START_LEVEL = 21;
+const INTERSTITIAL_RULES = [
+  { maxLevel: 50, completedLevels: 6, gameplayMs: 3 * 60 * 1000 },
+  { maxLevel: 100, completedLevels: 5, gameplayMs: 4 * 60 * 1000 },
+  { maxLevel: 150, completedLevels: 4, gameplayMs: 5 * 60 * 1000 },
+  { maxLevel: 200, completedLevels: 3, gameplayMs: 6 * 60 * 1000 },
+];
 
 const BOOSTER_CATALOG = [
   { key: 'bomb', name: 'Bomb', price: 180, effect: 'Blast away colored balls.' },
@@ -235,6 +245,7 @@ let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
 const GAME_AUDIO_VOLUME = 0.2;
 const celebrationState = { active: false, timers: [], confettiInterval: null, musicFade: null };
+const adState = { active: false, shown: false, previousSoundEnabled: true, loopShouldResume: false, saveAccumulator: 0 };
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
@@ -393,6 +404,88 @@ function setSoundToggleHidden(hidden) {
   if (ui.soundToggle) ui.soundToggle.hidden = Boolean(hidden);
 }
 
+function currentMainLevelNumber() {
+  return model.activeLevelSet === 'main' ? model.currentLevelIndex + 1 : 0;
+}
+
+function gameplayRewardedAdsAreAvailable() {
+  return !IS_BUILDER_PAGE && currentMainLevelNumber() >= ADS_START_LEVEL;
+}
+
+function resetAdProgress() {
+  model.adProgress.completedLevels = 0;
+  model.adProgress.gameplayMs = 0;
+  adState.saveAccumulator = 0;
+  savePersistentState();
+}
+
+function interstitialRuleForLevel(levelNumber) {
+  if (levelNumber < ADS_START_LEVEL) return null;
+  return INTERSTITIAL_RULES.find((rule) => levelNumber <= rule.maxLevel) || null;
+}
+
+function shouldShowWinInterstitial() {
+  const rule = interstitialRuleForLevel(currentMainLevelNumber());
+  return Boolean(rule
+    && model.adProgress.completedLevels >= rule.completedLevels
+    && model.adProgress.gameplayMs >= rule.gameplayMs);
+}
+
+function pauseForAd() {
+  if (adState.active) return;
+  adState.active = true;
+  adState.previousSoundEnabled = soundEnabled;
+  adState.loopShouldResume = Boolean(phaserGame && model.gameplayActive && !model.gameOver);
+  applySoundPreference(false, false, false);
+  if (phaserGame) phaserGame.loop.sleep();
+}
+
+function resumeAfterAd() {
+  if (!adState.active) return;
+  adState.active = false;
+  applySoundPreference(adState.previousSoundEnabled, false);
+  if (adState.loopShouldResume && phaserGame && !document.hidden) phaserGame.loop.wake();
+  adState.loopShouldResume = false;
+}
+
+function handleGameDistributionEvent(event) {
+  if (event?.name === 'SDK_GAME_PAUSE') {
+    pauseForAd();
+    if (!adState.shown) {
+      adState.shown = true;
+      resetAdProgress();
+    }
+  } else if (event?.name === 'SDK_GAME_START') {
+    resumeAfterAd();
+  }
+}
+
+async function showGameDistributionAd(type = 'interstitial') {
+  if (adState.active || typeof window.gdsdk?.showAd !== 'function') return false;
+  adState.shown = false;
+  pauseForAd();
+  try {
+    const adPromise = type === 'rewarded' ? window.gdsdk.showAd('rewarded') : window.gdsdk.showAd();
+    await adPromise;
+    return adState.shown;
+  } catch {
+    return false;
+  } finally {
+    resumeAfterAd();
+  }
+}
+
+async function watchRewardedAd(boosterKey) {
+  if (adState.active || !BOOSTER_CATALOG.some((booster) => booster.key === boosterKey)) return;
+  const watchedInFull = await showGameDistributionAd('rewarded');
+  if (!watchedInFull) return;
+  model.boosters[boosterKey] = Number(model.boosters[boosterKey] || 0) + 1;
+  savePersistentState();
+  renderBoosterInventory();
+  renderShopTable();
+  refreshUI();
+}
+
 function installButtonClickSounds() {
   document.addEventListener?.('click', (event) => {
     const button = event.target?.closest?.('button');
@@ -523,6 +616,15 @@ function loadPersistentState() {
   model.lastReturnRewardDate = localStorage.getItem(STORAGE_KEYS.lastReturnRewardDate) || '';
   model.level200Celebrated = localStorage.getItem(STORAGE_KEYS.level200Celebrated) === 'true';
   model.master40Celebrated = localStorage.getItem(STORAGE_KEYS.master40Celebrated) === 'true';
+  try {
+    const progress = JSON.parse(localStorage.getItem(STORAGE_KEYS.adProgress) || '{}');
+    model.adProgress = {
+      completedLevels: Math.max(0, Math.floor(Number(progress.completedLevels) || 0)),
+      gameplayMs: Math.max(0, Number(progress.gameplayMs) || 0),
+    };
+  } catch {
+    model.adProgress = { completedLevels: 0, gameplayMs: 0 };
+  }
 }
 
 function savePersistentState() {
@@ -537,6 +639,7 @@ function savePersistentState() {
   localStorage.setItem(STORAGE_KEYS.lastReturnRewardDate, model.lastReturnRewardDate);
   localStorage.setItem(STORAGE_KEYS.level200Celebrated, String(model.level200Celebrated));
   localStorage.setItem(STORAGE_KEYS.master40Celebrated, String(model.master40Celebrated));
+  localStorage.setItem(STORAGE_KEYS.adProgress, JSON.stringify(model.adProgress));
 }
 
 function localCalendarDate(date = new Date()) {
@@ -1734,13 +1837,16 @@ function renderBoosterInventory() {
     const li = document.createElement('li');
     if (BOOSTER_CATALOG.some((item) => item.key === booster.key)) {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
-      const available = owned > 0 && boosterIsAvailableForCurrentLevel(booster.key);
+      const usableOnLevel = boosterIsAvailableForCurrentLevel(booster.key);
+      const available = owned > 0 && usableOnLevel;
+      const offerRewardedAd = owned === 0 && usableOnLevel && gameplayRewardedAdsAreAvailable();
       const disabled = available ? '' : 'disabled';
-      li.classList.toggle('unavailable', !available);
+      li.classList.toggle('unavailable', !available && !offerRewardedAd);
       li.classList.toggle('armed', model.activeBooster === booster.key);
+      li.classList.toggle('has-rewarded-ad', offerRewardedAd);
       const amountLabel = IS_BUILDER_PAGE ? '∞' : String(owned);
-      li.innerHTML = `<span class="booster-icon">${boosterIcon(booster.key)}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>`;
-      const btn = li.querySelector('button');
+      li.innerHTML = `<span class="booster-icon">${boosterIcon(booster.key)}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button class="booster-use" data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>${offerRewardedAd ? `<button class="booster-ad" data-ad-booster="${booster.key}" aria-label="Watch an ad for ${booster.name}">▶ AD</button>` : ''}`;
+      const btn = li.querySelector('.booster-use');
       btn.onclick = () => {
         if (!available) return;
         if (booster.key === 'plusTenSeconds' && boardScene) {
@@ -1770,6 +1876,8 @@ function renderBoosterInventory() {
         renderBoosterInventory();
         refreshUI();
       };
+      const adBtn = li.querySelector('.booster-ad');
+      if (adBtn) adBtn.onclick = () => watchRewardedAd(booster.key);
     } else {
       li.innerHTML = `<span>${booster.name}</span><strong>x${owned}</strong>`;
     }
@@ -1798,10 +1906,11 @@ function renderShopTable() {
       <span class="shop-owned">x${owned}</span>
       <div class="shop-name">${booster.name}</div>
       <div class="shop-effect">${booster.effect}</div>
-      <div class="shop-buy-row"><span class="shop-price">💎 ${booster.price}</span><button class="shop-buy" data-booster="${booster.key}">BUY</button></div>
+      <div class="shop-buy-row"><button class="shop-buy" data-booster="${booster.key}" aria-label="Buy ${booster.name} for ${booster.price} gems">💎 ${booster.price}</button><button class="shop-ad" data-ad-booster="${booster.key}" aria-label="Watch an ad for ${booster.name}">▶ AD</button></div>
     `;
-    const buyBtn = card.querySelector('button');
+    const buyBtn = card.querySelector('.shop-buy');
     buyBtn.onclick = () => buyBooster(booster.key);
+    card.querySelector('.shop-ad').onclick = () => watchRewardedAd(booster.key);
     ui.shopTableBody.appendChild(card);
   });
 }
@@ -3391,6 +3500,15 @@ class BoardScene extends Phaser.Scene {
     this.updateBombPreview(delta);
     if (model.gameOver || !model.gameplayActive || model.tutorialOpen) return;
 
+    if (gameplayRewardedAdsAreAvailable() && !adState.active && !document.hidden) {
+      model.adProgress.gameplayMs += delta;
+      adState.saveAccumulator += delta;
+      if (adState.saveAccumulator >= 5000) {
+        adState.saveAccumulator = 0;
+        savePersistentState();
+      }
+    }
+
     if (!this.animating) this.flashAccumulator += delta;
     if (!this.animating && this.flashAccumulator >= 800) {
       this.flashAccumulator = 0;
@@ -3723,6 +3841,7 @@ function openWinModal() {
       );
     }
     recordBestLevelStars(model.activeLevelSet, model.currentLevelIndex, stars);
+    if (gameplayRewardedAdsAreAvailable()) model.adProgress.completedLevels += 1;
     model.winAwarded = true;
     savePersistentState();
   }
@@ -3768,6 +3887,21 @@ function goToNextLevel() {
   }
   const nextIndex = Math.min(model.currentLevelIndex + 1, model.levels.length - 1);
   startLevelByIndex(nextIndex);
+}
+
+async function leaveWinPopup(destination) {
+  if (ui.winHomeBtn?.disabled || ui.winNextBtn?.disabled) return;
+  if (ui.winHomeBtn) ui.winHomeBtn.disabled = true;
+  if (ui.winNextBtn) ui.winNextBtn.disabled = true;
+  if (shouldShowWinInterstitial()) await showGameDistributionAd('interstitial');
+  if (ui.winHomeBtn) ui.winHomeBtn.disabled = false;
+  if (ui.winNextBtn) ui.winNextBtn.disabled = false;
+  if (destination === 'home') {
+    closeWinModal();
+    showLevelsScreen();
+  } else {
+    goToNextLevel();
+  }
 }
 
 function isLastLevelInActiveSet() {
@@ -4018,6 +4152,7 @@ async function initApp() {
   const returnReward = claimReturnReward();
   if (!IS_BUILDER_PAGE) requestBackgroundMusic();
   installButtonClickSounds();
+  window.addEventListener?.('gamedistributionevent', (event) => handleGameDistributionEvent(event.detail));
   window.addEventListener?.('resize', scheduleBoardResize);
   window.addEventListener?.(window.viewportScaling?.ORIENTATION_EVENT || 'gameorientationblockchange', handleOrientationBlockChange);
   try {
@@ -4051,8 +4186,8 @@ async function initApp() {
   if (ui.soundToggle) ui.soundToggle.onclick = () => applySoundPreference(!soundEnabled);
   if (ui.failHomeBtn) ui.failHomeBtn.onclick = () => { closeFailModal(); showLevelsScreen(); };
   if (ui.failRetryBtn) ui.failRetryBtn.onclick = () => retryCurrentLevel();
-  if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => { closeWinModal(); showLevelsScreen(); };
-  if (ui.winNextBtn) ui.winNextBtn.onclick = () => goToNextLevel();
+  if (ui.winHomeBtn) ui.winHomeBtn.onclick = () => leaveWinPopup('home');
+  if (ui.winNextBtn) ui.winNextBtn.onclick = () => leaveWinPopup('next');
   if (ui.tutorialCloseBtn) ui.tutorialCloseBtn.onclick = () => closeTutorial();
   if (ui.returnRewardCloseBtn) ui.returnRewardCloseBtn.onclick = () => closeReturnReward();
   if (ui.level200BackBtn) ui.level200BackBtn.onclick = () => leaveLevel200Celebration();

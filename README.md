@@ -25,6 +25,13 @@ npx serve .
 
 Если браузер показывает старый UI, сделайте hard refresh (`Ctrl+F5` / `Cmd+Shift+R`).
 
+## GameDistribution SDK
+
+Основная страница загружает GameDistribution SDK. Перед публикацией укажите выданный
+GameDistribution идентификатор игры в `meta[name="gamedistribution-game-id"]` в
+`index.html` или задайте `window.GD_GAME_ID` до загрузки SDK. Если SDK или реклама
+недоступны, игра продолжает работу без блокировки переходов и без выдачи награды.
+
 ## Что реализовано
 
 - Phaser 3 через CDN.

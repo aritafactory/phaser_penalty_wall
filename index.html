@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="gamedistribution-game-id" content="85244a807dc84f088eab4e96a0b8e0d2" />
     <title>Color Block Breaker</title>
     <style>
       :root {
@@ -104,7 +105,9 @@
       .booster-icon img { display:block; width:88px; height:88px; object-fit:contain; transform:translateY(12px); }
       .booster-name { display:none; }
       .booster-count { position:absolute; right:8px; top:8px; min-width:32px; height:32px; padding:1px 7px; border-radius:10px; border:2px solid rgba(103,137,200,.8); background:rgba(6,13,35,.82); color:#fff; display:grid; place-items:center; font-size:22px; font-weight:900; text-shadow:0 2px 3px #000; box-shadow:inset 0 1px 0 rgba(255,255,255,.16); }
-      .inventory button { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:0; background:transparent; color:transparent; font-size:0; cursor:pointer; box-shadow:none; }
+      .inventory .booster-use { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:0; background:transparent; color:transparent; font-size:0; cursor:pointer; box-shadow:none; }
+      .inventory li.has-rewarded-ad .booster-use { bottom:38px; height:auto; }
+      .inventory .booster-ad { position:absolute; z-index:2; left:7px; right:7px; bottom:6px; width:auto; height:32px; padding:0 8px; border-radius:7px; border:1px solid rgba(255,197,64,.9); background:linear-gradient(180deg, #ffba28, #d56b09); color:#fff; font-size:15px; font-weight:900; cursor:pointer; text-shadow:0 2px 3px #6e2800; box-shadow:inset 0 1px 0 rgba(255,255,255,.45), 0 4px 9px rgba(0,0,0,.4); }
       .inventory button:disabled { cursor:not-allowed; background:transparent; }
       .sound-toggle { position:fixed; left:max(18px, env(safe-area-inset-left)); bottom:max(18px, env(safe-area-inset-bottom)); z-index:110; width:62px; height:62px; border:2px solid rgba(89,164,255,.8); border-radius:15px; background:linear-gradient(180deg, rgba(20,70,137,.98), rgba(5,28,73,.98)); color:#fff; font-size:32px; cursor:pointer; box-shadow:inset 0 2px 0 rgba(255,255,255,.2), 0 8px 20px rgba(0,0,0,.55); }
       .sound-toggle[hidden] { display:none; }
@@ -176,13 +179,23 @@
       .shop-name { min-width:0; font-size:20px; line-height:1.15; font-weight:900; color:#fff; text-align:center; overflow-wrap:anywhere; text-shadow:0 3px 5px #000; }
       .shop-effect { min-width:0; font-size:16px; line-height:1.25; color:#f0f5ff; text-align:center; overflow-wrap:anywhere; overflow:hidden; text-shadow:0 2px 4px #000; }
       .shop-buy-row { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:7px; border-top:1px solid rgba(113,178,255,.18); }
-      .shop-price { min-width:0; font-size:19px; font-weight:900; color:#fff; overflow:hidden; text-overflow:ellipsis; text-shadow:0 3px 6px #000; white-space:nowrap; }
-      .shop-buy { flex:0 0 78px; width:78px; height:34px; border-radius:6px; border:1px solid rgba(126, 255, 78, .7); background:linear-gradient(180deg, #70d237, #16861d); color:#fff; font-size:17px; font-weight:900; text-shadow:0 2px 3px #000; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.32), 0 5px 9px rgba(0,0,0,.38), 0 0 8px rgba(84,218,52,.25); }
+      .shop-buy, .shop-ad { flex:1 1 0; min-width:0; height:34px; border-radius:6px; color:#fff; font-size:16px; font-weight:900; text-shadow:0 2px 3px #000; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.32), 0 5px 9px rgba(0,0,0,.38); }
+      .shop-buy { border:1px solid rgba(126, 255, 78, .7); background:linear-gradient(180deg, #70d237, #16861d); }
+      .shop-ad { border:1px solid rgba(255,197,64,.9); background:linear-gradient(180deg, #ffba28, #d56b09); }
 
     </style>
     <link rel="stylesheet" href="viewport-scale.css?v=2" />
     <script src="viewport-scale.js?v=2"></script>
     <script src="phaser.min.js"></script>
+    <script>
+      window.GD_OPTIONS = {
+        gameId: window.GD_GAME_ID || document.querySelector('meta[name="gamedistribution-game-id"]')?.content || '',
+        onEvent(event) {
+          window.dispatchEvent(new CustomEvent('gamedistributionevent', { detail: event }));
+        },
+      };
+    </script>
+    <script async src="https://html5.api.gamedistribution.com/main.min.js"></script>
   </head>
   <body class="start-active">
     <section id="startScreen" class="start-screen" aria-label="Start screen">
@@ -339,6 +352,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=22"></script>
+    <script type="module" src="game.js?v=23"></script>
   </body>
 </html>
