@@ -177,7 +177,6 @@ const STORAGE_KEYS = {
 
 const AD_TRACKING_START_LEVEL = 21;
 const INTERSTITIAL_START_LEVEL = 22;
-const AD_REQUEST_COOLDOWN_MS = 30000;
 const INTERSTITIAL_RULES = [
   { maxLevel: 50, completedLevels: 6, gameplayMs: 3 * 60 * 1000 },
   { maxLevel: 100, completedLevels: 5, gameplayMs: 4 * 60 * 1000 },
@@ -254,7 +253,6 @@ const adState = {
   previousSoundEnabled: true,
   loopShouldResume: false,
   resizePending: false,
-  lastRequestAt: 0,
   saveAccumulator: 0,
 };
 
@@ -487,15 +485,12 @@ function handleGameDistributionEvent(event) {
 }
 
 async function showGameDistributionAd(type = 'interstitial') {
-  const now = Date.now();
   if (adState.requestInFlight
-    || now - adState.lastRequestAt < AD_REQUEST_COOLDOWN_MS
     || typeof window.gdsdk?.showAd !== 'function') {
     return { shown: false, rewardCompleted: false };
   }
   adState.requestInFlight = true;
   adState.requestType = type;
-  adState.lastRequestAt = now;
   adState.shown = false;
   adState.rewardCompleted = false;
   pauseForAd();
