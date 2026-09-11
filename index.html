@@ -183,19 +183,35 @@
       .shop-buy { border:1px solid rgba(126, 255, 78, .7); background:linear-gradient(180deg, #70d237, #16861d); }
       .shop-ad { border:1px solid rgba(255,197,64,.9); background:linear-gradient(180deg, #ffba28, #d56b09); }
 
+      html.gd-ad-active body { width:100% !important; height:100% !important; min-height:100% !important; transform:none !important; overflow:hidden !important; }
+      html.gd-ad-active .start-screen,
+      html.gd-ad-active .levels-screen,
+      html.gd-ad-active .app,
+      html.gd-ad-active .sound-toggle,
+      html.gd-ad-active .result-backdrop,
+      html.gd-ad-active .modal-backdrop,
+      html.gd-ad-active .rotate-device-overlay { visibility:hidden !important; }
+
     </style>
     <link rel="stylesheet" href="viewport-scale.css?v=2" />
     <script src="viewport-scale.js?v=2"></script>
     <script src="phaser.min.js"></script>
     <script>
+      const gameDistributionGameId = window.GD_GAME_ID || document.querySelector('meta[name="gamedistribution-game-id"]')?.content || '';
       window.GD_OPTIONS = {
-        gameId: window.GD_GAME_ID || document.querySelector('meta[name="gamedistribution-game-id"]')?.content || '',
+        gameId: gameDistributionGameId,
+        advertisementSettings: { autoplay: false },
         onEvent(event) {
           window.dispatchEvent(new CustomEvent('gamedistributionevent', { detail: event }));
         },
       };
+      if (gameDistributionGameId) {
+        const gameDistributionScript = document.createElement('script');
+        gameDistributionScript.src = 'https://html5.api.gamedistribution.com/main.min.js';
+        gameDistributionScript.async = true;
+        document.head.appendChild(gameDistributionScript);
+      }
     </script>
-    <script async src="https://html5.api.gamedistribution.com/main.min.js"></script>
   </head>
   <body class="start-active">
     <section id="startScreen" class="start-screen" aria-label="Start screen">
@@ -352,6 +368,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=23"></script>
+    <script type="module" src="game.js?v=24"></script>
   </body>
 </html>

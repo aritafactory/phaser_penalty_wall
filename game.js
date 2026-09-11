@@ -75,7 +75,6 @@ const model = {
   lastReturnRewardDate: '',
   level200Celebrated: false,
   master40Celebrated: false,
-  adProgress: { completedLevels: 0, gameplayMs: 0 },
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -174,10 +173,11 @@ const STORAGE_KEYS = {
   master40Celebrated: 'cbb_master_40_celebrated',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
-  adProgress: 'cbb_ad_progress',
 };
 
-const ADS_START_LEVEL = 21;
+const AD_TRACKING_START_LEVEL = 21;
+const INTERSTITIAL_START_LEVEL = 22;
+const AD_REQUEST_COOLDOWN_MS = 30000;
 const INTERSTITIAL_RULES = [
   { maxLevel: 50, completedLevels: 6, gameplayMs: 3 * 60 * 1000 },
   { maxLevel: 100, completedLevels: 5, gameplayMs: 4 * 60 * 1000 },
@@ -245,7 +245,18 @@ let backgroundMusicRequested = false;
 const activeShotSounds = new Set();
 const GAME_AUDIO_VOLUME = 0.2;
 const celebrationState = { active: false, timers: [], confettiInterval: null, musicFade: null };
-const adState = { active: false, shown: false, previousSoundEnabled: true, loopShouldResume: false, saveAccumulator: 0 };
+const adState = {
+  active: false,
+  requestInFlight: false,
+  requestType: null,
+  shown: false,
+  rewardCompleted: false,
+  previousSoundEnabled: true,
+  loopShouldResume: false,
+  resizePending: false,
+  lastRequestAt: 0,
+  saveAccumulator: 0,
+};
 
 const AUDIO_PATHS = {
   background: 'audio/background.mp3',
@@ -409,7 +420,7 @@ function currentMainLevelNumber() {
 }
 
 function gameplayRewardedAdsAreAvailable() {
-  return !IS_BUILDER_PAGE && currentMainLevelNumber() >= ADS_START_LEVEL;
+  return !IS_BUILDER_PAGE && currentMainLevelNumber() >= AD_TRACKING_START_LEVEL;
 }
 
 function resetAdProgress() {
@@ -420,7 +431,7 @@ function resetAdProgress() {
 }
 
 function interstitialRuleForLevel(levelNumber) {
-  if (levelNumber < ADS_START_LEVEL) return null;
+  if (levelNumber < INTERSTITIAL_START_LEVEL) return null;
   return INTERSTITIAL_RULES.find((rule) => levelNumber <= rule.maxLevel) || null;
 }
 
@@ -438,19 +449,34 @@ function pauseForAd() {
   adState.loopShouldResume = Boolean(phaserGame && model.gameplayActive && !model.gameOver);
   applySoundPreference(false, false, false);
   if (phaserGame) phaserGame.loop.sleep();
+  document.documentElement.classList.add('gd-ad-active');
 }
 
 function resumeAfterAd() {
-  if (!adState.active) return;
-  adState.active = false;
-  applySoundPreference(adState.previousSoundEnabled, false);
-  if (adState.loopShouldResume && phaserGame && !document.hidden) phaserGame.loop.wake();
-  adState.loopShouldResume = false;
+  if (adState.active) {
+    adState.active = false;
+    document.documentElement.classList.remove('gd-ad-active');
+    applySoundPreference(adState.previousSoundEnabled, false);
+    if (adState.loopShouldResume && phaserGame && !document.hidden) phaserGame.loop.wake();
+    adState.loopShouldResume = false;
+  }
+  if (adState.resizePending && !adState.requestInFlight) {
+    adState.resizePending = false;
+    scheduleBoardResize();
+  }
 }
 
 function handleGameDistributionEvent(event) {
   if (event?.name === 'SDK_GAME_PAUSE') {
     pauseForAd();
+    if (!adState.shown) {
+      adState.shown = true;
+      resetAdProgress();
+    }
+  } else if (event?.name === 'SDK_REWARDED_WATCH_COMPLETE'
+    && adState.requestInFlight
+    && adState.requestType === 'rewarded') {
+    adState.rewardCompleted = true;
     if (!adState.shown) {
       adState.shown = true;
       resetAdProgress();
@@ -461,24 +487,35 @@ function handleGameDistributionEvent(event) {
 }
 
 async function showGameDistributionAd(type = 'interstitial') {
-  if (adState.active || typeof window.gdsdk?.showAd !== 'function') return false;
+  const now = Date.now();
+  if (adState.requestInFlight
+    || now - adState.lastRequestAt < AD_REQUEST_COOLDOWN_MS
+    || typeof window.gdsdk?.showAd !== 'function') {
+    return { shown: false, rewardCompleted: false };
+  }
+  adState.requestInFlight = true;
+  adState.requestType = type;
+  adState.lastRequestAt = now;
   adState.shown = false;
+  adState.rewardCompleted = false;
   pauseForAd();
   try {
     const adPromise = type === 'rewarded' ? window.gdsdk.showAd('rewarded') : window.gdsdk.showAd();
     await adPromise;
-    return adState.shown;
+    return { shown: adState.shown, rewardCompleted: adState.rewardCompleted };
   } catch {
-    return false;
+    return { shown: adState.shown, rewardCompleted: false };
   } finally {
+    adState.requestInFlight = false;
+    adState.requestType = null;
     resumeAfterAd();
   }
 }
 
 async function watchRewardedAd(boosterKey) {
   if (adState.active || !BOOSTER_CATALOG.some((booster) => booster.key === boosterKey)) return;
-  const watchedInFull = await showGameDistributionAd('rewarded');
-  if (!watchedInFull) return;
+  const result = await showGameDistributionAd('rewarded');
+  if (!result.shown || !result.rewardCompleted) return;
   model.boosters[boosterKey] = Number(model.boosters[boosterKey] || 0) + 1;
   savePersistentState();
   renderBoosterInventory();
@@ -4070,7 +4107,12 @@ function renderLevelsScreen() {
 }
 
 function initPhaser(rows, cols) {
-  if (phaserGame) phaserGame.destroy(true);
+  if (phaserGame) {
+    phaserGame.destroy(true);
+    phaserGame = null;
+    boardScene = null;
+  }
+  document.getElementById('game')?.replaceChildren();
   const { width, height } = boardLayoutMetrics(rows, cols);
   boardScene = new BoardScene();
 
@@ -4092,6 +4134,10 @@ function pauseForPortraitOrientation() {
 
 function resumeFromPortraitOrientation() {
   window.viewportScaling?.applyViewportScale?.();
+  if (adState.active || adState.requestInFlight) {
+    adState.resizePending = true;
+    return;
+  }
   if (!phaserGame) return;
   phaserGame.loop.wake();
   phaserGame.input.enabled = true;
@@ -4105,8 +4151,17 @@ function handleOrientationBlockChange(event) {
 
 function scheduleBoardResize() {
   if (!phaserGame || !model.grid.length || !model.grid[0]?.length) return;
+  if (adState.active || adState.requestInFlight) {
+    adState.resizePending = true;
+    clearTimeout(boardResizeTimer);
+    return;
+  }
   clearTimeout(boardResizeTimer);
   boardResizeTimer = setTimeout(() => {
+    if (adState.active || adState.requestInFlight) {
+      adState.resizePending = true;
+      return;
+    }
     if (!model.grid.length || !model.grid[0]?.length) return;
     initPhaser(model.grid.length, model.grid[0].length);
   }, 120);
