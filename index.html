@@ -205,12 +205,42 @@
           window.dispatchEvent(new CustomEvent('gamedistributionevent', { detail: event }));
         },
       };
-      if (gameDistributionGameId) {
-        const gameDistributionScript = document.createElement('script');
-        gameDistributionScript.src = 'https://html5.api.gamedistribution.com/main.min.js';
-        gameDistributionScript.async = true;
-        document.head.appendChild(gameDistributionScript);
-      }
+      let gameDistributionLoadPromise;
+      window.CBB_AD_REQUEST_AUTHORIZED = false;
+      window.guardGameDistributionSdk = (sdk) => {
+        if (!sdk?.showAd || sdk.__cbbAdGuardInstalled) return sdk;
+        const sdkShowAd = sdk.showAd.bind(sdk);
+        sdk.showAd = (...args) => {
+          if (!window.CBB_AD_REQUEST_AUTHORIZED) {
+            return Promise.reject(new Error('GameDistribution ad request blocked outside an approved game action.'));
+          }
+          return sdkShowAd(...args);
+        };
+        Object.defineProperty(sdk, '__cbbAdGuardInstalled', { value: true });
+        return sdk;
+      };
+      window.loadGameDistributionSdk = () => {
+        if (window.gdsdk?.showAd) return Promise.resolve(window.guardGameDistributionSdk(window.gdsdk));
+        if (!gameDistributionGameId) return Promise.resolve(null);
+        if (gameDistributionLoadPromise) return gameDistributionLoadPromise;
+        gameDistributionLoadPromise = new Promise((resolve) => {
+          const gameDistributionScript = document.createElement('script');
+          const finish = () => resolve(window.gdsdk?.showAd ? window.guardGameDistributionSdk(window.gdsdk) : null);
+          const timeout = window.setTimeout(finish, 8000);
+          gameDistributionScript.src = 'https://html5.api.gamedistribution.com/main.min.js';
+          gameDistributionScript.async = true;
+          gameDistributionScript.onload = () => {
+            window.clearTimeout(timeout);
+            finish();
+          };
+          gameDistributionScript.onerror = () => {
+            window.clearTimeout(timeout);
+            finish();
+          };
+          document.head.appendChild(gameDistributionScript);
+        });
+        return gameDistributionLoadPromise;
+      };
     </script>
   </head>
   <body class="start-active">
@@ -368,6 +398,6 @@
         <div id="shopTableBody" class="shop-grid"></div>
       </div>
     </div>
-    <script type="module" src="game.js?v=24"></script>
+    <script type="module" src="game.js?v=26"></script>
   </body>
 </html>

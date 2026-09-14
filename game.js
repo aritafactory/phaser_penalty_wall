@@ -75,6 +75,8 @@ const model = {
   lastReturnRewardDate: '',
   level200Celebrated: false,
   master40Celebrated: false,
+  adProgress: { completedLevels: 0, gameplayMs: 0 },
+  adProgress: { completedLevels: 0, gameplayMs: 0 },
 };
 const IS_BUILDER_PAGE = document.body?.dataset?.page === 'builder';
 
@@ -173,10 +175,13 @@ const STORAGE_KEYS = {
   master40Celebrated: 'cbb_master_40_celebrated',
   levelStars: 'cbb_level_stars',
   soundEnabled: 'cbb_sound_enabled',
+  adProgress: 'cbb_ad_progress',
+  adProgress: 'cbb_ad_progress',
 };
 
 const AD_TRACKING_START_LEVEL = 21;
 const INTERSTITIAL_START_LEVEL = 22;
+const AD_REQUEST_COOLDOWN_MS = 30000;
 const INTERSTITIAL_RULES = [
   { maxLevel: 50, completedLevels: 6, gameplayMs: 3 * 60 * 1000 },
   { maxLevel: 100, completedLevels: 5, gameplayMs: 4 * 60 * 1000 },
@@ -253,6 +258,7 @@ const adState = {
   previousSoundEnabled: true,
   loopShouldResume: false,
   resizePending: false,
+  lastRequestAt: 0,
   saveAccumulator: 0,
 };
 
@@ -467,7 +473,7 @@ function resumeAfterAd() {
 function handleGameDistributionEvent(event) {
   if (event?.name === 'SDK_GAME_PAUSE') {
     pauseForAd();
-    if (!adState.shown) {
+    if (adState.requestInFlight && !adState.shown) {
       adState.shown = true;
       resetAdProgress();
     }
@@ -485,17 +491,29 @@ function handleGameDistributionEvent(event) {
 }
 
 async function showGameDistributionAd(type = 'interstitial') {
+  const now = Date.now();
   if (adState.requestInFlight
-    || typeof window.gdsdk?.showAd !== 'function') {
+    || now - adState.lastRequestAt < AD_REQUEST_COOLDOWN_MS) {
     return { shown: false, rewardCompleted: false };
   }
   adState.requestInFlight = true;
   adState.requestType = type;
+  adState.lastRequestAt = now;
   adState.shown = false;
   adState.rewardCompleted = false;
   pauseForAd();
   try {
-    const adPromise = type === 'rewarded' ? window.gdsdk.showAd('rewarded') : window.gdsdk.showAd();
+    const sdk = typeof window.gdsdk?.showAd === 'function'
+      ? window.guardGameDistributionSdk?.(window.gdsdk) || window.gdsdk
+      : await window.loadGameDistributionSdk?.();
+    if (typeof sdk?.showAd !== 'function') return { shown: false, rewardCompleted: false };
+    let adPromise;
+    window.CBB_AD_REQUEST_AUTHORIZED = true;
+    try {
+      adPromise = type === 'rewarded' ? sdk.showAd('rewarded') : sdk.showAd();
+    } finally {
+      window.CBB_AD_REQUEST_AUTHORIZED = false;
+    }
     await adPromise;
     return { shown: adState.shown, rewardCompleted: adState.rewardCompleted };
   } catch {
