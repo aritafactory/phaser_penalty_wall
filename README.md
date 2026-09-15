@@ -17,6 +17,17 @@ python -m http.server 8080
 Основная игра: <http://localhost:8080/index.html>  
 Отдельный конструктор уровней: <http://localhost:8080/builder.html>
 
+## GameDistribution
+
+The GameDistribution SDK is loaded by `gamedistribution.js`. Before publishing, replace
+`YOUR_GAME_ID` in the `gamedistribution-game-id` meta tag in `index.html` with the ID
+from the GameDistribution dashboard. A host page may instead set `window.GD_GAME_ID`
+before `gamedistribution.js` runs.
+
+Rewarded ads never grant a booster speculatively: the inventory is updated only after
+the promise returned by `gdsdk.showAd('rewarded')` resolves. SDK pause/start events
+temporarily stop Phaser input and its game loop and mute/restore the game's audio.
+
 ### Вариант 2: Node.js
 
 ```bash
