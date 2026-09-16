@@ -225,6 +225,7 @@ const RETURN_REWARD_CYCLE = [
 let phaserGame;
 let boardScene;
 let boardResizeTimer;
+let boardResizePendingDuringAd = false;
 let backgroundAudio;
 let shotAudio;
 let swooshAudio;
@@ -232,6 +233,8 @@ const effectAudio = new Map();
 let audioUnlockInstalled = false;
 let soundEnabled = true;
 let backgroundMusicRequested = false;
+let rewardedAdPending = false;
+let adPauseState = null;
 const activeShotSounds = new Set();
 const GAME_AUDIO_VOLUME = 0.2;
 const celebrationState = { active: false, timers: [], confettiInterval: null, musicFade: null };
@@ -387,6 +390,82 @@ function applySoundPreference(enabled, persist = true, startPlayback = true) {
   }
   updateSoundToggle();
   if (startPlayback && backgroundMusicRequested && soundEnabled && !IS_BUILDER_PAGE) startBackgroundMusic();
+}
+
+function setAllAudioMuted(muted) {
+  if (backgroundAudio) backgroundAudio.muted = muted;
+  if (shotAudio) shotAudio.muted = muted;
+  if (swooshAudio) swooshAudio.muted = muted;
+  effectAudio.forEach((sound) => { sound.muted = muted; });
+  activeShotSounds.forEach((sound) => { sound.muted = muted; });
+}
+
+function pauseForAd() {
+  if (adPauseState) return;
+  adPauseState = {
+    inputEnabled: phaserGame?.input?.enabled ?? false,
+    loopRunning: Boolean(phaserGame?.loop?.running),
+  };
+  if (phaserGame) {
+    phaserGame.input.enabled = false;
+    phaserGame.loop.sleep();
+  }
+  if (boardResizeTimer) {
+    clearTimeout(boardResizeTimer);
+    boardResizeTimer = null;
+    boardResizePendingDuringAd = true;
+  }
+  document.documentElement?.classList?.add('gd-ad-active');
+  setAllAudioMuted(true);
+}
+
+function resumeAfterAd() {
+  if (!adPauseState) return;
+  const previousState = adPauseState;
+  adPauseState = null;
+  document.documentElement?.classList?.remove('gd-ad-active');
+  const orientationBlocked = Boolean(window.viewportScaling?.isOrientationBlocked?.());
+  if (phaserGame && previousState.loopRunning && !orientationBlocked) phaserGame.loop.wake();
+  if (phaserGame) phaserGame.input.enabled = previousState.inputEnabled && !orientationBlocked;
+  setAllAudioMuted(!soundEnabled);
+  if (soundEnabled && backgroundMusicRequested) startBackgroundMusic();
+  if (boardResizePendingDuringAd) {
+    boardResizePendingDuringAd = false;
+    scheduleBoardResize();
+  }
+}
+
+function handleGameDistributionEvent(event) {
+  if (event.detail?.name === 'SDK_GAME_PAUSE') pauseForAd();
+  if (event.detail?.name === 'SDK_GAME_START') resumeAfterAd();
+}
+
+async function requestRewardedBooster(boosterKey) {
+  const booster = BOOSTER_CATALOG.find((item) => item.key === boosterKey);
+  if (!booster || rewardedAdPending || typeof window.gdsdk?.showAd !== 'function') {
+    if (ui.stateLabel) ui.stateLabel.textContent = 'Rewarded ad is not available right now.';
+    return false;
+  }
+
+  rewardedAdPending = true;
+  renderShopTable();
+  renderBoosterInventory();
+  try {
+    await window.gdsdk.showAd('rewarded');
+    model.boosters[boosterKey] = Math.max(0, Number(model.boosters[boosterKey]) || 0) + 1;
+    savePersistentState();
+    playEffectSound('buy');
+    if (ui.stateLabel) ui.stateLabel.textContent = `${booster.name} added to your boosters.`;
+    return true;
+  } catch (error) {
+    if (ui.stateLabel) ui.stateLabel.textContent = 'Watch the full ad to receive the booster.';
+    return false;
+  } finally {
+    rewardedAdPending = false;
+    renderShopTable();
+    renderBoosterInventory();
+    refreshUI();
+  }
 }
 
 function setSoundToggleHidden(hidden) {
@@ -1736,11 +1815,14 @@ function renderBoosterInventory() {
       const label = model.activeBooster === booster.key ? 'Armed' : 'Use';
       const available = owned > 0 && boosterIsAvailableForCurrentLevel(booster.key);
       const disabled = available ? '' : 'disabled';
-      li.classList.toggle('unavailable', !available);
       li.classList.toggle('armed', model.activeBooster === booster.key);
       const amountLabel = IS_BUILDER_PAGE ? '∞' : String(owned);
-      li.innerHTML = `<span class="booster-icon">${boosterIcon(booster.key)}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>`;
-      const btn = li.querySelector('button');
+      const rewardAvailable = model.gameplayActive && !model.gameOver && model.currentLevelIndex >= 20
+        && owned === 0 && boosterIsAvailableForCurrentLevel(booster.key);
+      li.classList.toggle('unavailable', !available && !rewardAvailable);
+      li.classList.toggle('reward-available', rewardAvailable);
+      li.innerHTML = `<span class="booster-icon">${boosterIcon(booster.key)}</span><span><span class="booster-name">${booster.name.replace(' color', ' Color').replace('shots', 'Shots')}</span><span class="booster-count">${amountLabel}</span></span><button class="booster-use" data-use-booster="${booster.key}" ${disabled} aria-label="${label} ${booster.name}">${label.toUpperCase()}</button>${rewardAvailable ? `<button class="booster-ad" data-ad-booster="${booster.key}" ${rewardedAdPending ? 'disabled' : ''} aria-label="Watch an ad for one ${booster.name}">▶ AD</button>` : ''}`;
+      const btn = li.querySelector('.booster-use');
       btn.onclick = () => {
         if (!available) return;
         if (booster.key === 'plusTenSeconds' && boardScene) {
@@ -1770,6 +1852,8 @@ function renderBoosterInventory() {
         renderBoosterInventory();
         refreshUI();
       };
+      const adBtn = li.querySelector('.booster-ad');
+      if (adBtn) adBtn.onclick = () => requestRewardedBooster(booster.key);
     } else {
       li.innerHTML = `<span>${booster.name}</span><strong>x${owned}</strong>`;
     }
@@ -1798,10 +1882,11 @@ function renderShopTable() {
       <span class="shop-owned">x${owned}</span>
       <div class="shop-name">${booster.name}</div>
       <div class="shop-effect">${booster.effect}</div>
-      <div class="shop-buy-row"><span class="shop-price">💎 ${booster.price}</span><button class="shop-buy" data-booster="${booster.key}">BUY</button></div>
+      <div class="shop-buy-row"><button class="shop-buy" data-booster="${booster.key}" ${rewardedAdPending ? 'disabled' : ''} aria-label="Buy ${booster.name} for ${booster.price} gems">💎 ${booster.price}</button><button class="shop-ad" data-ad-booster="${booster.key}" ${rewardedAdPending ? 'disabled' : ''} aria-label="Watch an ad for one ${booster.name}">▶ AD</button></div>
     `;
-    const buyBtn = card.querySelector('button');
+    const buyBtn = card.querySelector('.shop-buy');
     buyBtn.onclick = () => buyBooster(booster.key);
+    card.querySelector('.shop-ad').onclick = () => requestRewardedBooster(booster.key);
     ui.shopTableBody.appendChild(card);
   });
 }
@@ -3936,7 +4021,13 @@ function renderLevelsScreen() {
 }
 
 function initPhaser(rows, cols) {
-  if (phaserGame) phaserGame.destroy(true);
+  const gameContainer = document.getElementById?.('game');
+  if (phaserGame) {
+    phaserGame.destroy(true);
+    phaserGame = null;
+  }
+  boardScene = null;
+  gameContainer?.replaceChildren?.();
   const { width, height } = boardLayoutMetrics(rows, cols);
   boardScene = new BoardScene();
 
@@ -3959,6 +4050,10 @@ function pauseForPortraitOrientation() {
 function resumeFromPortraitOrientation() {
   window.viewportScaling?.applyViewportScale?.();
   if (!phaserGame) return;
+  if (adPauseState) {
+    boardResizePendingDuringAd = true;
+    return;
+  }
   phaserGame.loop.wake();
   phaserGame.input.enabled = true;
   scheduleBoardResize();
@@ -3971,8 +4066,17 @@ function handleOrientationBlockChange(event) {
 
 function scheduleBoardResize() {
   if (!phaserGame || !model.grid.length || !model.grid[0]?.length) return;
+  if (adPauseState) {
+    boardResizePendingDuringAd = true;
+    return;
+  }
   clearTimeout(boardResizeTimer);
   boardResizeTimer = setTimeout(() => {
+    boardResizeTimer = null;
+    if (adPauseState) {
+      boardResizePendingDuringAd = true;
+      return;
+    }
     if (!model.grid.length || !model.grid[0]?.length) return;
     initPhaser(model.grid.length, model.grid[0].length);
   }, 120);
@@ -4019,6 +4123,7 @@ async function initApp() {
   if (!IS_BUILDER_PAGE) requestBackgroundMusic();
   installButtonClickSounds();
   window.addEventListener?.('resize', scheduleBoardResize);
+  window.addEventListener?.('gamedistributionevent', handleGameDistributionEvent);
   window.addEventListener?.(window.viewportScaling?.ORIENTATION_EVENT || 'gameorientationblockchange', handleOrientationBlockChange);
   try {
     model.mainLevels = await loadBuiltinLevelsFromFiles();
