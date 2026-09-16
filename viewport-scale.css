@@ -119,6 +119,54 @@ body.start-active {
   overflow: visible !important;
 }
 
+/*
+ * The SDK mounts ads inside body. The normal body transform is appropriate for
+ * the 1920×1080 game, but it also scales the SDK's viewport-sized ad a second
+ * time. Temporarily make body a real-viewport surface while an ad is active.
+ */
+html.gd-ad-active body {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+  transform: none !important;
+}
+
+/* Prevent the unscaled game from showing around letterboxed ad creatives. */
+html.gd-ad-active body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: #000;
+  pointer-events: none;
+}
+
+html.gd-ad-active #gdsdk__advertisement,
+html.gd-ad-active #gdsdk__splash {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
+  z-index: 2147483647 !important;
+}
+
+html.gd-ad-active #gdsdk__advertisement iframe,
+html.gd-ad-active #gdsdk__advertisement video,
+html.gd-ad-active #gdsdk__splash iframe,
+html.gd-ad-active #gdsdk__splash video {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain !important;
+}
+
 .start-screen,
 .levels-screen,
 .app {
