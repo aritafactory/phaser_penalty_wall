@@ -119,6 +119,35 @@ body.start-active {
   overflow: visible !important;
 }
 
+/*
+ * GameDistribution appends its advertisement surface inside the transformed
+ * design-sized body. Counteract that containing block while an ad is active so
+ * the SDK surface continues to cover the real visual viewport after a resize.
+ */
+html.gd-ad-active #gdsdk__advertisement,
+html.gd-ad-active #gdsdk__splash {
+  position: fixed !important;
+  inset: auto !important;
+  left: var(--overlay-left) !important;
+  top: var(--overlay-top) !important;
+  width: var(--overlay-width) !important;
+  height: var(--overlay-height) !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
+  z-index: 2147483647 !important;
+}
+
+html.gd-ad-active #gdsdk__advertisement iframe,
+html.gd-ad-active #gdsdk__advertisement video,
+html.gd-ad-active #gdsdk__splash iframe,
+html.gd-ad-active #gdsdk__splash video {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
 .start-screen,
 .levels-screen,
 .app {

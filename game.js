@@ -225,6 +225,7 @@ const RETURN_REWARD_CYCLE = [
 let phaserGame;
 let boardScene;
 let boardResizeTimer;
+let boardResizePendingDuringAd = false;
 let backgroundAudio;
 let shotAudio;
 let swooshAudio;
@@ -409,6 +410,12 @@ function pauseForAd() {
     phaserGame.input.enabled = false;
     phaserGame.loop.sleep();
   }
+  if (boardResizeTimer) {
+    clearTimeout(boardResizeTimer);
+    boardResizeTimer = null;
+    boardResizePendingDuringAd = true;
+  }
+  document.documentElement?.classList?.add('gd-ad-active');
   setAllAudioMuted(true);
 }
 
@@ -416,11 +423,16 @@ function resumeAfterAd() {
   if (!adPauseState) return;
   const previousState = adPauseState;
   adPauseState = null;
+  document.documentElement?.classList?.remove('gd-ad-active');
   const orientationBlocked = Boolean(window.viewportScaling?.isOrientationBlocked?.());
   if (phaserGame && previousState.loopRunning && !orientationBlocked) phaserGame.loop.wake();
   if (phaserGame) phaserGame.input.enabled = previousState.inputEnabled && !orientationBlocked;
   setAllAudioMuted(!soundEnabled);
   if (soundEnabled && backgroundMusicRequested) startBackgroundMusic();
+  if (boardResizePendingDuringAd) {
+    boardResizePendingDuringAd = false;
+    scheduleBoardResize();
+  }
 }
 
 function handleGameDistributionEvent(event) {
@@ -4009,7 +4021,13 @@ function renderLevelsScreen() {
 }
 
 function initPhaser(rows, cols) {
-  if (phaserGame) phaserGame.destroy(true);
+  const gameContainer = document.getElementById?.('game');
+  if (phaserGame) {
+    phaserGame.destroy(true);
+    phaserGame = null;
+  }
+  boardScene = null;
+  gameContainer?.replaceChildren?.();
   const { width, height } = boardLayoutMetrics(rows, cols);
   boardScene = new BoardScene();
 
@@ -4032,6 +4050,10 @@ function pauseForPortraitOrientation() {
 function resumeFromPortraitOrientation() {
   window.viewportScaling?.applyViewportScale?.();
   if (!phaserGame) return;
+  if (adPauseState) {
+    boardResizePendingDuringAd = true;
+    return;
+  }
   phaserGame.loop.wake();
   phaserGame.input.enabled = true;
   scheduleBoardResize();
@@ -4044,8 +4066,17 @@ function handleOrientationBlockChange(event) {
 
 function scheduleBoardResize() {
   if (!phaserGame || !model.grid.length || !model.grid[0]?.length) return;
+  if (adPauseState) {
+    boardResizePendingDuringAd = true;
+    return;
+  }
   clearTimeout(boardResizeTimer);
   boardResizeTimer = setTimeout(() => {
+    boardResizeTimer = null;
+    if (adPauseState) {
+      boardResizePendingDuringAd = true;
+      return;
+    }
     if (!model.grid.length || !model.grid[0]?.length) return;
     initPhaser(model.grid.length, model.grid[0].length);
   }, 120);
