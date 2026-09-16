@@ -1748,12 +1748,30 @@ function updateResourceWarnings() {
 function showResourceBonus(target, text) {
   const rect = target?.getBoundingClientRect?.();
   if (!rect || typeof document.createElement !== 'function') return;
+
+  const container = target?.closest?.('.game-topbar') || target?.parentElement || document.body;
+  const containerRect = container?.getBoundingClientRect?.();
+  if (!containerRect) return;
+
+  const viewportMetrics = window.viewportScaling?.calculateViewportScale?.(
+    window.visualViewport?.width || window.innerWidth,
+    window.visualViewport?.height || window.innerHeight
+  );
+  const scale = viewportMetrics?.scale || 1;
+  const offsetX = viewportMetrics?.offsetX || 0;
+  const offsetY = viewportMetrics?.offsetY || 0;
+
+  const left = (rect.left - offsetX) / scale - (containerRect.left - offsetX) / scale + 8;
+  const top = (rect.top - offsetY) / scale - (containerRect.top - offsetY) / scale + rect.height / scale + 12;
+
   const bonus = document.createElement('span');
   bonus.className = 'resource-bonus';
   bonus.textContent = text;
-  bonus.style.left = `${rect.left + rect.width / 2}px`;
-  bonus.style.top = `${rect.bottom - 8}px`;
-  document.body.appendChild(bonus);
+  bonus.style.left = `${left}px`;
+  bonus.style.top = `${top}px`;
+
+  container.style.position = container.style.position || 'relative';
+  container.appendChild(bonus);
   setTimeout(() => bonus.remove(), 1000);
 }
 
